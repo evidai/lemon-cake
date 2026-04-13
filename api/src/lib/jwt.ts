@@ -98,6 +98,7 @@ export async function signAdminToken(): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setSubject("admin")
     .setIssuedAt()
+    .setIssuer("kyapay-admin")
     .setExpirationTime("24h")
     .sign(getAdminSecret());
 }
@@ -105,7 +106,9 @@ export async function signAdminToken(): Promise<string> {
 /** Admin JWT を検証 */
 export async function verifyAdminToken(token: string): Promise<boolean> {
   try {
-    const { payload } = await jwtVerify(token, getAdminSecret());
+    const { payload } = await jwtVerify(token, getAdminSecret(), {
+      issuer: "kyapay-admin",
+    });
     return payload.role === "admin";
   } catch {
     return false;

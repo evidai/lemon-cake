@@ -130,11 +130,35 @@ authRouter.get("/me", async (c) => {
   }
 });
 
+// ─── OAuth state ストア（CSRF保護・10分TTL）─────────────────
+const oauthStateStore = new Map<string, number>();
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10分
+
+function generateOAuthState(): string {
+  // crypto.randomUUID() は Node.js 14.17+ / Web Crypto API で利用可能
+  const state = crypto.randomUUID();
+  oauthStateStore.set(state, Date.now() + OAUTH_STATE_TTL_MS);
+  // 期限切れエントリを定期クリーンアップ
+  for (const [key, expiry] of oauthStateStore) {
+    if (Date.now() > expiry) oauthStateStore.delete(key);
+  }
+  return state;
+}
+
+function consumeOAuthState(state: string): boolean {
+  const expiry = oauthStateStore.get(state);
+  if (!expiry || Date.now() > expiry) return false;
+  oauthStateStore.delete(state);
+  return true;
+}
+
 // ─── Google OAuth: 認証URL取得 ───────────────────────────────
 authRouter.get("/google", (c) => {
   const clientId     = process.env.GOOGLE_CLIENT_ID;
   const redirectUri  = process.env.GOOGLE_REDIRECT_URI ?? "http://localhost:3001/auth/callback/google";
   if (!clientId) return c.json({ error: "Google OAuth not configured" }, 500);
+
+  const state = generateOAuthState();
 
   const params = new URLSearchParams({
     client_id:     clientId,
@@ -143,6 +167,7 @@ authRouter.get("/google", (c) => {
     scope:         "openid email profile",
     access_type:   "offline",
     prompt:        "select_account",
+    state,
   });
   return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
 });
@@ -150,9 +175,14 @@ authRouter.get("/google", (c) => {
 // ─── Google OAuth: コールバック処理 ──────────────────────────
 authRouter.post(
   "/google/callback",
-  zValidator("json", z.object({ code: z.string().min(1) })),
+  zValidator("json", z.object({ code: z.string().min(1), state: z.string().min(1).optional() })),
   async (c) => {
-    const { code } = c.req.valid("json");
+    const { code, state } = c.req.valid("json");
+
+    // state パラメータが渡された場合は検証（CSRF保護）
+    if (state !== undefined && !consumeOAuthState(state)) {
+      return c.json({ error: "Invalid or expired OAuth state parameter" }, 400);
+    }
     const clientId     = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const redirectUri  = process.env.GOOGLE_REDIRECT_URI ?? "http://localhost:3001/auth/callback/google";

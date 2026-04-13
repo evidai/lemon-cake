@@ -12,7 +12,8 @@ function GoogleCallbackContent() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const code  = searchParams.get("code");
+    const code     = searchParams.get("code");
+    const state    = searchParams.get("state");
     const errParam = searchParams.get("error");
 
     if (errParam) {
@@ -31,7 +32,7 @@ function GoogleCallbackContent() {
         const res = await fetch(`${API_URL}/api/auth/google/callback`, {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ code }),
+          body:    JSON.stringify({ code, ...(state ? { state } : {}) }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Google 認証に失敗しました");

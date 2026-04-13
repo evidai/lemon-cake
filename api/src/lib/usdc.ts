@@ -93,6 +93,20 @@ export async function sendUsdcOnPolygon(
   // 送金額を uint256 (6 decimals) に変換
   const amountRaw = parseUnits(params.amountUsdc, USDC_DECIMALS);
 
+  // ─── 送金前残高チェック ──────────────────────────────────────
+  const balance = await publicClient.readContract({
+    address:      contractAddress,
+    abi:          USDC_ABI,
+    functionName: "balanceOf",
+    args:         [account.address],
+  }) as bigint;
+
+  if (balance < amountRaw) {
+    throw new Error(
+      `Hot wallet USDC残高不足: 残高=${balance.toString()} (raw), 必要=${amountRaw.toString()} (raw)`
+    );
+  }
+
   // ERC-20 transfer 呼び出し
   const txHash = await walletClient.writeContract({
     address:      contractAddress,

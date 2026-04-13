@@ -138,8 +138,9 @@ export async function createFreeeTransaction(params: CreateDealParams): Promise<
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`freee API エラー: ${res.status} — ${err}`);
+    const errBody = await res.text();
+    console.error(`[freee] API error: ${res.status}`, errBody);
+    throw new Error(`freee API エラー: ${res.status}`);
   }
 
   const data = await res.json() as { deal: { id: number } };

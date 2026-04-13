@@ -23,7 +23,9 @@ const ProviderSchema = z.object({
 const CreateProviderBody = z.object({
   name:          z.string().min(1).max(100).openapi({ example: "My Company" }),
   email:         z.string().email().openapi({ example: "contact@example.com" }),
-  walletAddress: z.string().min(1).openapi({ example: "0xAbCd1234..." }),
+  walletAddress: z.string()
+    .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid Ethereum wallet address (must be 0x followed by 40 hex characters)")
+    .openapi({ example: "0xAbCd1234567890AbCd1234567890AbCd12345678" }),
 }).openapi("CreateProviderBody");
 
 function serializeProvider(p: {

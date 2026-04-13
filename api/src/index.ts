@@ -34,15 +34,19 @@ const app = new OpenAPIHono();
 // ─── グローバルミドルウェア ──────────────────────────────────
 app.use("*", logger());
 app.use("*", prettyJSON());
+const isDev = process.env.NODE_ENV !== "production";
+
 app.use(
   "*",
   cors({
     origin: (origin) => {
-      // localhost は全ポート許可（Claude Code プレビュー等の動的ポート対応）
-      if (!origin || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) return origin ?? "*";
-      // 本番ドメインのみ許可
-      const allowed = (process.env.ALLOWED_ORIGINS ?? "https://kyapay.io,https://lemoncake.aievid.com").split(",");
-      if (allowed.includes(origin)) return origin;
+      // 開発環境のみ localhost を全ポート許可
+      if (isDev && (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))) {
+        return origin ?? "*";
+      }
+      // 本番ドメインのみ許可（ALLOWED_ORIGINS 環境変数で上書き可能）
+      const allowed = (process.env.ALLOWED_ORIGINS ?? "https://lemoncake.xyz,https://www.lemoncake.xyz").split(",").map(s => s.trim());
+      if (allowed.includes(origin ?? "")) return origin!;
       return null;
     },
     allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],

@@ -94,7 +94,11 @@ export async function handleStripeWebhook(
   let event: any;
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-  } catch {
+  } catch (e) {
+    console.error("[Stripe Webhook] Signature verification failed:", {
+      signature: signature?.slice(0, 20) + "...",
+      error: e instanceof Error ? e.message : String(e),
+    });
     throw new Error("Webhook signature verification failed");
   }
 
@@ -107,16 +111,19 @@ export async function handleStripeWebhook(
     const buyerId   = customer.metadata?.buyerId;
     if (!buyerId) return { processed: false };
 
-    const amountJpy     = (funded.amount as number) ?? 0;
+    const amountJpy      = (funded.amount as number) ?? 0;
     const rateJpyPerUsdc = parseFloat(process.env.JPY_USDC_RATE ?? "150");
-    const amountUsdc    = (amountJpy / rateJpyPerUsdc).toFixed(6);
+
+    // Decimal演算で浮動小数点誤差を回避
+    const { Decimal } = await import("@prisma/client/runtime/library");
+    const amountUsdc = new Decimal(amountJpy).div(new Decimal(rateJpyPerUsdc));
 
     await prisma.$transaction(async (tx) => {
-      const buyer   = await tx.buyer.findUniqueOrThrow({ where: { id: buyerId } });
-      const current = parseFloat(String((buyer as Record<string, unknown>).balanceUsdc ?? "0"));
+      const buyer = await tx.buyer.findUniqueOrThrow({ where: { id: buyerId } });
+      const currentBalance = new Decimal(String((buyer as Record<string, unknown>).balanceUsdc ?? "0"));
       await tx.buyer.update({
         where: { id: buyerId },
-        data:  { balanceUsdc: (current + parseFloat(amountUsdc)).toFixed(6) } as never,
+        data:  { balanceUsdc: currentBalance.add(amountUsdc) } as never,
       });
     });
 
