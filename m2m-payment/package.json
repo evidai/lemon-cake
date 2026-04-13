@@ -1,0 +1,32 @@
+{
+  "name": "m2m-payment",
+  "version": "1.0.0",
+  "description": "AI Agent M2M Payment Infrastructure MVP",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "start": "node dist/index.js",
+    "db:migrate": "prisma migrate dev --name init",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "setup": "npm install && npx prisma generate && npx prisma migrate dev --name init"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.14.0",
+    "@solana/web3.js": "^1.95.3",
+    "bs58": "^5.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/bs58": "^4.0.4",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "prisma": "^5.14.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.5"
+  }
+}

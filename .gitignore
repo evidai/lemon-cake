@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment files (secrets)
+.env
+.env.local
+.env.*.local
+api/.env
+dashboard/.env.local
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Misc
+.DS_Store
+*.pptx
+*.csv
+*.json
+!package.json
+!package-lock.json
+!api/prisma/schema.prisma
+scraper.py
+lemon_cake_slides.js
+job_leads.*

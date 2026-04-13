@@ -1,0 +1,158 @@
+/**
+ * KYAPay API — エントリーポイント
+ *
+ * Hono + @hono/zod-openapi + @hono/swagger-ui
+ *
+ * ローカル起動: npm run dev
+ * Swagger UI:   http://localhost:3002/docs
+ * OpenAPI JSON: http://localhost:3002/openapi.json
+ */
+
+import { serve } from "@hono/node-server";
+import { OpenAPIHono } from "@hono/zod-openapi";
+import { swaggerUI } from "@hono/swagger-ui";
+import { cors } from "hono/cors";
+import { logger } from "hono/logger";
+import { prettyJSON } from "hono/pretty-json";
+import { HTTPException } from "hono/http-exception";
+
+import { loadSecretsFromGCP } from "./lib/secrets.js";
+import { tokensRouter }    from "./routes/tokens.js";
+import { chargeRouter }    from "./routes/charge.js";
+import { buyersRouter }    from "./routes/buyers.js";
+import { servicesRouter }  from "./routes/services.js";
+import { providersRouter } from "./routes/providers.js";
+import { authRouter }      from "./routes/auth.js";
+import { jpycRouter }      from "./routes/jpyc.js";
+import { taxRouter }       from "./routes/tax.js";
+import { stripeRouter }    from "./routes/stripe.js";
+import { startUsdcTransferWorker, handleFailedJob } from "./workers/usdcTransfer.js";
+
+// ─── アプリ初期化 ────────────────────────────────────────────
+const app = new OpenAPIHono();
+
+// ─── グローバルミドルウェア ──────────────────────────────────
+app.use("*", logger());
+app.use("*", prettyJSON());
+app.use(
+  "*",
+  cors({
+    origin: (origin) => {
+      // localhost は全ポート許可（Claude Code プレビュー等の動的ポート対応）
+      if (!origin || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) return origin ?? "*";
+      // 本番ドメインのみ許可
+      const allowed = (process.env.ALLOWED_ORIGINS ?? "https://kyapay.io,https://lemoncake.aievid.com").split(",");
+      if (allowed.includes(origin)) return origin;
+      return null;
+    },
+    allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
+    allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+  }),
+);
+
+// ─── ルーティング ────────────────────────────────────────────
+app.route("/api/auth",      authRouter);
+app.route("/api/tokens",    tokensRouter);
+app.route("/api/charges",   chargeRouter);
+app.route("/api/buyers",    buyersRouter);
+app.route("/api/services",  servicesRouter);
+app.route("/api/providers", providersRouter);
+app.route("/api/jpyc",      jpycRouter);
+app.route("/api/tax",       taxRouter);
+app.route("/api/stripe",    stripeRouter);
+
+// ─── OpenAPI ドキュメント定義 ────────────────────────────────
+app.doc("/openapi.json", {
+  openapi: "3.0.0",
+  info: {
+    title:   "KYAPay API",
+    version: "0.1.0",
+    description: [
+      "AIエージェント間のM2M決済インフラ「KYAPay」のバックエンドAPI。",
+      "",
+      "## 認証",
+      "- **Pay Token (JWT):** エージェントが `POST /api/charge` を呼ぶ際にリクエストボディで渡す",
+      "- **Admin JWT:** 管理者エンドポイント（Phase 2）で `Authorization: Bearer <token>` ヘッダーを使用",
+      "",
+      "## 冪等性",
+      "`POST /api/charge` には `Idempotency-Key` ヘッダーが必須。",
+      "同一キーの重複リクエストは既存レコードを返し、二重課金を防ぐ。",
+    ].join("\n"),
+    contact: { name: "KYAPay Team", email: "contact@kyapay.io" },
+  },
+  tags: [
+    { name: "Buyers",    description: "購入者管理" },
+    { name: "Tokens",    description: "Pay Token 発行・管理" },
+    { name: "Charges",   description: "課金トランザクション" },
+    { name: "Providers", description: "サービスプロバイダー管理" },
+    { name: "Services",  description: "サービス登録・審査" },
+    { name: "JPYC",      description: "JPYCステーブルコイン残高チャージ" },
+    { name: "Tax",       description: "国税庁API照合・源泉徴収判定（JP Compliance）" },
+    { name: "Stripe",    description: "銀行振込チャージ (Customer Balance)" },
+  ],
+});
+
+// ─── Swagger UI ──────────────────────────────────────────────
+app.get(
+  "/docs",
+  swaggerUI({ url: "/openapi.json" }),
+);
+
+// ─── ヘルスチェック ──────────────────────────────────────────
+app.get("/health", (c) =>
+  c.json({ status: "ok", version: "0.1.0", ts: new Date().toISOString() }),
+);
+
+// ─── グローバルエラーハンドラー ──────────────────────────────
+app.onError((err, c) => {
+  if (err instanceof HTTPException) {
+    return c.json({ error: err.message }, err.status);
+  }
+  console.error("[Unhandled Error]", err);
+  return c.json({ error: "Internal Server Error" }, 500);
+});
+
+app.notFound((c) => c.json({ error: "Not Found" }, 404));
+
+// ─── メイン起動関数 ──────────────────────────────────────────
+async function main(): Promise<void> {
+  // 本番 (NODE_ENV=production) のみ GCP Secret Manager からシークレットを取得
+  // 開発環境は .env をそのまま使用（何もしない）
+  await loadSecretsFromGCP();
+
+  const PORT = parseInt(process.env.PORT ?? "3002", 10);
+
+  serve({ fetch: app.fetch, port: PORT }, () => {
+    console.log(`\n🚀 KYAPay API started`);
+    console.log(`   Local:   http://localhost:${PORT}`);
+    console.log(`   Docs:    http://localhost:${PORT}/docs`);
+    console.log(`   OpenAPI: http://localhost:${PORT}/openapi.json\n`);
+  });
+
+  // ─── BullMQ ワーカー起動 ───────────────────────────────────
+  // SKIP_WORKER=true でスキップ可能（テスト・マイグレーション実行時等）
+  if (process.env.SKIP_WORKER !== "true") {
+    const worker = startUsdcTransferWorker();
+
+    // 最終失敗時の補償処理（リトライ上限を超えた場合）
+    worker.on("failed", async (job, err) => {
+      if (job && job.attemptsMade >= (job.opts.attempts ?? 3)) {
+        await handleFailedJob(job, err);
+      }
+    });
+
+    // グレースフルシャットダウン
+    const shutdown = async (): Promise<void> => {
+      console.log("\n[Shutdown] Closing worker...");
+      await worker.close();
+      process.exit(0);
+    };
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT",  shutdown);
+  }
+}
+
+main().catch((err) => {
+  console.error("[Fatal] Server failed to start:", err);
+  process.exit(1);
+});

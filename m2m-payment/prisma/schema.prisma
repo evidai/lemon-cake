@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core: Agent
+// ─────────────────────────────────────────────────────────────────────────────
+model Agent {
+  id        String   @id @default(cuid())
+  publicKey String   @unique
+  secretKey String   // JSON array of bytes — plaintext for testing only
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // KYA identity tier: "none" | "kya" | "kyc"
+  complianceTier String @default("none")
+  // KYA JWT issued by Skyfire (stored for verification)
+  kyaToken       String?
+  // Ethereum/Polygon address for JPYC payments
+  ethAddress     String?
+
+  sentTransactions     Transaction[]    @relation("FromAgent")
+  receivedTransactions Transaction[]    @relation("ToAgent")
+  reputation           AgentReputation?
+  budget               AgentBudget?
+  riskEvents           RiskEvent[]
+  fraudFlags           FraudFlag[]
+  auditLogs            AuditLog[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core: Transaction (extended)
+// ─────────────────────────────────────────────────────────────────────────────
+model Transaction {
+  id          String   @id @default(cuid())
+  fromAgentId String
+  toAgentId   String
+  amount      Float    // in SOL or currency-specific unit
+  currency    String   @default("SOL") // "SOL" | "USDC" | "JPYC"
+  txHash      String?
+  status      String   // "pending" | "confirmed" | "failed" | "blocked"
+  createdAt   DateTime @default(now())
+
+  // Risk metadata
+  riskScore  Float   @default(0)  // 0–100; higher = riskier
+  flagged    Boolean @default(false)
+  flagReason String?
+
+  fromAgent Agent @relation("FromAgent", fields: [fromAgentId], references: [id])
+  toAgent   Agent @relation("ToAgent",   fields: [toAgentId],   references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Proprietary: Agent Reputation
+// ─────────────────────────────────────────────────────────────────────────────
+model AgentReputation {
+  id             String   @id @default(cuid())
+  agentId        String   @unique
+  // 0–100 composite trust score (higher = more trustworthy)
+  trustScore     Float    @default(50)
+  totalSent      Int      @default(0)
+  totalReceived  Int      @default(0)
+  successRate    Float    @default(1.0)
+  avgTxAmount    Float    @default(0)
+  // Weighted moving average of risk scores across last 100 txs
+  avgRiskScore   Float    @default(0)
+  lastActivityAt DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Proprietary: Budget Management
+// ─────────────────────────────────────────────────────────────────────────────
+model AgentBudget {
+  id             String   @id @default(cuid())
+  agentId        String   @unique
+  currency       String   @default("SOL")
+  dailyLimit     Float    @default(0.01)
+  weeklyLimit    Float    @default(0.05)
+  monthlyLimit   Float    @default(0.1)
+  singleTxLimit  Float    @default(0.001)
+  // Accumulators (reset by scheduled job in production)
+  usedToday      Float    @default(0)
+  usedThisWeek   Float    @default(0)
+  usedThisMonth  Float    @default(0)
+  dailyResetAt   DateTime @default(now())
+  weeklyResetAt  DateTime @default(now())
+  monthlyResetAt DateTime @default(now())
+  suspended      Boolean  @default(false)
+  suspendReason  String?
+  updatedAt      DateTime @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Proprietary: Fraud Detection — Risk Events
+// ─────────────────────────────────────────────────────────────────────────────
+model RiskEvent {
+  id        String   @id @default(cuid())
+  agentId   String
+  // "velocity_breach" | "amount_anomaly" | "circular_payment" | "budget_breach" | "unknown_counterparty"
+  eventType String
+  // "low" | "medium" | "high" | "critical"
+  severity  String
+  score     Float    // contribution to risk score (0–100)
+  detail    String
+  createdAt DateTime @default(now())
+
+  agent Agent @relation(fields: [agentId], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Proprietary: Fraud Detection — Fraud Flags (actionable alerts)
+// ─────────────────────────────────────────────────────────────────────────────
+model FraudFlag {
+  id         String    @id @default(cuid())
+  agentId    String
+  reason     String
+  resolved   Boolean   @default(false)
+  resolvedBy String?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  agent Agent @relation(fields: [agentId], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Proprietary: Immutable Audit Log
+// ─────────────────────────────────────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(cuid())
+  agentId   String?
+  // "transfer_attempt" | "transfer_confirmed" | "budget_updated" | "flag_raised" | "killswitch"
+  action    String
+  detail    String   // JSON blob as string
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  agent Agent? @relation(fields: [agentId], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JPYC: Ethereum/Polygon transaction log
+// ─────────────────────────────────────────────────────────────────────────────
+model JPYCTransaction {
+  id          String   @id @default(cuid())
+  fromAddress String
+  toAddress   String
+  amountJPYC  Float    // JPYC token amount (18 decimals normalized)
+  amountJPY   Float?   // fiat equivalent at time of tx
+  txHash      String?
+  chainId     Int      @default(137) // 137 = Polygon mainnet, 80001 = Mumbai testnet
+  status      String   // "pending" | "confirmed" | "failed"
+  createdAt   DateTime @default(now())
+}

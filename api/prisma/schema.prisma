@@ -1,0 +1,261 @@
+// KYAPay — Phase 1 DB Schema
+// USDC残高は Decimal(38,18) で管理（ERC-20 decimals=6 だが将来拡張に備え18桁）
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// User: ダッシュボードにログインするエンドユーザー
+// ─────────────────────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String?  // email認証時のみ使用
+  provider     String   @default("email") // "email" | "google"
+  externalId   String?  // Google OAuth の sub
+
+  buyerId      String?  @unique
+  buyer        Buyer?   @relation(fields: [buyerId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Buyer: KYAPayを利用するAIエージェントのオーナー
+// ─────────────────────────────────────────────────────────────
+model Buyer {
+  id            String      @id @default(cuid())
+  name          String
+  email         String      @unique
+
+  // USDC残高: Decimal(38,18) で金銭的精度を保証
+  // Prismaは Decimal 型を BigDecimal として扱い、浮動小数点誤差を回避
+  balanceUsdc   Decimal     @default(0) @db.Decimal(38, 18)
+
+  // KYAステータス: none=未認証 / kya=エージェント認証済み / kyc=本人確認済み
+  kycTier       KycTier     @default(NONE)
+
+  // 一日あたりの利用上限 (USD相当, Decimal)
+  dailyLimitUsdc Decimal    @default(10) @db.Decimal(38, 18)
+
+  walletAddress String?     // オンチェーンアドレス（入金受取用）
+  suspended     Boolean     @default(false)
+
+  tokens              Token[]
+  charges             Charge[]
+  user                User?
+  jpycDepositRequests JpycDepositRequest[]
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("buyers")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Provider: サービスを提供するAIプロバイダー
+// ─────────────────────────────────────────────────────────────
+model Provider {
+  id            String      @id @default(cuid())
+  name          String
+  email         String      @unique
+
+  // USDC受取用オンチェーンアドレス（Polygon等）
+  walletAddress String      @unique
+
+  // サービス一覧（将来的にサービステーブルに正規化可能）
+  services      Service[]
+
+  // 精算待ち残高
+  pendingPayoutUsdc Decimal @default(0) @db.Decimal(38, 18)
+
+  active        Boolean     @default(true)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("providers")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Service: プロバイダーが提供するAPIサービス
+// ─────────────────────────────────────────────────────────────
+model Service {
+  id            String      @id @default(cuid())
+  providerId    String
+  provider      Provider    @relation(fields: [providerId], references: [id])
+
+  name          String
+  type          ServiceType @default(API)
+
+  // 1コールあたりの価格 (USDC)
+  pricePerCallUsdc Decimal  @db.Decimal(38, 18)
+
+  // 審査ステータス
+  reviewStatus  ReviewStatus @default(PENDING)
+  verified      Boolean      @default(false)
+
+  tokens        Token[]
+  charges       Charge[]
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("services")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Token: 発行済みPay Token（JWTのメタデータ管理）
+// 実際の認証はJWT署名検証で行い、DBはメタデータ・無効化フラグのみ保持
+// ─────────────────────────────────────────────────────────────
+model Token {
+  id            String      @id @default(cuid())  // JWT jti (JWT ID)
+
+  buyerId       String
+  buyer         Buyer       @relation(fields: [buyerId], references: [id])
+
+  serviceId     String
+  service       Service     @relation(fields: [serviceId], references: [id])
+
+  // 利用上限額 (USDC)
+  limitUsdc     Decimal     @db.Decimal(38, 18)
+
+  // 消費済み金額 (USDC) — Chargeが完了するたびに加算
+  usedUsdc      Decimal     @default(0) @db.Decimal(38, 18)
+
+  // バイヤータグ（エージェント識別用の任意文字列）
+  buyerTag      String?
+
+  // JWT有効期限（JWTのexpクレームと同期）
+  expiresAt     DateTime
+
+  // 無効化フラグ（revoke API で true にする）
+  revoked       Boolean     @default(false)
+
+  charges       Charge[]
+
+  createdAt     DateTime    @default(now())
+
+  // jtiはユニークであること（replay attack防止）
+  @@unique([id])
+  @@map("tokens")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Charge: 課金トランザクション履歴
+// ─────────────────────────────────────────────────────────────
+model Charge {
+  id               String        @id @default(cuid())
+
+  buyerId          String
+  buyer            Buyer         @relation(fields: [buyerId], references: [id])
+
+  serviceId        String
+  service          Service       @relation(fields: [serviceId], references: [id])
+
+  tokenId          String
+  token            Token         @relation(fields: [tokenId], references: [id])
+
+  // 課金金額 (USDC)
+  amountUsdc       Decimal       @db.Decimal(38, 18)
+
+  // ステータス
+  status           ChargeStatus  @default(PENDING)
+
+  // 冪等性キー: 同じキーで2回POST /api/charge しても重複課金しない
+  // クライアントはリクエストごとにユニークなキーを生成して付与する
+  idempotencyKey   String        @unique
+
+  // オンチェーン送金のトランザクションハッシュ（送金完了後に記録）
+  txHash           String?
+
+  // 失敗時のエラー詳細
+  failureReason    String?
+
+  // リスクスコア (0–100)
+  riskScore        Int           @default(0)
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // 複合インデックス: バイヤー × 時系列検索を高速化
+  @@index([buyerId, createdAt])
+  // サービス別集計用
+  @@index([serviceId, createdAt])
+  @@map("charges")
+}
+
+// ─────────────────────────────────────────────────────────────
+// JpycDepositRequest: JPYCステーブルコインによる残高チャージ申請
+// Phase 1 (申請型): ユーザーがTXハッシュを提出 → 管理者が承認・USDC付与
+// ─────────────────────────────────────────────────────────────
+model JpycDepositRequest {
+  id          String             @id @default(cuid())
+
+  buyerId     String
+  buyer       Buyer              @relation(fields: [buyerId], references: [id])
+
+  // Polygonチェーン上のJPYC送金トランザクションハッシュ
+  txHash      String             @unique
+
+  // ユーザーが送金したJPYC金額
+  amountJpyc  Decimal            @db.Decimal(38, 18)
+
+  // 承認時に付与するUSDC金額（管理者が設定）
+  amountUsdc  Decimal?           @db.Decimal(38, 18)
+
+  status      JpycDepositStatus  @default(PENDING)
+
+  // 審査メモ（承認・却下理由）
+  reviewNote  String?
+  reviewedAt  DateTime?
+
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([buyerId, createdAt])
+  @@map("jpyc_deposit_requests")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────
+enum KycTier {
+  NONE
+  KYA   // Know Your Agent
+  KYC   // Know Your Customer（フル本人確認）
+}
+
+enum ServiceType {
+  API
+  MCP
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ChargeStatus {
+  PENDING    // DB記録済み、送金キュー投入前 or キュー中
+  COMPLETED  // USDC送金完了、txHash記録済み
+  FAILED     // 送金失敗（残高不足・ネットワークエラー等）
+}
+
+enum JpycDepositStatus {
+  PENDING    // 審査待ち
+  APPROVED   // 承認済み（USDC付与済み）
+  REJECTED   // 却下
+}
