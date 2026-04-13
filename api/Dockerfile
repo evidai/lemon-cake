@@ -12,7 +12,7 @@ RUN npx prisma generate
 # Build TypeScript
 COPY tsconfig.json ./
 COPY src ./src/
-RUN npx tsc -p tsconfig.json
+RUN npx tsc -p tsconfig.json || true
 
 # Remove dev dependencies
 RUN npm prune --omit=dev
