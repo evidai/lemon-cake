@@ -1,6 +1,9 @@
 FROM node:20-alpine AS base
 WORKDIR /app
 
+# OpenSSL (Prisma requirement on Alpine)
+RUN apk add --no-cache openssl
+
 # Install dependencies
 COPY package*.json ./
 COPY prisma ./prisma/
@@ -20,6 +23,8 @@ RUN npm prune --omit=dev
 # Production image
 FROM node:20-alpine AS runner
 WORKDIR /app
+
+RUN apk add --no-cache openssl
 
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/dist ./dist
