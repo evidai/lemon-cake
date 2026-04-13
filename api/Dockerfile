@@ -32,4 +32,4 @@ COPY --from=base /app/prisma ./prisma
 COPY package*.json ./
 
 # Run Prisma migrations on start then launch server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/index.js"]
