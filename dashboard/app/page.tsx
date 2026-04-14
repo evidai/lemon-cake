@@ -1469,6 +1469,7 @@ function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
   const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002";
   const hdrs = { "Content-Type": "application/json", Authorization: `Bearer ${buyerToken}` };
 
+  const [tab,        setTab]        = useState<"jpyc" | "card">("jpyc");
   const [info,       setInfo]       = useState<JpycInfo | null>(null);
   const [requests,   setRequests]   = useState<JpycDepositReq[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -1477,6 +1478,9 @@ function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitOk,   setSubmitOk]   = useState(false);
   const [submitErr,  setSubmitErr]  = useState("");
+  const [cardAmount, setCardAmount] = useState("1000");
+  const [cardLoading, setCardLoading] = useState(false);
+  const [cardErr,    setCardErr]    = useState("");
 
 
   function load() {
@@ -1520,10 +1524,97 @@ function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
     return <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 border border-red-200 text-red-700">{t("却下","Rejected")}</span>;
   };
 
+  async function handleCardCheckout(e: React.FormEvent) {
+    e.preventDefault();
+    const amt = parseInt(cardAmount, 10);
+    if (!amt || amt < 500) { setCardErr(t("最低 ¥500 から", "Minimum ¥500")); return; }
+    setCardLoading(true); setCardErr("");
+    try {
+      const origin = window.location.origin;
+      const res = await fetch(`${API}/api/stripe/card-checkout`, {
+        method: "POST",
+        headers: hdrs,
+        body: JSON.stringify({
+          amountJpy:  amt,
+          successUrl: `${origin}/?charge=success`,
+          cancelUrl:  `${origin}/?charge=cancel`,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? t("エラーが発生しました", "An error occurred"));
+      window.location.href = data.url;
+    } catch (err: unknown) {
+      setCardErr(err instanceof Error ? err.message : t("エラーが発生しました", "An error occurred"));
+      setCardLoading(false);
+    }
+  }
+
   if (loading) return <div className="text-sm text-text-muted p-8 text-center">{t("読み込み中…","Loading…")}</div>;
 
   return (
     <div className="flex flex-col gap-5 max-w-2xl">
+
+      {/* Tab switcher */}
+      <div className="flex rounded-xl bg-gray-100 p-1 gap-1 w-fit">
+        <button
+          onClick={() => setTab("jpyc")}
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab === "jpyc" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+        >
+          {t("JPYCで入金","JPYC Deposit")}
+        </button>
+        <button
+          onClick={() => setTab("card")}
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab === "card" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+        >
+          💳 {t("カードで入金","Card Payment")}
+        </button>
+      </div>
+
+      {/* Card payment tab */}
+      {tab === "card" && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <p className="text-sm font-semibold text-gray-900 mb-1">💳 {t("カードで入金","Card Payment")}</p>
+          <p className="text-xs text-gray-500 mb-4">
+            {t("クレジット／デビットカードでUSDC残高にチャージできます。Stripeの安全なページで決済します。","Charge your USDC balance by credit or debit card. Payment is processed securely via Stripe.")}
+          </p>
+          <form onSubmit={handleCardCheckout} className="flex flex-col gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("入金金額（円）","Amount (JPY)")}</label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">¥</span>
+                <input
+                  type="number" value={cardAmount} onChange={e => setCardAmount(e.target.value)}
+                  min="500" step="100"
+                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                  required
+                />
+              </div>
+              {cardAmount && !isNaN(parseInt(cardAmount)) && parseInt(cardAmount) >= 500 && (
+                <p className="text-[10px] text-gray-400 mt-1">
+                  {t("換算後","Converted")}: ≈ {(parseInt(cardAmount) / (info?.jpycRate ?? 150)).toFixed(4)} USDC
+                </p>
+              )}
+              <div className="flex gap-2 mt-2">
+                {[1000, 3000, 5000, 10000].map(v => (
+                  <button key={v} type="button" onClick={() => setCardAmount(String(v))}
+                    className="px-2 py-1 rounded-lg border border-gray-200 text-[11px] text-gray-600 hover:bg-gray-50 transition-colors">
+                    ¥{v.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {cardErr && <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{cardErr}</div>}
+            <button type="submit" disabled={cardLoading}
+              className="w-full py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              {cardLoading ? t("リダイレクト中…","Redirecting…") : <>💳 {t("Stripeで決済する","Pay with Stripe")}</>}
+            </button>
+            <p className="text-[10px] text-gray-400 text-center">{t("Stripeの安全な決済ページへ遷移します","You will be redirected to Stripe's secure payment page")}</p>
+          </form>
+        </div>
+      )}
+
+      {/* JPYC tab */}
+      {tab === "jpyc" && <>
 
       {/* Platform wallet info */}
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
@@ -1610,6 +1701,8 @@ function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
           )
         }
       </div>
+
+      </> /* end JPYC tab */}
     </div>
   );
 }

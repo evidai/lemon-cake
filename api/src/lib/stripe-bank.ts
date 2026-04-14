@@ -102,6 +102,33 @@ export async function handleStripeWebhook(
     throw new Error("Webhook signature verification failed");
   }
 
+  // ── カード決済完了 ──────────────────────────────────────────
+  if (event.type === "checkout.session.completed") {
+    const session  = event.data.object as Record<string, unknown>;
+    const meta     = session.metadata as Record<string, string> | undefined;
+    const buyerId  = meta?.buyerId;
+    if (!buyerId || session.payment_status !== "paid") return { processed: false };
+
+    const amountJpy = parseInt(meta?.amountJpy ?? "0", 10);
+    if (!amountJpy) return { processed: false };
+
+    const { fetchJpycRate } = await import("./jpyc-verify.js");
+    const rateStr           = await fetchJpycRate();
+    const { Decimal }       = await import("@prisma/client/runtime/library");
+    const amountUsdc        = new Decimal(amountJpy).div(new Decimal(rateStr));
+
+    await prisma.$transaction(async (tx) => {
+      const buyer          = await tx.buyer.findUniqueOrThrow({ where: { id: buyerId } });
+      const currentBalance = new Decimal(String((buyer as Record<string, unknown>).balanceUsdc ?? "0"));
+      await tx.buyer.update({
+        where: { id: buyerId },
+        data:  { balanceUsdc: currentBalance.add(amountUsdc) } as never,
+      });
+    });
+
+    return { processed: true, event: event.type };
+  }
+
   // customer_cash_balance_transaction.created (新API) または customer.balance.funded (旧API) に対応
   if (event.type === "customer_cash_balance_transaction.created" || event.type === "customer.balance.funded") {
     const funded     = event.data.object as Record<string, unknown>;
@@ -132,6 +159,35 @@ export async function handleStripeWebhook(
   }
 
   return { processed: false, event: event.type };
+}
+
+// ─── Stripe Checkout セッション作成（カード決済）──────────────
+export async function createCardCheckoutSession(
+  buyerId:    string,
+  amountJpy:  number,   // JPY 金額 (最低 ¥500)
+  successUrl: string,
+  cancelUrl:  string,
+): Promise<{ sessionId: string; url: string }> {
+  const stripe = getStripe();
+
+  const session = await stripe.checkout.sessions.create({
+    mode:                 "payment",
+    currency:             "jpy",
+    payment_method_types: ["card"],
+    line_items: [{
+      price_data: {
+        currency:     "jpy",
+        unit_amount:  amountJpy,
+        product_data: { name: "LEMON cake USDC残高チャージ", description: `¥${amountJpy.toLocaleString()} → USDCに換算して残高に追加` },
+      },
+      quantity: 1,
+    }],
+    metadata:    { buyerId, amountJpy: String(amountJpy) },
+    success_url: successUrl,
+    cancel_url:  cancelUrl,
+  });
+
+  return { sessionId: session.id, url: session.url as string };
 }
 
 // ─── カスタマーの残高照会 ─────────────────────────────────────

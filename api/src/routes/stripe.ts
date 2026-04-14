@@ -11,6 +11,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import {
   createBankTransferAccount,
+  createCardCheckoutSession,
   handleStripeWebhook,
   getStripeCustomerBalance,
 } from "../lib/stripe-bank.js";
@@ -43,6 +44,23 @@ stripeRouter.post(
           }
         : null,
     }, 201);
+  },
+);
+
+// ─── POST /api/stripe/card-checkout ──────────────────────────
+stripeRouter.post(
+  "/card-checkout",
+  requireBuyerAuth,
+  zValidator("json", z.object({
+    amountJpy:  z.number().int().min(500),
+    successUrl: z.string().url(),
+    cancelUrl:  z.string().url(),
+  })),
+  async (c) => {
+    const buyerId = (c as never as { get: (k: string) => string }).get("buyerId") as string;
+    const { amountJpy, successUrl, cancelUrl } = c.req.valid("json");
+    const result = await createCardCheckoutSession(buyerId, amountJpy, successUrl, cancelUrl);
+    return c.json(result, 201);
   },
 );
 
