@@ -16,11 +16,31 @@ const PLATFORM_WALLET = process.env.JPYC_PLATFORM_WALLET
 
 // ─── サービス定義 ──────────────────────────────────────────────
 const SERVICES: Array<{
-  name:            string;
-  type:            "API" | "MCP";
+  name:             string;
+  type:             "API" | "MCP";
   pricePerCallUsdc: string;
-  description?:   string;
+  endpoint?:        string;
+  authHeader?:      string;
 }> = [
+  // ── 🇯🇵 日本向け有料サービス（プロキシ経由） ──────────────────
+  {
+    name:             "freee 会計 API",
+    type:             "API",
+    pricePerCallUsdc: "0.001000",
+    endpoint:         "https://api.freee.co.jp/api/1",
+    authHeader:       process.env.FREEE_ACCESS_TOKEN
+                        ? `Bearer ${process.env.FREEE_ACCESS_TOKEN}`
+                        : undefined,
+  },
+  {
+    name:             "国税庁 インボイス照合 API",
+    type:             "API",
+    pricePerCallUsdc: "0.000500",
+    // NTA Web-API: ?id=<アプリID> をクエリパラメータで付与して呼ぶ
+    // エージェントは /api/proxy/<serviceId>/sealed/v01/matching?id=<appId>&number=T... の形で呼ぶ
+    endpoint:         "https://web-api.invoice-kohyo.nta.go.jp/api/1",
+    authHeader:       undefined,
+  },
   // ── 検索・Web ──────────────────────────────────────────────
   {
     name:             "Tavily Search",
@@ -156,6 +176,8 @@ async function main() {
         name:             svc.name,
         type:             svc.type,
         pricePerCallUsdc: svc.pricePerCallUsdc,
+        ...(svc.endpoint   ? { endpoint:   svc.endpoint }   : {}),
+        ...(svc.authHeader ? { authHeader: svc.authHeader } : {}),
         reviewStatus:     "APPROVED",
         verified:         true,
       },

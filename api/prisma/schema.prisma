@@ -102,6 +102,10 @@ model Service {
   // 1コールあたりの価格 (USDC)
   pricePerCallUsdc Decimal  @db.Decimal(38, 18)
 
+  // プロキシ転送先 (省略可: 外部APIをラップする場合に指定)
+  endpoint      String?     // 転送先URL (例: https://api.freee.co.jp/api/1/companies)
+  authHeader    String?     // Authorizationヘッダー値 (例: Bearer sk_live_xxx) 暗号化推奨
+
   // 審査ステータス
   reviewStatus  ReviewStatus @default(PENDING)
   verified      Boolean      @default(false)

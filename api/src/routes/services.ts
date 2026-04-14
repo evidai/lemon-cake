@@ -27,6 +27,7 @@ const ServiceSchema = z.object({
   name:             z.string(),
   type:             z.enum(["API", "MCP"]),
   pricePerCallUsdc: z.string(),
+  endpoint:         z.string().nullable(),
   reviewStatus:     z.enum(["PENDING", "APPROVED", "REJECTED"]),
   verified:         z.boolean(),
   createdAt:        z.string(),
@@ -40,6 +41,7 @@ function serializeService(s: {
   provider: { name: string };
   name: string; type: "API" | "MCP";
   pricePerCallUsdc: { toString(): string };
+  endpoint: string | null;
   reviewStatus: "PENDING" | "APPROVED" | "REJECTED";
   verified: boolean;
   createdAt: Date; updatedAt: Date;
@@ -51,6 +53,7 @@ function serializeService(s: {
     name:             s.name,
     type:             s.type,
     pricePerCallUsdc: s.pricePerCallUsdc.toString(),
+    endpoint:         s.endpoint,
     reviewStatus:     s.reviewStatus,
     verified:         s.verified,
     createdAt:        s.createdAt.toISOString(),
@@ -104,6 +107,8 @@ const CreateServiceBody = z.object({
   pricePerCallUsdc: z.string()
     .regex(/^\d+(\.\d+)?$/, "pricePerCallUsdc must be a positive decimal string")
     .openapi({ example: "0.001" }),
+  endpoint:         z.string().url().optional().openapi({ example: "https://api.freee.co.jp/api/1" }),
+  authHeader:       z.string().optional().openapi({ example: "Bearer sk_live_xxx" }),
 }).openapi("CreateServiceBody");
 
 servicesRouter.openapi(
@@ -143,6 +148,8 @@ servicesRouter.openapi(
         name:             body.name,
         type:             body.type,
         pricePerCallUsdc: body.pricePerCallUsdc,
+        ...(body.endpoint   ? { endpoint:   body.endpoint }   : {}),
+        ...(body.authHeader ? { authHeader: body.authHeader } : {}),
       },
       include: { provider: { select: { name: true } } },
     });

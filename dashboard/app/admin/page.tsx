@@ -266,6 +266,8 @@ function AddServiceModal({onClose, onAdd}: {
   const [providerId, setProviderId] = useState("");
   const [type,       setType]       = useState<"API"|"MCP">("API");
   const [price,      setPrice]      = useState("");
+  const [endpoint,   setEndpoint]   = useState("");
+  const [authHeader, setAuthHeader] = useState("");
   const [providers,  setProviders]  = useState<ProviderOption[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState("");
@@ -297,6 +299,8 @@ function AddServiceModal({onClose, onAdd}: {
           name: name.trim(),
           type,
           pricePerCallUsdc: price || "0",
+          ...(endpoint.trim()   ? { endpoint: endpoint.trim() }     : {}),
+          ...(authHeader.trim() ? { authHeader: authHeader.trim() } : {}),
         }),
       });
       if (!res.ok) {
@@ -347,6 +351,15 @@ function AddServiceModal({onClose, onAdd}: {
             <label className={labelCls}>1コール単価 (USDC) <span className="text-red-500">*</span></label>
             <input className={inputCls} placeholder="例: 0.0025" type="number" min="0" step="0.0001" value={price} onChange={e=>{setPrice(e.target.value);setError("");}}/>
           </div>
+        </div>
+        <div>
+          <label className={labelCls}>転送先エンドポイント URL <span className="text-gray-400 font-normal">(任意・プロキシ経由の場合)</span></label>
+          <input className={inputCls} placeholder="例: https://api.freee.co.jp/api/1" value={endpoint} onChange={e=>{setEndpoint(e.target.value);setError("");}}/>
+        </div>
+        <div>
+          <label className={labelCls}>Authorization ヘッダー値 <span className="text-gray-400 font-normal">(任意・Bearer トークン等)</span></label>
+          <input className={inputCls} placeholder="例: Bearer sk_live_xxx" type="password" value={authHeader} onChange={e=>{setAuthHeader(e.target.value);setError("");}}/>
+          <p className="text-xs text-gray-400 mt-1">入力値はそのまま上流APIのAuthorizationヘッダーに使用されます</p>
         </div>
         {error && <p className="text-xs text-red-500">{error}</p>}
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">

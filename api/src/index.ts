@@ -27,6 +27,7 @@ import { jpycRouter }      from "./routes/jpyc.js";
 import { taxRouter }       from "./routes/tax.js";
 import { stripeRouter }    from "./routes/stripe.js";
 import { freeeRouter }     from "./routes/freee.js";
+import { proxyRouter }     from "./routes/proxy.js";
 import { startUsdcTransferWorker, handleFailedJob } from "./workers/usdcTransfer.js";
 
 // ─── アプリ初期化 ────────────────────────────────────────────
@@ -66,6 +67,7 @@ app.route("/api/jpyc",      jpycRouter);
 app.route("/api/tax",       taxRouter);
 app.route("/api/stripe",    stripeRouter);
 app.route("/api/freee",     freeeRouter);
+app.route("/api/proxy",     proxyRouter);
 
 // ─── OpenAPI ドキュメント定義 ────────────────────────────────
 app.doc("/openapi.json", {
