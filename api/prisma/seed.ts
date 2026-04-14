@@ -96,16 +96,32 @@ const SERVICES: Array<{
                         ? `QUERY:api_key:${process.env.HUNTER_API_KEY}`
                         : undefined,
   },
+  // ── 🕷️ LLMネイティブ・スクレイパー ───────────────────────────
+  {
+    name:             "Firecrawl — Web Scraping",
+    type:             "API",
+    pricePerCallUsdc: "0.000200",
+    endpoint:         "https://api.firecrawl.dev/v1",
+    authHeader:       process.env.FIRECRAWL_API_KEY
+                        ? `Bearer ${process.env.FIRECRAWL_API_KEY}`
+                        : undefined,
+  },
+  {
+    name:             "Jina Reader — LLM Web Reader",
+    type:             "API",
+    pricePerCallUsdc: "0.000100",
+    // エージェントは /api/proxy/<id>/https://example.com の形で呼ぶ
+    // → https://r.jina.ai/https://example.com に転送
+    endpoint:         "https://r.jina.ai",
+    authHeader:       process.env.JINA_API_KEY
+                        ? `Bearer ${process.env.JINA_API_KEY}`
+                        : undefined,
+  },
   // ── 検索・Web ──────────────────────────────────────────────
   {
     name:             "Tavily Search",
     type:             "API",
     pricePerCallUsdc: "0.000100",
-  },
-  {
-    name:             "Firecrawl — Web Scraping",
-    type:             "API",
-    pricePerCallUsdc: "0.000200",
   },
   {
     name:             "Exa Search",
@@ -187,6 +203,10 @@ const SERVICES: Array<{
     name:             "Firecrawl MCP",
     type:             "MCP",
     pricePerCallUsdc: "0.000300",
+    endpoint:         "https://api.firecrawl.dev/v1",
+    authHeader:       process.env.FIRECRAWL_API_KEY
+                        ? `Bearer ${process.env.FIRECRAWL_API_KEY}`
+                        : undefined,
   },
   {
     name:             "Tavily MCP",
