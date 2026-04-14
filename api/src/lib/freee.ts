@@ -41,6 +41,34 @@ export async function refreshFreeeToken(refreshToken: string): Promise<{
   };
 }
 
+// ─── トークンリフレッシュ + DB 永続化 ────────────────────────
+// プロキシや仕訳作成で 401 が返ったときに呼ぶ。
+// 新しいトークンをメモリ環境変数と DB（Service.authHeader）に書き込む。
+export async function refreshAndPersistFreeeToken(): Promise<string> {
+  const refreshToken = process.env.FREEE_REFRESH_TOKEN;
+  if (!refreshToken) throw new Error("FREEE_REFRESH_TOKEN が未設定");
+
+  const tokens = await refreshFreeeToken(refreshToken);
+
+  // メモリ上の環境変数を更新（次のリクエストから即有効）
+  process.env.FREEE_ACCESS_TOKEN  = tokens.accessToken;
+  process.env.FREEE_REFRESH_TOKEN = tokens.refreshToken;
+
+  // DB の Service.authHeader を更新（プロキシが参照する値）
+  try {
+    const { prisma } = await import("./prisma.js");
+    await prisma.service.updateMany({
+      where:  { endpoint: { contains: "api.freee.co.jp" } },
+      data:   { authHeader: `Bearer ${tokens.accessToken}` },
+    });
+    console.log("[freee] Token refreshed and persisted to DB");
+  } catch (err) {
+    console.error("[freee] Failed to persist token to DB:", err);
+  }
+
+  return tokens.accessToken;
+}
+
 // ─── 仕訳作成パラメータ ──────────────────────────────────────
 export interface CreateDealParams {
   issueDate:          string;  // "YYYY-MM-DD"
@@ -129,14 +157,20 @@ export async function createFreeeTransaction(params: CreateDealParams): Promise<
     details,
   };
 
-  const res = await fetch(`${FREEE_API_BASE}/api/1/deals`, {
+  const doPost = (token: string) => fetch(`${FREEE_API_BASE}/api/1/deals`, {
     method:  "POST",
-    headers: {
-      "Authorization": `Bearer ${accessToken}`,
-      "Content-Type":  "application/json",
-    },
+    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
+  let res = await doPost(accessToken);
+
+  // 401 なら自動リフレッシュして 1 回リトライ
+  if (res.status === 401) {
+    console.log("[freee] createFreeeTransaction 401 — attempting token refresh");
+    const newToken = await refreshAndPersistFreeeToken();
+    res = await doPost(newToken);
+  }
 
   if (!res.ok) {
     const errBody = await res.text();

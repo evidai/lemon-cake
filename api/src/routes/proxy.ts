@@ -161,13 +161,26 @@ proxyRouter.all("/:serviceId/*", async (c) => {
   const hasBody = method !== "GET" && method !== "HEAD";
   const body = hasBody ? await c.req.text() : undefined;
 
+  const doFetch = (headers: Record<string, string>) =>
+    fetch(forwardUrl, { method, headers, ...(hasBody && body ? { body } : {}) });
+
   let upstreamRes: Response;
   try {
-    upstreamRes = await fetch(forwardUrl, {
-      method,
-      headers: forwardHeaders,
-      ...(hasBody && body ? { body } : {}),
-    });
+    upstreamRes = await doFetch(forwardHeaders);
+
+    // 401 かつ freee エンドポイントなら自動リフレッシュして 1 回だけリトライ
+    if (upstreamRes.status === 401 && service.endpoint?.includes("api.freee.co.jp")) {
+      console.log("[Proxy] freee 401 — attempting token refresh");
+      try {
+        const { refreshAndPersistFreeeToken } = await import("../lib/freee.js");
+        const newToken = await refreshAndPersistFreeeToken();
+        forwardHeaders["Authorization"] = `Bearer ${newToken}`;
+        upstreamRes = await doFetch(forwardHeaders);
+      } catch (refreshErr) {
+        console.error("[Proxy] freee token refresh failed:", refreshErr);
+        // リフレッシュ失敗時は元の 401 をそのまま返す
+      }
+    }
   } catch (err) {
     console.error("[Proxy] Upstream fetch error:", err);
     throw new HTTPException(502, { message: `Upstream error: ${err instanceof Error ? err.message : "network error"}` });
