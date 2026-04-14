@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
+
+// ── i18n ──────────────────────────────────────────────────────────────────────
+const LangContext = createContext<"ja" | "en">("ja");
+function useT() {
+  const l = useContext(LangContext);
+  return (ja: string, en: string) => l === "en" ? en : ja;
+}
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, TooltipProps,
@@ -116,6 +123,7 @@ const TIER_CFG: Record<string, { bg: string; text: string; border: string; label
 };
 
 function CopyButton({ text }: { text: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   function handleCopy() {
     // clipboard API → フォールバック: execCommand
@@ -138,16 +146,18 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button onClick={handleCopy}
       className="absolute top-2 right-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded-lg hover:bg-gray-700 transition-colors min-w-[3.5rem]">
-      {copied ? "✓ コピー済" : "コピー"}
+      {copied ? t("✓ コピー済", "✓ Copied") : t("コピー", "Copy")}
     </button>
   );
 }
 
 function TierBadge({ tier }: { tier: Tier | string }) {
+  const t = useT();
   const c = TIER_CFG[tier] ?? TIER_CFG.none;
+  const label = c.label === "未認証" ? t("未認証", "Unverified") : c.label;
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
-      {c.label}
+      {label}
     </span>
   );
 }
@@ -320,6 +330,22 @@ function Sidebar({
   onSellerSetup: () => void;
   lang: "ja" | "en"; setLang: (l: "ja" | "en") => void;
 }) {
+  const t = useT();
+
+  const navBuyer: NavItem[] = [
+    { id: "home",         label: t("ホーム", "Home"),                 Icon: IconHome },
+    { id: "directory",    label: t("サービス一覧", "Services"),         Icon: IconDirectory },
+    { id: "transactions", label: t("トークン発行", "Issue Token"),       Icon: IconToken },
+    { id: "agents",       label: t("販売者向けAPIキー", "API Keys"),      Icon: IconApiKey },
+    { id: "fraud",        label: t("課金履歴", "Charges"),               Icon: IconClaim },
+    { id: "jpyc",         label: t("JPYCチャージ", "JPYC Deposit"),       Icon: IconPlayground },
+  ];
+  const navSeller: NavItem[] = [
+    { id: "seller-services",  label: t("マイサービス", "My Services"),   Icon: IconStore },
+    { id: "seller-stats",     label: t("売上統計", "Statistics"),         Icon: IconChart },
+    { id: "seller-directory", label: t("ディレクトリ", "Directory"),      Icon: IconDirectory },
+  ];
+
   function NavBtn({ id, label, Icon }: NavItem) {
     const active = page === id;
     return (
@@ -335,7 +361,7 @@ function Sidebar({
     );
   }
 
-  const nav = role === "buyer" ? NAV_BUYER : NAV_SELLER;
+  const nav = role === "buyer" ? navBuyer : navSeller;
 
   return (
     <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-gray-200">
@@ -384,13 +410,13 @@ function Sidebar({
         {/* セラー: プロフィール未設定の場合はセットアップ誘導 */}
         {role === "seller" && !sellerProfile && (
           <div className="mt-3 mx-1 rounded-2xl bg-[#faf7f2] border border-[#f0e8d8] px-4 py-4">
-            <p className="text-[12px] font-bold text-gray-900">販売者プロフィール</p>
-            <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">サービスを掲載するにはプロフィールを作成してください。</p>
+            <p className="text-[12px] font-bold text-gray-900">{t("販売者プロフィール", "Seller Profile")}</p>
+            <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">{t("サービスを掲載するにはプロフィールを作成してください。", "Create a profile to list your services.")}</p>
             <button
               onClick={onSellerSetup}
               className="inline-flex items-center gap-1 mt-2 text-[11px] font-semibold text-gray-700 hover:text-gray-900 transition-colors"
             >
-              プロフィールを作成する →
+              {t("プロフィールを作成する →", "Create Profile →")}
             </button>
           </div>
         )}
@@ -401,7 +427,7 @@ function Sidebar({
         <div className="mx-1 mb-1 border-t border-gray-100" />
         <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors focus:outline-none group">
           <IconSupport cls="w-5 h-5 flex-shrink-0 transition-colors text-gray-400 group-hover:text-gray-600" />
-          <span className="font-medium text-[13.5px]">サポート</span>
+          <span className="font-medium text-[13.5px]">{t("サポート", "Support")}</span>
         </button>
         <button onClick={() => setPage(role === "seller" ? "seller-account" : "account")}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors focus:outline-none group ${(page === "account" || page === "seller-account") ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"}`}>
@@ -409,7 +435,7 @@ function Sidebar({
             <circle cx="10" cy="7" r="3"/>
             <path d="M3 17a7 7 0 0114 0"/>
           </svg>
-          <span className="font-medium text-[13.5px]">アカウント設定</span>
+          <span className="font-medium text-[13.5px]">{t("アカウント設定", "Account Settings")}</span>
         </button>
       </div>
     </aside>
@@ -436,25 +462,26 @@ function KpiCard({ label, value, unit, sub, color = "default" }: {
 }
 
 function TxTable({ logs, isDemoMode }: { logs: LogEntry[]; isDemoMode: boolean }) {
+  const t = useT();
   return (
     <div className="panel rounded-xl flex flex-col" style={{ height: 360 }}>
       <div className="px-5 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-text-primary">取引ログ</span>
+          <span className="text-sm font-semibold text-text-primary">{t("取引ログ", "Transaction Log")}</span>
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isDemoMode ? "bg-amber-50 border-amber-200 text-amber-600" : "bg-blue-50 border-blue-200 text-blue-600"}`}>
             {isDemoMode ? "DEMO" : "LIVE"}
           </span>
         </div>
-        <span className="text-xs text-text-muted">{logs.length} 件</span>
+        <span className="text-xs text-text-muted">{logs.length} {t("件", "items")}</span>
       </div>
       <div className="px-5 py-2 border-b border-border grid grid-cols-12 gap-2 flex-shrink-0 bg-canvas">
-        {(["時刻", "送信元", "送信先", "通貨", "金額", "Risk", "Tx Hash", "状態"] as const).map((h) => (
-          <span key={h} className={`text-[10px] font-semibold uppercase tracking-wider text-text-muted ${h === "状態" ? "col-span-1 text-right" : h === "Tx Hash" ? "col-span-2" : h === "金額" || h === "Risk" ? "col-span-1" : "col-span-2"}`}>{h}</span>
+        {([t("時刻","Time"), t("送信元","From"), t("送信先","To"), t("通貨","Currency"), t("金額","Amount"), "Risk", "Tx Hash", t("状態","Status")] as const).map((h) => (
+          <span key={h} className={`text-[10px] font-semibold uppercase tracking-wider text-text-muted ${h === t("状態","Status") ? "col-span-1 text-right" : h === "Tx Hash" ? "col-span-2" : h === t("金額","Amount") || h === "Risk" ? "col-span-1" : "col-span-2"}`}>{h}</span>
         ))}
       </div>
       <div className="flex-1 overflow-y-auto divide-y divide-border/60">
         {logs.length === 0
-          ? <div className="flex items-center justify-center h-full text-text-muted text-sm">データ待機中…</div>
+          ? <div className="flex items-center justify-center h-full text-text-muted text-sm">{t("データ待機中…", "Waiting for data…")}</div>
           : logs.map((tx) => (
             <div key={tx.id} className="px-5 py-2 grid grid-cols-12 gap-2 items-center hover:bg-canvas text-xs animate-slide-down">
               <span className="col-span-2 font-mono text-text-muted tabular-nums text-[10px]">{tx.createdAt}</span>
@@ -491,8 +518,10 @@ const ONBOARDING_ITEMS = [
         <line x1="24" y1="13" x2="24" y2="19"/>
       </svg>
     ),
-    title: "トークンの使い方を学びましょう",
-    desc: "インタラクティブなプレイグラウンドにアクセスして、トークンの作成方法とサービスへのアクセス方法を学びましょう。デモでは、アプリケーションでトークンを使用する手順を順を追って説明します。",
+    titleJa: "トークンの使い方を学びましょう",
+    titleEn: "Learn How to Use Tokens",
+    descJa: "インタラクティブなプレイグラウンドにアクセスして、トークンの作成方法とサービスへのアクセス方法を学びましょう。デモでは、アプリケーションでトークンを使用する手順を順を追って説明します。",
+    descEn: "Access the interactive playground to learn how to create tokens and access services. The demo walks you through the steps of using tokens in your application.",
   },
   {
     key: "verify",
@@ -502,8 +531,10 @@ const ONBOARDING_ITEMS = [
         <polyline points="11 16 14 19 21 12"/>
       </svg>
     ),
-    title: "認証を受ける",
-    desc: "より多くのサービスをご利用いただくには、本人確認が必要です。一部のプロバイダーは、サービス利用のために追加の本人確認を求めています。",
+    titleJa: "認証を受ける",
+    titleEn: "Get Verified",
+    descJa: "より多くのサービスをご利用いただくには、本人確認が必要です。一部のプロバイダーは、サービス利用のために追加の本人確認を求めています。",
+    descEn: "Identity verification is required to access more services. Some providers require additional verification to use their services.",
   },
   {
     key: "seller",
@@ -515,12 +546,15 @@ const ONBOARDING_ITEMS = [
         <path d="M3 11 Q16 17 29 11"/>
       </svg>
     ),
-    title: "販売者アカウントを作成する",
-    desc: "ご自身のサービスを提供してみませんか？販売者アカウントを作成して、他のユーザーに価値を提供し、収益を上げましょう。",
+    titleJa: "販売者アカウントを作成する",
+    titleEn: "Create a Seller Account",
+    descJa: "ご自身のサービスを提供してみませんか？販売者アカウントを作成して、他のユーザーに価値を提供し、収益を上げましょう。",
+    descEn: "Want to offer your own services? Create a seller account to provide value to other users and earn revenue.",
   },
 ] as const;
 
 function OnboardingChecklist({ onDismiss }: { onDismiss: () => void }) {
+  const t = useT();
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const toggle = (key: string) =>
     setChecked((prev) => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
@@ -530,8 +564,8 @@ function OnboardingChecklist({ onDismiss }: { onDismiss: () => void }) {
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>
-          <h2 className="text-base font-bold text-gray-900">購入者オンボーディングチェックリスト</h2>
-          <p className="text-xs text-gray-500 mt-0.5">LEMON cakeをバイヤーとして利用開始するには、以下の手順を完了してください。</p>
+          <h2 className="text-base font-bold text-gray-900">{t("購入者オンボーディングチェックリスト", "Buyer Onboarding Checklist")}</h2>
+          <p className="text-xs text-gray-500 mt-0.5">{t("LEMON cakeをバイヤーとして利用開始するには、以下の手順を完了してください。", "Complete the steps below to get started as a buyer on LEMON cake.")}</p>
         </div>
         <div className="flex items-center gap-3 ml-4 flex-shrink-0">
           <span className="text-sm font-medium text-gray-400">{done} / {ONBOARDING_ITEMS.length}</span>
@@ -564,8 +598,8 @@ function OnboardingChecklist({ onDismiss }: { onDismiss: () => void }) {
               {/* Icon */}
               <div className="text-gray-900 mb-4">{item.icon}</div>
               {/* Text */}
-              <p className={`text-sm font-bold leading-snug mb-2 ${isDone ? "text-gray-400 line-through" : "text-gray-900"}`}>{item.title}</p>
-              <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
+              <p className={`text-sm font-bold leading-snug mb-2 ${isDone ? "text-gray-400 line-through" : "text-gray-900"}`}>{t(item.titleJa, item.titleEn)}</p>
+              <p className="text-xs text-gray-500 leading-relaxed">{t(item.descJa, item.descEn)}</p>
             </div>
           );
         })}
@@ -585,6 +619,7 @@ interface Buyer {
 // ── Stripe-style fund modal ────────────────────────────────────────────────────
 const STRIPE_AMOUNTS = [5, 10, 25, 50, 100, 250];
 function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () => void; onSuccess: (amount: number) => void; }) {
+  const t = useT();
   const [selected, setSelected] = useState<number | null>(null);
   const [custom, setCustom]     = useState("");
   const [step, setStep]         = useState<"amount" | "card" | "processing" | "done">("amount");
@@ -603,7 +638,7 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
           <div>
-            <p className="text-xs text-gray-400 mb-0.5">資金追加先</p>
+            <p className="text-xs text-gray-400 mb-0.5">{t("資金追加先","Fund recipient")}</p>
             <p className="text-sm font-bold text-gray-900">{buyer.name}</p>
           </div>
           <button onClick={onClose} className="text-gray-300 hover:text-gray-500 transition-colors">
@@ -614,7 +649,7 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
         <div className="px-6 py-5">
           {/* Step: amount */}
           {step === "amount" && (<>
-            <p className="text-sm font-semibold text-gray-900 mb-3">金額を選択</p>
+            <p className="text-sm font-semibold text-gray-900 mb-3">{t("金額を選択","Select amount")}</p>
             <div className="grid grid-cols-3 gap-2 mb-3">
               {STRIPE_AMOUNTS.map((a) => (
                 <button key={a} onClick={() => { setSelected(a); setCustom(""); }}
@@ -623,12 +658,12 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
                 </button>
               ))}
             </div>
-            <input type="number" placeholder="カスタム金額 (USD)" value={custom}
+            <input type="number" placeholder={t("カスタム金額 (USD)","Custom amount (USD)")} value={custom}
               onChange={(e) => { setCustom(e.target.value); setSelected(null); }}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-gray-400 mb-4"/>
             <button disabled={!amount} onClick={() => setStep("card")}
               className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${amount ? "bg-gray-900 text-white hover:bg-gray-800" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
-              続ける → ${amount.toFixed(2)}
+              {t("続ける","Continue")} → ${amount.toFixed(2)}
             </button>
           </>)}
 
@@ -638,11 +673,11 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
               <button onClick={() => setStep("amount")} className="text-gray-400 hover:text-gray-600">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 3L5 8l5 5"/></svg>
               </button>
-              <p className="text-sm font-semibold text-gray-900">カード情報を入力</p>
+              <p className="text-sm font-semibold text-gray-900">{t("カード情報を入力","Enter card details")}</p>
               <span className="ml-auto text-sm font-bold text-gray-900">${amount.toFixed(2)}</span>
             </div>
             <div className="flex flex-col gap-3 mb-4">
-              <input placeholder="カード番号" maxLength={19} value={card.number}
+              <input placeholder={t("カード番号","Card number")} maxLength={19} value={card.number}
                 onChange={(e) => setCard({ ...card, number: e.target.value.replace(/\D/g,"").replace(/(.{4})/g,"$1 ").trim() })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono placeholder-gray-400 focus:outline-none focus:border-gray-400"/>
               <div className="grid grid-cols-2 gap-3">
@@ -653,18 +688,18 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
                   onChange={(e) => setCard({ ...card, cvc: e.target.value.replace(/\D/g,"") })}
                   className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono placeholder-gray-400 focus:outline-none focus:border-gray-400"/>
               </div>
-              <input placeholder="カード名義" value={card.name}
+              <input placeholder={t("カード名義","Cardholder name")} value={card.name}
                 onChange={(e) => setCard({ ...card, name: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-gray-400"/>
             </div>
             <button onClick={handlePay}
               disabled={!card.number || !card.expiry || !card.cvc || !card.name}
               className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${card.number && card.expiry && card.cvc && card.name ? "bg-gray-900 text-white hover:bg-gray-800" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
-              ${amount.toFixed(2)} を支払う
+              {t("支払う","Pay")} ${amount.toFixed(2)}
             </button>
             <p className="text-center text-[11px] text-gray-400 mt-2 flex items-center justify-center gap-1">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="12" height="9" rx="1"/><path d="M5 5V4a3 3 0 016 0v1"/></svg>
-              Stripe によるセキュア決済
+              {t("Stripe によるセキュア決済","Secured by Stripe")}
             </p>
           </>)}
 
@@ -672,7 +707,7 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
           {step === "processing" && (
             <div className="flex flex-col items-center py-8 gap-3">
               <svg className="animate-spin w-8 h-8 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
-              <p className="text-sm text-gray-500">処理中...</p>
+              <p className="text-sm text-gray-500">{t("処理中...","Processing...")}</p>
             </div>
           )}
 
@@ -682,9 +717,9 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
               <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 12 9 17 20 6"/></svg>
               </div>
-              <p className="text-sm font-semibold text-gray-900">${amount.toFixed(2)} を追加しました</p>
-              <p className="text-xs text-gray-400">残高に反映されました</p>
-              <button onClick={onClose} className="mt-2 px-6 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors">閉じる</button>
+              <p className="text-sm font-semibold text-gray-900">{t("追加しました","Added")} ${amount.toFixed(2)}</p>
+              <p className="text-xs text-gray-400">{t("残高に反映されました","Balance updated")}</p>
+              <button onClick={onClose} className="mt-2 px-6 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors">{t("閉じる","Close")}</button>
             </div>
           )}
         </div>
@@ -694,12 +729,13 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
 }
 
 // ── Buyer card ────────────────────────────────────────────────────────────────
-const KYC_BADGE: Record<string, { cls: string; label: string }> = {
-  NONE: { cls: "bg-gray-100 text-gray-500 border-gray-200",     label: "未認証" },
-  KYA:  { cls: "bg-violet-50 text-violet-700 border-violet-200", label: "KYA" },
-  KYC:  { cls: "bg-sky-50 text-sky-700 border-sky-200",          label: "KYC" },
+const KYC_BADGE: Record<string, { cls: string; labelJa: string; labelEn: string }> = {
+  NONE: { cls: "bg-gray-100 text-gray-500 border-gray-200",     labelJa: "未認証", labelEn: "Unverified" },
+  KYA:  { cls: "bg-violet-50 text-violet-700 border-violet-200", labelJa: "KYA",   labelEn: "KYA" },
+  KYC:  { cls: "bg-sky-50 text-sky-700 border-sky-200",          labelJa: "KYC",   labelEn: "KYC" },
 };
 function BuyerCard({ buyer, onFund }: { buyer: Buyer; onFund: () => void }) {
+  const t = useT();
   const kyc = KYC_BADGE[buyer.kycTier] ?? KYC_BADGE.NONE;
   const balance = parseFloat(buyer.balanceUsdc);
   return (
@@ -708,9 +744,9 @@ function BuyerCard({ buyer, onFund }: { buyer: Buyer; onFund: () => void }) {
       <div className="px-6 py-5 flex items-center justify-between border-b border-gray-100">
         <div>
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-xs text-gray-500">利用可能残高</span>
-            <span className={`inline-flex items-center px-1.5 py-0.5 rounded border text-[9px] font-bold ${kyc.cls}`}>{kyc.label}</span>
-            {buyer.suspended && <span className="inline-flex items-center px-1.5 py-0.5 rounded border text-[9px] font-bold bg-red-50 text-red-600 border-red-200">停止中</span>}
+            <span className="text-xs text-gray-500">{t("利用可能残高", "Available Balance")}</span>
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded border text-[9px] font-bold ${kyc.cls}`}>{t(kyc.labelJa, kyc.labelEn)}</span>
+            {buyer.suspended && <span className="inline-flex items-center px-1.5 py-0.5 rounded border text-[9px] font-bold bg-red-50 text-red-600 border-red-200">{t("停止中", "Suspended")}</span>}
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold font-mono text-gray-900">{balance.toFixed(6)}</span>
@@ -720,13 +756,13 @@ function BuyerCard({ buyer, onFund }: { buyer: Buyer; onFund: () => void }) {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={onFund} className="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors">
-            資金ウォレット
+            {t("資金ウォレット", "Fund Wallet")}
           </button>
           <button className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-200 bg-white text-sm text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <circle cx="8" cy="8" r="6"/><polyline points="8 5 8 8 10 10"/>
             </svg>
-            活動
+            {t("活動", "Activity")}
           </button>
         </div>
       </div>
@@ -734,9 +770,9 @@ function BuyerCard({ buyer, onFund }: { buyer: Buyer; onFund: () => void }) {
       {/* Tokens */}
       <div className="px-6 pt-5 pb-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-gray-900">トークン</span>
+          <span className="text-sm font-semibold text-gray-900">{t("トークン", "Tokens")}</span>
           <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors">
-            すべて表示
+            {t("すべて表示", "View all")}
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 6h6M7 4l2 2-2 2"/></svg>
           </button>
         </div>
@@ -745,16 +781,16 @@ function BuyerCard({ buyer, onFund }: { buyer: Buyer; onFund: () => void }) {
             <circle cx="14" cy="14" r="5"/>
             <circle cx="14" cy="14" r="10" strokeDasharray="3 3"/>
           </svg>
-          <span className="text-sm">有効なトークンはありません</span>
+          <span className="text-sm">{t("有効なトークンはありません", "No active tokens")}</span>
         </div>
       </div>
 
       {/* Recent charges */}
       <div className="px-6 pt-0 pb-5">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-gray-900">最近の告発</span>
+          <span className="text-sm font-semibold text-gray-900">{t("最近の告発", "Recent Charges")}</span>
           <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors">
-            すべて表示
+            {t("すべて表示", "View all")}
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 6h6M7 4l2 2-2 2"/></svg>
           </button>
         </div>
@@ -763,7 +799,7 @@ function BuyerCard({ buyer, onFund }: { buyer: Buyer; onFund: () => void }) {
             <rect x="4" y="8" width="20" height="14" rx="2"/>
             <path d="M4 13h20"/>
           </svg>
-          <span className="text-sm">料金はかかりません</span>
+          <span className="text-sm">{t("料金はかかりません", "No charges")}</span>
         </div>
       </div>
     </div>
@@ -777,6 +813,7 @@ function BuyersSection({ buyers, onCreateBuyer, onAddFunds, loading }: {
   onAddFunds: (buyerId: string, amount: number) => Promise<void>;
   loading: boolean;
 }) {
+  const t = useT();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName]   = useState("");
   const [saving, setSaving]     = useState(false);
@@ -802,7 +839,7 @@ function BuyersSection({ buyers, onCreateBuyer, onAddFunds, loading }: {
       {loading && buyers.length === 0 && (
         <div className="flex items-center justify-center py-10 gap-2 text-gray-400 text-sm">
           <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
-          読み込み中...
+          {t("読み込み中...", "Loading...")}
         </div>
       )}
 
@@ -820,23 +857,23 @@ function BuyersSection({ buyers, onCreateBuyer, onAddFunds, loading }: {
           <div className="flex items-center gap-3">
             <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => { if(e.key==="Escape") setCreating(false); }}
-              placeholder="購入者名（例: Agent-001）"
+              placeholder={t("購入者名（例: Agent-001）", "Buyer name (e.g. Agent-001)")}
               className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-gray-400"/>
           </div>
           {errMsg && <p className="text-xs text-red-500">{errMsg}</p>}
           <div className="flex items-center gap-2">
             <button onClick={handleCreate} disabled={!newName.trim() || saving}
               className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${newName.trim() && !saving ? "bg-gray-900 text-white hover:bg-gray-800" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
-              {saving ? "作成中..." : "作成"}
+              {saving ? t("作成中...", "Creating...") : t("作成", "Create")}
             </button>
-            <button onClick={() => { setCreating(false); setErrMsg(""); }} className="px-4 py-2.5 border border-gray-200 text-sm text-gray-600 rounded-xl hover:bg-gray-50 transition-colors">キャンセル</button>
+            <button onClick={() => { setCreating(false); setErrMsg(""); }} className="px-4 py-2.5 border border-gray-200 text-sm text-gray-600 rounded-xl hover:bg-gray-50 transition-colors">{t("キャンセル", "Cancel")}</button>
           </div>
         </div>
       ) : (
         <button onClick={() => setCreating(true)}
           className="w-full flex items-center justify-center gap-2 py-3.5 border-2 border-dashed border-gray-200 rounded-2xl text-sm font-medium text-gray-500 hover:border-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
-          購入者を作成する
+          {t("購入者を作成する", "Create Buyer")}
         </button>
       )}
 
@@ -850,6 +887,7 @@ function BuyersSection({ buyers, onCreateBuyer, onAddFunds, loading }: {
 }
 
 function BuyerOverviewCard({ buyerToken, onNavigate, refreshKey }: { buyerToken: string; onNavigate: (p: Page) => void; refreshKey: number }) {
+  const t = useT();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [tokenCount, setTokenCount] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -881,10 +919,10 @@ function BuyerOverviewCard({ buyerToken, onNavigate, refreshKey }: { buyerToken:
   );
 
   const tier = profile.buyer?.kycTier ?? "NONE";
-  const tierCfg: Record<string, { bg: string; text: string; label: string; desc: string }> = {
-    NONE: { bg: "bg-gray-100",    text: "text-gray-600",    label: "未認証",  desc: "エージェント未認証（上限 $10/日）" },
-    KYA:  { bg: "bg-violet-50",   text: "text-violet-700",  label: "KYA",    desc: "エージェント認証済み（上限 $1,000/日）" },
-    KYC:  { bg: "bg-sky-50",      text: "text-sky-700",     label: "KYC",    desc: "本人確認済み（上限 $50,000/日）" },
+  const tierCfg: Record<string, { bg: string; text: string; labelJa: string; labelEn: string; descJa: string; descEn: string }> = {
+    NONE: { bg: "bg-gray-100",    text: "text-gray-600",    labelJa: "未認証",  labelEn: "Unverified",  descJa: "エージェント未認証（上限 $10/日）",     descEn: "Agent unverified (limit $10/day)" },
+    KYA:  { bg: "bg-violet-50",   text: "text-violet-700",  labelJa: "KYA",    labelEn: "KYA",         descJa: "エージェント認証済み（上限 $1,000/日）", descEn: "Agent verified (limit $1,000/day)" },
+    KYC:  { bg: "bg-sky-50",      text: "text-sky-700",     labelJa: "KYC",    labelEn: "KYC",         descJa: "本人確認済み（上限 $50,000/日）",       descEn: "Identity verified (limit $50,000/day)" },
   };
   const tc = tierCfg[tier] ?? tierCfg.NONE;
 
@@ -894,7 +932,7 @@ function BuyerOverviewCard({ buyerToken, onNavigate, refreshKey }: { buyerToken:
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <p className="text-xs text-gray-400 mb-0.5">ようこそ</p>
+            <p className="text-xs text-gray-400 mb-0.5">{t("ようこそ", "Welcome")}</p>
             <h2 className="text-lg font-bold text-gray-900">{profile.name}</h2>
             <p className="text-xs text-gray-500">{profile.email}</p>
           </div>
@@ -902,21 +940,21 @@ function BuyerOverviewCard({ buyerToken, onNavigate, refreshKey }: { buyerToken:
             <button onClick={() => fetchData(false)}
               disabled={refreshing}
               className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
-              title="残高を更新">
+              title={t("残高を更新", "Refresh balance")}>
               <svg className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
               </svg>
             </button>
             <div className="text-right">
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${tc.bg} ${tc.text}`}>{tc.label}</span>
-              <p className="text-[10px] text-gray-400 mt-1">{tc.desc}</p>
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${tc.bg} ${tc.text}`}>{t(tc.labelJa, tc.labelEn)}</span>
+              <p className="text-[10px] text-gray-400 mt-1">{t(tc.descJa, tc.descEn)}</p>
             </div>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "USDC 残高",       value: profile.buyer ? parseFloat(profile.buyer.balanceUsdc).toFixed(4) : "—",  unit: "USDC", action: null },
-            { label: "発行済みトークン",  value: tokenCount !== null ? String(tokenCount) : "—",                          unit: "件",   action: () => onNavigate("transactions") },
+            { label: t("USDC 残高", "USDC Balance"),       value: profile.buyer ? parseFloat(profile.buyer.balanceUsdc).toFixed(4) : "—",  unit: "USDC", action: null },
+            { label: t("発行済みトークン", "Issued Tokens"),  value: tokenCount !== null ? String(tokenCount) : "—",                          unit: t("件","items"),   action: () => onNavigate("transactions") },
             { label: "Buyer ID",         value: profile.buyer?.id ? profile.buyer.id.slice(0,10)+"…" : "—",              unit: "",     action: null },
           ].map(c => (
             <div key={c.label}
@@ -932,12 +970,12 @@ function BuyerOverviewCard({ buyerToken, onNavigate, refreshKey }: { buyerToken:
 
       {/* Quick actions */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
-        <h3 className="text-sm font-bold text-gray-900 mb-4">クイックアクション</h3>
+        <h3 className="text-sm font-bold text-gray-900 mb-4">{t("クイックアクション", "Quick Actions")}</h3>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: "トークンを発行する",  desc: "サービスのPay Tokenを発行",  page: "transactions" as Page,
+            { label: t("トークンを発行する", "Issue Token"),  desc: t("サービスのPay Tokenを発行", "Issue a Pay Token for a service"),  page: "transactions" as Page,
               icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 20 20" stroke="currentColor" strokeWidth={1.75}><rect x="1.5" y="6" width="17" height="8" rx="2"/><line x1="6" y1="8.5" x2="6" y2="11.5"/><line x1="10" y1="8.5" x2="10" y2="11.5"/><line x1="14" y1="8.5" x2="14" y2="11.5"/></svg> },
-            { label: "課金履歴を確認",       desc: "使用履歴と消費額を確認",     page: "fraud" as Page,
+            { label: t("課金履歴を確認", "View Charges"),       desc: t("使用履歴と消費額を確認", "Check usage history and spend"),     page: "fraud" as Page,
               icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 20 20" stroke="currentColor" strokeWidth={1.75}><rect x="2" y="5" width="16" height="12" rx="1.5"/><path d="M2 9h16"/><circle cx="6" cy="13" r="1" fill="currentColor"/></svg> },
           ].map(a => (
             <button key={a.label} onClick={() => onNavigate(a.page)}
@@ -980,6 +1018,7 @@ interface Charge {
 interface ApprovedService { id: string; name: string; type: string; pricePerCallUsdc: string; providerName: string; }
 
 function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onTokenIssued?: () => void }) {
+  const t = useT();
   const [tokens,    setTokens]    = useState<PayToken[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState("");
@@ -1000,7 +1039,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
     })
       .then((r) => r.ok ? r.json() : Promise.reject(r))
       .then((data: { data: PayToken[] }) => setTokens(data.data))
-      .catch(() => setError("トークンの取得に失敗しました"))
+      .catch(() => setError(t("トークンの取得に失敗しました", "Failed to load tokens")))
       .finally(() => setLoading(false));
   }
 
@@ -1042,9 +1081,9 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
   }
 
   const statusCfg = {
-    active:  { cls: "bg-green-50 text-green-700 border-green-200",  label: "有効" },
-    revoked: { cls: "bg-red-50 text-red-700 border-red-200",        label: "無効化" },
-    expired: { cls: "bg-gray-100 text-gray-500 border-gray-200",    label: "期限切れ" },
+    active:  { cls: "bg-green-50 text-green-700 border-green-200",  label: t("有効", "Active") },
+    revoked: { cls: "bg-red-50 text-red-700 border-red-200",        label: t("無効化", "Revoked") },
+    expired: { cls: "bg-gray-100 text-gray-500 border-gray-200",    label: t("期限切れ", "Expired") },
   };
 
   const activeCount = tokens.filter((t) => getStatus(t) === "active").length;
@@ -1060,16 +1099,16 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <p className="text-xs text-gray-400 mb-1">有効なトークン</p>
+          <p className="text-xs text-gray-400 mb-1">{t("有効なトークン", "Active Tokens")}</p>
           <p className="text-2xl font-bold font-mono text-gray-900">{activeCount}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <p className="text-xs text-gray-400 mb-1">合計使用額</p>
+          <p className="text-xs text-gray-400 mb-1">{t("合計使用額", "Total Used")}</p>
           <p className="text-2xl font-bold font-mono text-gray-900">{totalUsed.toFixed(6)}</p>
           <p className="text-xs text-gray-400 mt-0.5">USDC</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <p className="text-xs text-gray-400 mb-1">発行総数</p>
+          <p className="text-xs text-gray-400 mb-1">{t("発行総数", "Total Issued")}</p>
           <p className="text-2xl font-bold font-mono text-gray-900">{tokens.length}</p>
         </div>
       </div>
@@ -1078,7 +1117,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
       {showForm && (
         <div className="bg-white border border-gray-200 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-bold text-gray-900">新しいPay Tokenを発行</h2>
+            <h2 className="text-sm font-bold text-gray-900">{t("新しいPay Tokenを発行", "Issue New Pay Token")}</h2>
             <button onClick={() => { setShowForm(false); setIssued(null); setIssueErr(""); }}
               className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
           </div>
@@ -1086,10 +1125,10 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2 text-green-700 text-sm font-semibold">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                発行完了: {issued.tokenId.slice(0,16)}…
+                {t("発行完了", "Issued")}: {issued.tokenId.slice(0,16)}…
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-600 mb-1.5">Pay Token JWT（コピーして使用）</p>
+                <p className="text-xs font-semibold text-gray-600 mb-1.5">{t("Pay Token JWT（コピーして使用）", "Pay Token JWT (copy to use)")}</p>
                 <div className="relative bg-gray-50 border border-gray-200 rounded-xl p-3 overflow-hidden">
                   <code className="text-[10px] font-mono text-gray-700 break-all leading-relaxed">{issued.jwt}</code>
                   <CopyButton text={issued.jwt} />
@@ -1097,17 +1136,17 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
               </div>
               <button onClick={() => { setIssued(null); setShowForm(false); }}
                 className="self-end px-5 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800">
-                完了
+                {t("完了", "Done")}
               </button>
             </div>
           ) : (
             <form onSubmit={handleIssue} className="flex flex-col gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">サービス</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("サービス", "Service")}</label>
                 <select value={svcId} onChange={e => setSvcId(e.target.value)} required
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20">
                   {services.length === 0
-                    ? <option value="">承認済みサービスを読み込み中…</option>
+                    ? <option value="">{t("承認済みサービスを読み込み中…", "Loading approved services…")}</option>
                     : services.map(s => (
                       <option key={s.id} value={s.id}>{s.name} — {s.providerName} ({parseFloat(s.pricePerCallUsdc).toFixed(4)} USDC/call)</option>
                     ))
@@ -1116,13 +1155,13 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">利用上限 (USDC)</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("利用上限 (USDC)", "Limit (USDC)")}</label>
                   <input type="number" step="0.000001" min="0.000001" value={limitAmt}
                     onChange={e => setLimitAmt(e.target.value)} required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Buyer Tag <span className="text-gray-400 font-normal">（任意）</span></label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Buyer Tag <span className="text-gray-400 font-normal">{t("（任意）", "(optional)")}</span></label>
                   <input type="text" value={buyerTag} onChange={e => setBuyerTag(e.target.value)} placeholder="agent-001"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
                 </div>
@@ -1131,7 +1170,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
               <div className="flex justify-end">
                 <button type="submit" disabled={issuing || !svcId}
                   className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-colors">
-                  {issuing ? "発行中…" : "トークンを発行する"}
+                  {issuing ? t("発行中…", "Issuing…") : t("トークンを発行する", "Issue Token")}
                 </button>
               </div>
             </form>
@@ -1142,13 +1181,13 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
       {/* Token list */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-gray-900">トークン一覧</h2>
+          <h2 className="text-sm font-bold text-gray-900">{t("トークン一覧", "Token List")}</h2>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">{tokens.length} 件</span>
+            <span className="text-xs text-gray-400">{tokens.length} {t("件","items")}</span>
             <button onClick={() => { setShowForm(true); setIssued(null); setIssueErr(""); }}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold rounded-xl transition-colors">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
-              トークンを発行
+              {t("トークンを発行", "Issue Token")}
             </button>
           </div>
         </div>
@@ -1156,20 +1195,20 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
         {loading ? (
           <div className="flex items-center justify-center py-16 gap-2 text-gray-400 text-sm">
             <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
-            読み込み中...
+            {t("読み込み中...", "Loading...")}
           </div>
         ) : error ? (
           <div className="flex items-center justify-center py-16 text-red-500 text-sm">{error}</div>
         ) : tokens.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400 text-sm">
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="16" cy="16" r="6"/><circle cx="16" cy="16" r="12" strokeDasharray="4 4"/></svg>
-            発行済みトークンはありません
+            {t("発行済みトークンはありません", "No issued tokens")}
           </div>
         ) : (
           <>
             {/* Header */}
             <div className="px-6 py-2.5 border-b border-gray-100 grid grid-cols-12 gap-2 bg-gray-50">
-              {["トークンID","サービス","上限額","使用済","Buyer Tag","有効期限","状態"].map((h,i) => (
+              {[t("トークンID","Token ID"),t("サービス","Service"),t("上限額","Limit"),t("使用済","Used"),"Buyer Tag",t("有効期限","Expires"),t("状態","Status")].map((h,i) => (
                 <span key={i} className={`text-[10px] font-semibold uppercase tracking-wider text-gray-400 ${i===1?"col-span-3":i===4?"col-span-2":i===5?"col-span-2":"col-span-1"}`}>{h}</span>
               ))}
             </div>
@@ -1211,6 +1250,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
 }
 
 function ChargesPage({ buyerToken }: { buyerToken: string }) {
+  const t = useT();
   const [filter,   setFilter]   = useState<"all"|"COMPLETED"|"FAILED"|"PENDING">("all");
   const [charges,  setCharges]  = useState<Charge[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -1225,14 +1265,14 @@ function ChargesPage({ buyerToken }: { buyerToken: string }) {
     })
       .then((r) => r.ok ? r.json() : Promise.reject(r))
       .then((data: { data: Charge[]; total: number }) => { setCharges(data.data); setTotal(data.total); })
-      .catch(() => setError("課金履歴の取得に失敗しました"))
+      .catch(() => setError(t("課金履歴の取得に失敗しました", "Failed to load charges")))
       .finally(() => setLoading(false));
   }, [filter, buyerToken]);
 
   const statusCfg: Record<string, { cls: string; label: string }> = {
-    COMPLETED: { cls: "bg-green-50 text-green-700 border-green-200",  label: "成功" },
-    FAILED:    { cls: "bg-red-50 text-red-700 border-red-200",        label: "失敗" },
-    PENDING:   { cls: "bg-amber-50 text-amber-700 border-amber-200",  label: "保留" },
+    COMPLETED: { cls: "bg-green-50 text-green-700 border-green-200",  label: t("成功", "Success") },
+    FAILED:    { cls: "bg-red-50 text-red-700 border-red-200",        label: t("失敗", "Failed") },
+    PENDING:   { cls: "bg-amber-50 text-amber-700 border-amber-200",  label: t("保留", "Pending") },
   };
 
   const totalSpend = charges
@@ -1245,16 +1285,16 @@ function ChargesPage({ buyerToken }: { buyerToken: string }) {
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <p className="text-xs text-gray-400 mb-1">合計支払い額</p>
+          <p className="text-xs text-gray-400 mb-1">{t("合計支払い額", "Total Spend")}</p>
           <p className="text-2xl font-bold font-mono text-gray-900">{totalSpend.toFixed(6)}</p>
-          <p className="text-xs text-gray-400 mt-0.5">USDC（成功分）</p>
+          <p className="text-xs text-gray-400 mt-0.5">USDC ({t("成功分","completed")})</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <p className="text-xs text-gray-400 mb-1">総リクエスト数</p>
+          <p className="text-xs text-gray-400 mb-1">{t("総リクエスト数", "Total Requests")}</p>
           <p className="text-2xl font-bold font-mono text-gray-900">{total}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <p className="text-xs text-gray-400 mb-1">失敗</p>
+          <p className="text-xs text-gray-400 mb-1">{t("失敗", "Failed")}</p>
           <p className={`text-2xl font-bold font-mono ${failCount > 0 ? "text-red-600" : "text-gray-900"}`}>{failCount}</p>
         </div>
       </div>
@@ -1262,12 +1302,12 @@ function ChargesPage({ buyerToken }: { buyerToken: string }) {
       {/* Charges list */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-gray-900">課金履歴</h2>
+          <h2 className="text-sm font-bold text-gray-900">{t("課金履歴", "Charges")}</h2>
           <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
             {(["all","COMPLETED","FAILED","PENDING"] as const).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-colors ${filter===f ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-                {f==="all"?"すべて":f==="COMPLETED"?"成功":f==="FAILED"?"失敗":"保留"}
+                {f==="all"?t("すべて","All"):f==="COMPLETED"?t("成功","Success"):f==="FAILED"?t("失敗","Failed"):t("保留","Pending")}
               </button>
             ))}
           </div>
@@ -1276,20 +1316,20 @@ function ChargesPage({ buyerToken }: { buyerToken: string }) {
         {loading ? (
           <div className="flex items-center justify-center py-16 gap-2 text-gray-400 text-sm">
             <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
-            読み込み中...
+            {t("読み込み中...", "Loading...")}
           </div>
         ) : error ? (
           <div className="flex items-center justify-center py-16 text-red-500 text-sm">{error}</div>
         ) : charges.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400 text-sm">
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="4" y="10" width="24" height="16" rx="2"/><path d="M4 16h24"/></svg>
-            課金履歴はありません
+            {t("課金履歴はありません", "No charges")}
           </div>
         ) : (
           <>
             {/* Header */}
             <div className="px-6 py-2.5 border-b border-gray-100 grid grid-cols-12 gap-2 bg-gray-50">
-              {["日時","Buyer","Service","金額","ステータス","トークンID","TxHash"].map((h,i) => (
+              {[t("日時","Date"),t("Buyer","Buyer"),t("Service","Service"),t("金額","Amount"),t("ステータス","Status"),t("トークンID","Token ID"),"TxHash"].map((h,i) => (
                 <span key={i} className={`text-[10px] font-semibold uppercase tracking-wider text-gray-400 ${i===0||i===1||i===2?"col-span-2":i===5?"col-span-2":"col-span-1"}`}>{h}</span>
               ))}
             </div>
@@ -1319,6 +1359,7 @@ function ChargesPage({ buyerToken }: { buyerToken: string }) {
 }
 
 function AgentsPage() {
+  const t = useT();
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-4">
@@ -1338,12 +1379,12 @@ function AgentsPage() {
       </div>
       <div className="panel rounded-xl flex flex-col" style={{ height: "calc(100vh - 320px)", minHeight: 300 }}>
         <div className="px-5 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
-          <span className="text-sm font-semibold text-text-primary">エージェント一覧</span>
-          <span className="text-xs text-text-muted">{DEMO_AGENTS.length} 件</span>
+          <span className="text-sm font-semibold text-text-primary">{t("エージェント一覧", "Agent List")}</span>
+          <span className="text-xs text-text-muted">{DEMO_AGENTS.length} {t("件","items")}</span>
         </div>
         <div className="px-5 py-2 border-b border-border grid grid-cols-12 gap-2 flex-shrink-0 bg-canvas">
-          {(["ID", "Tier", "Trust", "成功率", "本日", "上限", "状態", "最終TX"] as const).map((h) => (
-            <span key={h} className={`text-[10px] font-semibold uppercase tracking-wider text-text-muted ${h === "ID" || h === "本日" || h === "上限" ? "col-span-2" : "col-span-1"}`}>{h}</span>
+          {(["ID", "Tier", "Trust", t("成功率","Success%"), t("本日","Today"), t("上限","Limit"), t("状態","Status"), t("最終TX","Last TX")] as const).map((h) => (
+            <span key={h} className={`text-[10px] font-semibold uppercase tracking-wider text-text-muted ${h === "ID" || h === t("本日","Today") || h === t("上限","Limit") ? "col-span-2" : "col-span-1"}`}>{h}</span>
           ))}
         </div>
         <div className="flex-1 overflow-y-auto divide-y divide-border/60">
@@ -1357,8 +1398,8 @@ function AgentsPage() {
               <span className="col-span-2 font-mono text-text-muted">${a.dailyLimit.toLocaleString()}</span>
               <span className="col-span-1">
                 {a.suspended
-                  ? <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200">停止</span>
-                  : <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-50 text-green-700 border border-green-200">稼働</span>}
+                  ? <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200">{t("停止","Halted")}</span>
+                  : <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-50 text-green-700 border border-green-200">{t("稼働","Active")}</span>}
               </span>
               <span className="col-span-2 font-mono text-text-muted text-[10px]">{a.lastTx}</span>
             </div>
@@ -1370,22 +1411,23 @@ function AgentsPage() {
 }
 
 function FraudPage({ blockedTx, avgRisk }: { blockedTx: number; avgRisk: number }) {
+  const t = useT();
   const open = DEMO_FLAGS.filter((f) => !f.resolved);
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-4">
-        <KpiCard label="未解決フラグ" value={open.length} sub="要対応" color={open.length > 0 ? "red" : "green"} />
-        <KpiCard label="ブロック TX" value={blockedTx.toLocaleString()} unit="件" sub="不正検知によりブロック" />
-        <KpiCard label="平均リスクスコア" value={avgRisk.toFixed(1)} sub="直近100件の平均" />
+        <KpiCard label={t("未解決フラグ","Open Flags")} value={open.length} sub={t("要対応","Action required")} color={open.length > 0 ? "red" : "green"} />
+        <KpiCard label={t("ブロック TX","Blocked TX")} value={blockedTx.toLocaleString()} unit={t("件","items")} sub={t("不正検知によりブロック","Blocked by fraud detection")} />
+        <KpiCard label={t("平均リスクスコア","Avg Risk Score")} value={avgRisk.toFixed(1)} sub={t("直近100件の平均","Average of last 100")} />
       </div>
       <div className="panel rounded-xl flex flex-col" style={{ height: "calc(100vh - 360px)", minHeight: 260 }}>
         <div className="px-5 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
-          <span className="text-sm font-semibold text-text-primary">不正フラグ一覧</span>
-          <span className="text-xs text-text-muted">{DEMO_FLAGS.length} 件</span>
+          <span className="text-sm font-semibold text-text-primary">{t("不正フラグ一覧","Fraud Flags")}</span>
+          <span className="text-xs text-text-muted">{DEMO_FLAGS.length} {t("件","items")}</span>
         </div>
         <div className="px-5 py-2 border-b border-border grid grid-cols-12 gap-2 flex-shrink-0 bg-canvas">
-          {(["ID", "Agent", "シグナル", "Risk", "検出", "状態"] as const).map((h) => (
-            <span key={h} className={`text-[10px] font-semibold uppercase tracking-wider text-text-muted ${h === "シグナル" || h === "検出" ? "col-span-3" : h === "ID" || h === "Agent" ? "col-span-2" : "col-span-1"}`}>{h}</span>
+          {(["ID", "Agent", t("シグナル","Signal"), "Risk", t("検出","Detected"), t("状態","Status")] as const).map((h) => (
+            <span key={h} className={`text-[10px] font-semibold uppercase tracking-wider text-text-muted ${h === t("シグナル","Signal") || h === t("検出","Detected") ? "col-span-3" : h === "ID" || h === "Agent" ? "col-span-2" : "col-span-1"}`}>{h}</span>
           ))}
         </div>
         <div className="flex-1 overflow-y-auto divide-y divide-border/60">
@@ -1398,8 +1440,8 @@ function FraudPage({ blockedTx, avgRisk }: { blockedTx: number; avgRisk: number 
               <span className="col-span-3 text-text-muted text-[10px]">{f.createdAt}</span>
               <span className="col-span-1">
                 {f.resolved
-                  ? <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-50 text-green-700 border border-green-200">解決済</span>
-                  : <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200 animate-pulse">未対応</span>}
+                  ? <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-50 text-green-700 border border-green-200">{t("解決済","Resolved")}</span>
+                  : <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200 animate-pulse">{t("未対応","Pending")}</span>}
               </span>
             </div>
           ))}
@@ -1444,6 +1486,7 @@ async function fetchLiveJpycRate(): Promise<number | null> {
 }
 
 function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
+  const t = useT();
   const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002";
   const hdrs = { "Content-Type": "application/json", Authorization: `Bearer ${buyerToken}` };
 
@@ -1495,41 +1538,41 @@ function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
   }
 
   const statusBadge = (s: "PENDING" | "APPROVED" | "REJECTED") => {
-    if (s === "PENDING")  return <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 border border-amber-200 text-amber-700">審査中</span>;
-    if (s === "APPROVED") return <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 border border-green-200 text-green-700">承認済み</span>;
-    return <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 border border-red-200 text-red-700">却下</span>;
+    if (s === "PENDING")  return <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 border border-amber-200 text-amber-700">{t("審査中","Under Review")}</span>;
+    if (s === "APPROVED") return <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 border border-green-200 text-green-700">{t("承認済み","Approved")}</span>;
+    return <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 border border-red-200 text-red-700">{t("却下","Rejected")}</span>;
   };
 
-  if (loading) return <div className="text-sm text-text-muted p-8 text-center">読み込み中…</div>;
+  if (loading) return <div className="text-sm text-text-muted p-8 text-center">{t("読み込み中…","Loading…")}</div>;
 
   return (
     <div className="flex flex-col gap-5 max-w-2xl">
 
       {/* Platform wallet info */}
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
-        <p className="text-sm font-semibold text-gray-900 mb-1">JPYCチャージの手順</p>
+        <p className="text-sm font-semibold text-gray-900 mb-1">{t("JPYCチャージの手順","JPYC Deposit Instructions")}</p>
         <p className="text-xs text-gray-500 mb-4">
-          以下のウォレットアドレスにJPYCを送金し、TXハッシュを申請してください。管理者が確認後、USDC残高に反映されます。
+          {t("以下のウォレットアドレスにJPYCを送金し、TXハッシュを申請してください。管理者が確認後、USDC残高に反映されます。","Send JPYC to the wallet address below, then submit the TX hash. After admin review, your USDC balance will be updated.")}
         </p>
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] text-gray-400 mb-1">送金先ウォレット（{info?.network ?? "Polygon"}）</p>
+            <p className="text-[10px] text-gray-400 mb-1">{t("送金先ウォレット","Destination Wallet")}（{info?.network ?? "Polygon"}）</p>
             <p className="text-sm font-mono text-gray-800 break-all">{info?.platformWallet ?? "—"}</p>
           </div>
           {info && <CopyButton text={info.platformWallet} />}
         </div>
         <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-          <span>換算レート: <span className="font-semibold text-gray-700">{info?.jpycRate ?? 150} JPYC = 1 USDC</span></span>
-          <span>ネットワーク: <span className="font-semibold text-violet-600">{info?.network ?? "Polygon"}</span></span>
+          <span>{t("換算レート","Rate")}: <span className="font-semibold text-gray-700">{info?.jpycRate ?? 150} JPYC = 1 USDC</span></span>
+          <span>{t("ネットワーク","Network")}: <span className="font-semibold text-violet-600">{info?.network ?? "Polygon"}</span></span>
         </div>
       </div>
 
       {/* Submit form */}
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
-        <p className="text-sm font-semibold text-gray-900 mb-4">チャージ申請</p>
+        <p className="text-sm font-semibold text-gray-900 mb-4">{t("チャージ申請","Deposit Request")}</p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">TXハッシュ</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("TXハッシュ","TX Hash")}</label>
             <input
               type="text" value={txHash} onChange={e => setTxHash(e.target.value)}
               placeholder="0x..."
@@ -1538,25 +1581,25 @@ function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">送金したJPYC金額</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("送金したJPYC金額","JPYC Amount Sent")}</label>
             <input
               type="number" value={amountJpyc} onChange={e => setAmountJpyc(e.target.value)}
-              placeholder="例: 15000"
+              placeholder={t("例: 15000","e.g. 15000")}
               min="1" step="1"
               className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/20"
               required
             />
             {amountJpyc && !isNaN(parseFloat(amountJpyc)) && (
               <p className="text-[10px] text-gray-400 mt-1">
-                換算後: 約 {(parseFloat(amountJpyc) / (info?.jpycRate ?? 150)).toFixed(4)} USDC
+                {t("換算後","Converted")}: ≈ {(parseFloat(amountJpyc) / (info?.jpycRate ?? 150)).toFixed(4)} USDC
               </p>
             )}
           </div>
           {submitErr && <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{submitErr}</div>}
-          {submitOk  && <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">申請を受け付けました。管理者が確認後、残高に反映されます。</div>}
+          {submitOk  && <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">{t("申請を受け付けました。管理者が確認後、残高に反映されます。","Request submitted. Your balance will be updated after admin review.")}</div>}
           <button type="submit" disabled={submitting}
             className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">
-            {submitting ? "申請中…" : "チャージを申請する"}
+            {submitting ? t("申請中…","Submitting…") : t("チャージを申請する","Submit Deposit Request")}
           </button>
         </form>
       </div>
@@ -1564,11 +1607,11 @@ function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
       {/* Request history */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-          <span className="text-sm font-semibold text-gray-900">申請履歴</span>
-          <button onClick={load} className="text-xs text-gray-500 hover:text-gray-700">更新</button>
+          <span className="text-sm font-semibold text-gray-900">{t("申請履歴","Request History")}</span>
+          <button onClick={load} className="text-xs text-gray-500 hover:text-gray-700">{t("更新","Refresh")}</button>
         </div>
         {requests.length === 0
-          ? <div className="px-5 py-8 text-center text-sm text-gray-400">申請履歴がありません</div>
+          ? <div className="px-5 py-8 text-center text-sm text-gray-400">{t("申請履歴がありません","No requests")}</div>
           : (
             <div className="divide-y divide-gray-100">
               {requests.map(r => (
@@ -1604,6 +1647,7 @@ function ApiKeysPage({ keys, onAdd, onRevoke }: {
   onAdd: () => void;
   onRevoke: (id: string) => void;
 }) {
+  const t = useT();
   const [showRevoked, setShowRevoked] = useState(false);
   const visible = showRevoked ? keys : keys.filter((k) => !k.revoked);
 
@@ -1615,13 +1659,13 @@ function ApiKeysPage({ keys, onAdd, onRevoke }: {
           <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="text-gray-900">
             <circle cx="7.5" cy="10" r="4"/><path d="M10.5 10h8M16 8v4"/>
           </svg>
-          <h1 className="text-xl font-bold text-gray-900">APIキー</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t("APIキー","API Keys")}</h1>
         </div>
         <button
           onClick={onAdd}
           className="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors"
         >
-          APIキーを作成する
+          {t("APIキーを作成する","Create API Key")}
         </button>
       </div>
 
@@ -1633,14 +1677,14 @@ function ApiKeysPage({ keys, onAdd, onRevoke }: {
         <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${showRevoked ? "bg-gray-900 border-gray-900" : "border-gray-300"}`}>
           {showRevoked && <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5 5 4 7.5 8.5 2.5"/></svg>}
         </span>
-        無効化されたAPIキーを表示する
+        {t("無効化されたAPIキーを表示する","Show revoked API keys")}
       </button>
 
       {/* Keys list */}
       <div className="flex flex-col gap-2">
         {visible.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-2xl px-6 py-10 text-center text-sm text-gray-400">
-            APIキーがありません。Playgroundで作成してください。
+            {t("APIキーがありません。Playgroundで作成してください。","No API keys. Create one in the Playground.")}
           </div>
         ) : (
           visible.map((k) => (
@@ -1649,7 +1693,7 @@ function ApiKeysPage({ keys, onAdd, onRevoke }: {
                 {"•".repeat(28)} {k.key.slice(-4)}
               </span>
               <span className="text-sm text-gray-500 flex-shrink-0">{k.label}</span>
-              <span className="text-sm text-gray-400 flex-shrink-0">作成日: {k.createdAt}</span>
+              <span className="text-sm text-gray-400 flex-shrink-0">{t("作成日","Created")}: {k.createdAt}</span>
               <button className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 2l3 3-9 9H2v-3L11 2z"/>
@@ -1660,10 +1704,10 @@ function ApiKeysPage({ keys, onAdd, onRevoke }: {
                   onClick={() => onRevoke(k.id)}
                   className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
                 >
-                  無効化
+                  {t("無効化","Revoke")}
                 </button>
               ) : (
-                <span className="px-3 py-1.5 bg-gray-100 text-gray-400 text-xs font-semibold rounded-lg flex-shrink-0">無効化済</span>
+                <span className="px-3 py-1.5 bg-gray-100 text-gray-400 text-xs font-semibold rounded-lg flex-shrink-0">{t("無効化済","Revoked")}</span>
               )}
             </div>
           ))
@@ -1917,6 +1961,7 @@ function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreate
 function CurlSnippet({ service, tokenType, apiKey, buyerTag, expiry }: {
   service: Service; tokenType: string; apiKey: string; buyerTag: string; expiry: string;
 }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   const masked = apiKey ? apiKey : "YOUR_API_KEY";
   const tag    = buyerTag || "buyer_tag_here";
@@ -1955,9 +2000,9 @@ function CurlSnippet({ service, tokenType, apiKey, buyerTag, expiry }: {
         <span className="text-xs text-gray-400 font-mono">cURL</span>
         <button onClick={copy} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors">
           {copied ? (
-            <><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 6 4 9 11 2"/></svg> コピー済</>
+            <><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 6 4 9 11 2"/></svg> {t("コピー済","Copied")}</>
           ) : (
-            <><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> コピー</>
+            <><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> {t("コピー","Copy")}</>
           )}
         </button>
       </div>
@@ -1968,6 +2013,7 @@ function CurlSnippet({ service, tokenType, apiKey, buyerTag, expiry }: {
 }
 
 function ServiceDetail({ service, onBack }: { service: Service; onBack: () => void }) {
+  const t = useT();
   const [tokenType, setTokenType] = useState(service.tokenTypes[0] ?? "kya");
   const [apiKey,    setApiKey]    = useState("");
   const [buyerTag,  setBuyerTag]  = useState("");
@@ -1978,7 +2024,7 @@ function ServiceDetail({ service, onBack }: { service: Service; onBack: () => vo
       {/* Back */}
       <button onClick={onBack} className="self-start flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 3L5 8l5 5"/></svg>
-        ディレクトリに戻る
+        {t("ディレクトリに戻る","Back to Directory")}
       </button>
 
       {/* Header */}
@@ -1998,7 +2044,7 @@ function ServiceDetail({ service, onBack }: { service: Service; onBack: () => vo
             </div>
           </div>
           <div className="text-right flex-shrink-0">
-            <p className="text-xs text-gray-400 mb-0.5">1回あたり</p>
+            <p className="text-xs text-gray-400 mb-0.5">{t("1回あたり","Per call")}</p>
             <p className="text-2xl font-bold font-mono text-gray-900">${service.price.toFixed(4)}</p>
             <p className="text-xs text-gray-400">USDC</p>
           </div>
@@ -2008,16 +2054,16 @@ function ServiceDetail({ service, onBack }: { service: Service; onBack: () => vo
       {/* Info table */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-bold text-gray-900">サービス情報</h2>
+          <h2 className="text-sm font-bold text-gray-900">{t("サービス情報","Service Info")}</h2>
         </div>
         <table className="w-full text-sm">
           <tbody className="divide-y divide-gray-100">
             {[
-              ["サービスID",         <span className="font-mono text-gray-700">{service.id}</span>],
-              ["最低トークン額",     <span className="font-mono">${(service.minTokenAmount ?? service.price).toFixed(4)} USDC</span>],
-              ["対応トークンタイプ", <div className="flex gap-1.5">{service.tokenTypes.map((t) => <span key={t} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[11px] rounded font-mono">{t}</span>)}</div>],
-              ["OpenAPI仕様",       <a href={service.apiSpecUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{service.apiSpecUrl}</a>],
-              ["利用規約",           service.tosUrl ? <a href={service.tosUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{service.tosUrl}</a> : <span className="text-gray-400">—</span>],
+              [t("サービスID","Service ID"),         <span className="font-mono text-gray-700">{service.id}</span>],
+              [t("最低トークン額","Min Token Amount"), <span className="font-mono">${(service.minTokenAmount ?? service.price).toFixed(4)} USDC</span>],
+              [t("対応トークンタイプ","Token Types"),  <div className="flex gap-1.5">{service.tokenTypes.map((tt) => <span key={tt} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[11px] rounded font-mono">{tt}</span>)}</div>],
+              ["OpenAPI",                              <a href={service.apiSpecUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{service.apiSpecUrl}</a>],
+              [t("利用規約","Terms of Service"),       service.tosUrl ? <a href={service.tosUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{service.tosUrl}</a> : <span className="text-gray-400">—</span>],
             ].map(([label, value], i) => (
               <tr key={i} className="hover:bg-gray-50">
                 <td className="px-6 py-3.5 w-44 text-gray-500 font-medium">{label as string}</td>
@@ -2031,14 +2077,14 @@ function ServiceDetail({ service, onBack }: { service: Service; onBack: () => vo
       {/* Token creation + cURL */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-bold text-gray-900">トークン作成例</h2>
-          <p className="text-xs text-gray-400 mt-0.5">左のフォームを入力するとcURLが動的に更新されます</p>
+          <h2 className="text-sm font-bold text-gray-900">{t("トークン作成例","Token Creation Example")}</h2>
+          <p className="text-xs text-gray-400 mt-0.5">{t("左のフォームを入力するとcURLが動的に更新されます","Fill in the form to dynamically update the cURL snippet")}</p>
         </div>
         <div className="grid grid-cols-2 divide-x divide-gray-100">
           {/* Form */}
           <div className="p-6 flex flex-col gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">トークンタイプ</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("トークンタイプ","Token Type")}</label>
               <div className="flex gap-2">
                 {service.tokenTypes.map((t) => (
                   <button key={t} onClick={() => setTokenType(t)}
@@ -2049,17 +2095,17 @@ function ServiceDetail({ service, onBack }: { service: Service; onBack: () => vo
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">APIキー</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("APIキー","API Key")}</label>
               <input value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="kya_xxxxxxxxxxxxxxxx"
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-mono placeholder-gray-300 focus:outline-none focus:border-gray-400"/>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">購入者タグ</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("購入者タグ","Buyer Tag")}</label>
               <input value={buyerTag} onChange={(e) => setBuyerTag(e.target.value)} placeholder="buyer_001"
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-mono placeholder-gray-300 focus:outline-none focus:border-gray-400"/>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">有効期限 (ISO 8601)</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("有効期限 (ISO 8601)","Expiry (ISO 8601)")}</label>
               <input value={expiry} onChange={(e) => setExpiry(e.target.value)}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:border-gray-400"/>
             </div>
@@ -2075,6 +2121,7 @@ function ServiceDetail({ service, onBack }: { service: Service; onBack: () => vo
 }
 
 function ServiceCard({ service: s, onSelect }: { service: Service; onSelect: () => void }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   function copyUrl(e: React.MouseEvent) {
     e.stopPropagation();
@@ -2092,7 +2139,7 @@ function ServiceCard({ service: s, onSelect }: { service: Service; onSelect: () 
           <p className="text-sm font-bold text-gray-900 truncate">{s.name}</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-xs text-gray-400">1回</p>
+          <p className="text-xs text-gray-400">{t("1回","Per call")}</p>
           <p className="text-sm font-bold font-mono text-gray-900">${s.price.toFixed(4)}</p>
         </div>
       </div>
@@ -2104,7 +2151,7 @@ function ServiceCard({ service: s, onSelect }: { service: Service; onSelect: () 
         <span className="text-[10px] text-gray-400 font-mono truncate flex-1">{s.apiSpecUrl}</span>
         <button onClick={copyUrl}
           className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-gray-800 transition-colors flex-shrink-0 px-2 py-1 rounded border border-gray-200 hover:border-gray-400">
-          {copied ? "✓ コピー済" : <><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> コピー</>}
+          {copied ? t("✓ コピー済","✓ Copied") : <><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> {t("コピー","Copy")}</>}
         </button>
       </div>
     </div>
@@ -2112,6 +2159,7 @@ function ServiceCard({ service: s, onSelect }: { service: Service; onSelect: () 
 }
 
 function DirectoryPage() {
+  const t = useT();
   const [search,     setSearch]     = useState("");
   const [filter,     setFilter]     = useState<"all" | "API" | "MCP">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -2136,27 +2184,27 @@ function DirectoryPage() {
             <circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/>
           </svg>
           <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="サービス名・プロバイダー・タグで検索"
+            placeholder={t("サービス名・プロバイダー・タグで検索","Search by name, provider, or tag")}
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-gray-400"/>
         </div>
         <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
           {(["all", "API", "MCP"] as const).map((f) => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filter === f ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-              {f === "all" ? "全種類" : f}
+              {f === "all" ? t("全種類","All") : f}
             </button>
           ))}
         </div>
       </div>
 
       {/* Count */}
-      <p className="text-xs text-gray-400">{filtered.length} 件のサービス</p>
+      <p className="text-xs text-gray-400">{filtered.length} {t("件のサービス","services")}</p>
 
       {/* Grid */}
       {filtered.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-2xl py-16 flex flex-col items-center gap-2 text-gray-400">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="14" cy="14" r="9"/><path d="M23 23l6 6"/></svg>
-          <p className="text-sm">一致するサービスが見つかりませんでした</p>
+          <p className="text-sm">{t("一致するサービスが見つかりませんでした","No matching services found")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -2204,6 +2252,7 @@ function KillSwitchPage({ isHalted, loading, onToggle }: { isHalted: boolean; lo
 
 // ── Seller Onboarding Modal ───────────────────────────────────────────────────
 function SellerOnboardingModal({ onClose, onStart }: { onClose: () => void; onStart: () => void }) {
+  const t = useT();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -2214,20 +2263,19 @@ function SellerOnboardingModal({ onClose, onStart }: { onClose: () => void; onSt
             <span className="text-5xl">🚀</span>
           </div>
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-3">ようこそ、出品者様！</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-3">{t("ようこそ、出品者様！","Welcome, Seller!")}</h2>
         <p className="text-sm text-gray-500 leading-relaxed mb-7">
-          これで Skyfire の販売者として登録が完了しました。
-          最初のサービスを作成し、インタラクティブなプレイグラウンドで
-          サービスの料金設定方法を学びましょう。
+          {t("これで Skyfire の販売者として登録が完了しました。最初のサービスを作成し、インタラクティブなプレイグラウンドでサービスの料金設定方法を学びましょう。",
+             "You are now registered as a Skyfire seller. Create your first service and learn how to set pricing in the interactive playground.")}
         </p>
         <div className="flex flex-col gap-2.5">
           <button onClick={onStart}
             className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl transition-colors text-sm">
-            プロフィールを作成する
+            {t("プロフィールを作成する","Create Profile")}
           </button>
           <button onClick={onClose}
             className="w-full py-3 text-gray-500 hover:text-gray-700 font-medium rounded-xl transition-colors text-sm hover:bg-gray-50">
-            今はスキップ
+            {t("今はスキップ","Skip for now")}
           </button>
         </div>
       </div>
@@ -2277,7 +2325,8 @@ const SELLER_INITIAL: SellerFormData = {
   requiredKyc: "none", allowedRegions: [], maxDailyBudget: "",
 };
 
-const SELLER_STEPS = ["サービス情報", "サービスの詳細", "本人確認要件", "レビュー"];
+const SELLER_STEPS_JA = ["サービス情報", "サービスの詳細", "本人確認要件", "レビュー"];
+const SELLER_STEPS_EN = ["Service Info", "Service Details", "KYC Requirements", "Review"];
 
 // ── フォームUI共通パーツ（モジュールスコープ — 再レンダーで再生成されない）──
 const FInput = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
@@ -2296,6 +2345,8 @@ function SellerWizardPanel({
   onClose: () => void;
   onSubmitted?: (entry: MyServiceEntry) => void;
 }) {
+  const t = useT();
+  const SELLER_STEPS = SELLER_STEPS_JA.map((ja, i) => t(ja, SELLER_STEPS_EN[i]));
   const [step, setStep] = useState(0);
   const [data, setData] = useState<SellerFormData>(SELLER_INITIAL);
   const [submitted, setSubmitted] = useState(false);
@@ -2327,24 +2378,24 @@ function SellerWizardPanel({
   // ── Step 0 コンテンツ（インラインJSX）──
   const step0Content = (
     <div className="space-y-5">
-      <div><FLabel req>サービス名</FLabel>
-        <FInput placeholder="例: GPT-4o Inference API" value={data.name} onChange={e => patch({ name: e.target.value })} />
+      <div><FLabel req>{t("サービス名","Service Name")}</FLabel>
+        <FInput placeholder={t("例: GPT-4o Inference API","e.g. GPT-4o Inference API")} value={data.name} onChange={e => patch({ name: e.target.value })} />
       </div>
-      <div><FLabel>説明</FLabel>
-        <FTextarea rows={3} placeholder="サービスの機能・ユースケースを記述してください。" value={data.description} onChange={e => patch({ description: e.target.value })} />
+      <div><FLabel>{t("説明","Description")}</FLabel>
+        <FTextarea rows={3} placeholder={t("サービスの機能・ユースケースを記述してください。","Describe the features and use cases of your service.")} value={data.description} onChange={e => patch({ description: e.target.value })} />
       </div>
-      <div><FLabel req>サービスの種類</FLabel>
+      <div><FLabel req>{t("サービスの種類","Service Type")}</FLabel>
         <div className="space-y-2 mt-1">
           {([
-            { v: "API",       label: "API",                   desc: "REST / GraphQL など HTTP API" },
-            { v: "WebPage",   label: "ウェブページ",           desc: "ブラウザ自動化対応のWebページ" },
-            { v: "MCPLocal",  label: "MCPサーバー（ローカル）", desc: "ローカル環境で動作する MCP サーバー" },
-            { v: "MCPRemote", label: "MCPサーバー（リモート）", desc: "クラウド上で動作する MCP サーバー" },
-            { v: "FetchAI",   label: "Fetch.ai エージェント",  desc: "uAgents フレームワーク対応" },
-          ] as { v: SellerServiceType; label: string; desc: string }[]).map(t => (
-            <label key={t.v} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${data.serviceType === t.v ? "border-gray-800 bg-gray-50" : "border-gray-200 hover:border-gray-300"}`}>
-              <input type="radio" name="stype" value={t.v} checked={data.serviceType === t.v} onChange={() => patch({ serviceType: t.v })} className="mt-0.5" />
-              <div><div className="text-sm font-medium text-gray-800">{t.label}</div><div className="text-xs text-gray-500">{t.desc}</div></div>
+            { v: "API",       label: "API",                                desc: "REST / GraphQL など HTTP API" },
+            { v: "WebPage",   label: t("ウェブページ","Web Page"),          desc: t("ブラウザ自動化対応のWebページ","Browser-automation-compatible web page") },
+            { v: "MCPLocal",  label: t("MCPサーバー（ローカル）","MCP Server (Local)"),  desc: t("ローカル環境で動作する MCP サーバー","MCP server running in local environment") },
+            { v: "MCPRemote", label: t("MCPサーバー（リモート）","MCP Server (Remote)"), desc: t("クラウド上で動作する MCP サーバー","MCP server running in the cloud") },
+            { v: "FetchAI",   label: "Fetch.ai " + t("エージェント","Agent"),            desc: "uAgents " + t("フレームワーク対応","framework compatible") },
+          ] as { v: SellerServiceType; label: string; desc: string }[]).map(stype => (
+            <label key={stype.v} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${data.serviceType === stype.v ? "border-gray-800 bg-gray-50" : "border-gray-200 hover:border-gray-300"}`}>
+              <input type="radio" name="stype" value={stype.v} checked={data.serviceType === stype.v} onChange={() => patch({ serviceType: stype.v })} className="mt-0.5" />
+              <div><div className="text-sm font-medium text-gray-800">{stype.label}</div><div className="text-xs text-gray-500">{stype.desc}</div></div>
             </label>
           ))}
         </div>
@@ -2354,42 +2405,42 @@ function SellerWizardPanel({
 
   // ── Step 1 コンテンツ（インラインJSX）──
   const tokenTypeOpts = [
-    { v: "kyapay", label: "KYAPay トークン", badge: "bg-blue-100 text-blue-700" },
-    { v: "kya",    label: "KYA トークン",    badge: "bg-emerald-100 text-emerald-700" },
-    { v: "pay",    label: "PAY トークン",     badge: "bg-violet-100 text-violet-700" },
+    { v: "kyapay", label: t("KYAPay トークン","KYAPay Token"), badge: "bg-blue-100 text-blue-700" },
+    { v: "kya",    label: t("KYA トークン","KYA Token"),       badge: "bg-emerald-100 text-emerald-700" },
+    { v: "pay",    label: t("PAY トークン","PAY Token"),        badge: "bg-violet-100 text-violet-700" },
   ];
   const toggleToken = (v: string) => patch({ tokenTypes: data.tokenTypes.includes(v) ? data.tokenTypes.filter(t => t !== v) : [...data.tokenTypes, v] });
   const step1Content = (
     <div className="space-y-5">
-      <div><FLabel>エンドポイントURL</FLabel>
+      <div><FLabel>{t("エンドポイントURL","Endpoint URL")}</FLabel>
         <FInput placeholder="https://api.yourservice.com/v1" type="url" value={data.endpointUrl} onChange={e => patch({ endpointUrl: e.target.value })} />
       </div>
-      <div><FLabel>OpenAPI 仕様 URL</FLabel>
+      <div><FLabel>OpenAPI {t("仕様 URL","Spec URL")}</FLabel>
         <FInput placeholder="https://api.yourservice.com/openapi.json" type="url" value={data.openApiUrl} onChange={e => patch({ openApiUrl: e.target.value })} />
       </div>
-      <div><FLabel req>価格モデル</FLabel>
+      <div><FLabel req>{t("価格モデル","Pricing Model")}</FLabel>
         <select value={data.priceModel} onChange={e => patch({ priceModel: e.target.value as SellerPriceModel })}
           className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-gray-300">
-          <option value="per_use">使用ごとに（従量課金）</option>
-          <option value="subscription">サブスクリプション（月額固定）</option>
-          <option value="tiered">段階的価格</option>
+          <option value="per_use">{t("使用ごとに（従量課金）","Per use (pay-as-you-go)")}</option>
+          <option value="subscription">{t("サブスクリプション（月額固定）","Subscription (monthly)")}</option>
+          <option value="tiered">{t("段階的価格","Tiered pricing")}</option>
         </select>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div><FLabel req>価格（USDC / コール）</FLabel>
+        <div><FLabel req>{t("価格（USDC / コール）","Price (USDC / call)")}</FLabel>
           <div className="relative"><FInput placeholder="0.005" type="number" min="0" step="0.0001" value={data.price} onChange={e => patch({ price: e.target.value })} className="pr-16" />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">USDC</span></div>
         </div>
-        <div><FLabel>最低トークン額</FLabel>
+        <div><FLabel>{t("最低トークン額","Min Token Amount")}</FLabel>
           <div className="relative"><FInput placeholder="0.01" type="number" min="0" value={data.minTokenAmount} onChange={e => patch({ minTokenAmount: e.target.value })} className="pr-16" />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">USDC</span></div>
         </div>
       </div>
-      <div><FLabel>トークン最大有効期間（秒）</FLabel>
+      <div><FLabel>{t("トークン最大有効期間（秒）","Max Token TTL (seconds)")}</FLabel>
         <FInput type="number" min="60" value={data.maxTokenTtl} onChange={e => patch({ maxTokenTtl: e.target.value })} />
-        <p className="text-xs text-gray-400 mt-1">デフォルト: 86400秒（24時間）</p>
+        <p className="text-xs text-gray-400 mt-1">{t("デフォルト: 86400秒（24時間）","Default: 86400 seconds (24 hours)")}</p>
       </div>
-      <div><FLabel req>受け入れるトークンタイプ</FLabel>
+      <div><FLabel req>{t("受け入れるトークンタイプ","Accepted Token Types")}</FLabel>
         <div className="space-y-2">
           {tokenTypeOpts.map(t => (
             <label key={t.v} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${data.tokenTypes.includes(t.v) ? "border-gray-800 bg-gray-50" : "border-gray-200 hover:border-gray-300"}`}>
@@ -2400,7 +2451,7 @@ function SellerWizardPanel({
           ))}
         </div>
       </div>
-      <div><FLabel>利用規約URL（ToS）</FLabel>
+      <div><FLabel>{t("利用規約URL（ToS）","Terms of Service URL (ToS)")}</FLabel>
         <FInput placeholder="https://yourservice.com/terms" type="url" value={data.tosUrl} onChange={e => patch({ tosUrl: e.target.value })} />
       </div>
     </div>
@@ -2408,15 +2459,15 @@ function SellerWizardPanel({
 
   // ── Step 2 コンテンツ（インラインJSX）──
   const kycLevels: { v: SellerKycLevel; label: string; badge: string; desc: string }[] = [
-    { v: "none", label: "認証不要",              badge: "bg-gray-100 text-gray-600",        desc: "誰でも利用可能。" },
-    { v: "kya",  label: "KYA（Know Your Agent）", badge: "bg-emerald-100 text-emerald-700",  desc: "エージェント認証済みの利用者のみ。" },
-    { v: "kyc",  label: "KYC（本人確認済み）",    badge: "bg-blue-100 text-blue-700",        desc: "フル本人確認が完了した利用者のみ。" },
+    { v: "none", label: t("認証不要","No Verification"),          badge: "bg-gray-100 text-gray-600",       desc: t("誰でも利用可能。","Open to everyone.") },
+    { v: "kya",  label: "KYA（Know Your Agent）",                  badge: "bg-emerald-100 text-emerald-700", desc: t("エージェント認証済みの利用者のみ。","Agent-verified users only.") },
+    { v: "kyc",  label: t("KYC（本人確認済み）","KYC (Identity Verified)"), badge: "bg-blue-100 text-blue-700", desc: t("フル本人確認が完了した利用者のみ。","Full identity verification required.") },
   ];
-  const regionOpts = [{ v: "JP", l: "日本" },{ v: "US", l: "アメリカ" },{ v: "EU", l: "EU" },{ v: "SG", l: "シンガポール" },{ v: "GLOBAL", l: "全世界" }];
+  const regionOpts = [{ v: "JP", l: t("日本","Japan") },{ v: "US", l: t("アメリカ","USA") },{ v: "EU", l: "EU" },{ v: "SG", l: t("シンガポール","Singapore") },{ v: "GLOBAL", l: t("全世界","Global") }];
   const toggleRegion = (v: string) => patch({ allowedRegions: data.allowedRegions.includes(v) ? data.allowedRegions.filter(r => r !== v) : [...data.allowedRegions, v] });
   const step2Content = (
     <div className="space-y-5">
-      <div><FLabel req>必要な認証レベル</FLabel>
+      <div><FLabel req>{t("必要な認証レベル","Required Verification Level")}</FLabel>
         <div className="space-y-2">
           {kycLevels.map(l => (
             <label key={l.v} className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${data.requiredKyc === l.v ? "border-gray-800 bg-gray-50" : "border-gray-200 hover:border-gray-300"}`}>
@@ -2432,7 +2483,7 @@ function SellerWizardPanel({
           ))}
         </div>
       </div>
-      <div><FLabel>利用可能地域</FLabel>
+      <div><FLabel>{t("利用可能地域","Available Regions")}</FLabel>
         <div className="flex flex-wrap gap-2">
           {regionOpts.map(r => (
             <button key={r.v} type="button" onClick={() => toggleRegion(r.v)}
@@ -2442,7 +2493,7 @@ function SellerWizardPanel({
           ))}
         </div>
       </div>
-      <div className="max-w-xs"><FLabel>1日あたり予算上限（USDC）</FLabel>
+      <div className="max-w-xs"><FLabel>{t("1日あたり予算上限（USDC）","Daily Budget Limit (USDC)")}</FLabel>
         <div className="relative"><FInput placeholder="100" type="number" min="0" value={data.maxDailyBudget} onChange={e => patch({ maxDailyBudget: e.target.value })} className="pr-16" />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">USDC</span></div>
       </div>
@@ -2450,8 +2501,8 @@ function SellerWizardPanel({
   );
 
   // ── Step 3 コンテンツ（インラインJSX）──
-  const typeLabels: Record<SellerServiceType, string> = { API:"API", WebPage:"ウェブページ", MCPLocal:"MCPサーバー（ローカル）", MCPRemote:"MCPサーバー（リモート）", FetchAI:"Fetch.ai エージェント" };
-  const kycLabels: Record<SellerKycLevel, string> = { none:"認証不要", kya:"KYA（Know Your Agent）", kyc:"KYC（本人確認済み）" };
+  const typeLabels: Record<SellerServiceType, string> = { API:"API", WebPage:t("ウェブページ","Web Page"), MCPLocal:t("MCPサーバー（ローカル）","MCP Server (Local)"), MCPRemote:t("MCPサーバー（リモート）","MCP Server (Remote)"), FetchAI:"Fetch.ai " + t("エージェント","Agent") };
+  const kycLabels: Record<SellerKycLevel, string> = { none:t("認証不要","No Verification"), kya:"KYA（Know Your Agent）", kyc:t("KYC（本人確認済み）","KYC (Identity Verified)") };
   const ReviewRow = ({ label, value }: { label: string; value: string }) => (
     <div className="flex justify-between py-2.5 border-b border-gray-100 last:border-0">
       <span className="text-xs text-gray-500 w-36 shrink-0">{label}</span>
@@ -2461,26 +2512,26 @@ function SellerWizardPanel({
   const step3Content = (
     <div className="space-y-5">
       <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">基本情報</p>
-        <ReviewRow label="サービス名" value={data.name} />
-        <ReviewRow label="説明" value={data.description} />
-        <ReviewRow label="種類" value={typeLabels[data.serviceType]} />
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("基本情報","Basic Info")}</p>
+        <ReviewRow label={t("サービス名","Service Name")} value={data.name} />
+        <ReviewRow label={t("説明","Description")} value={data.description} />
+        <ReviewRow label={t("種類","Type")} value={typeLabels[data.serviceType]} />
       </div>
       <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">詳細設定</p>
-        <ReviewRow label="エンドポイント" value={data.endpointUrl} />
-        <ReviewRow label="価格" value={data.price ? `${data.price} USDC / コール` : ""} />
-        <ReviewRow label="トークンタイプ" value={data.tokenTypes.map(t => t.toUpperCase()).join(" / ")} />
-        <ReviewRow label="トークン有効期間" value={data.maxTokenTtl ? `${data.maxTokenTtl} 秒` : ""} />
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("詳細設定","Details")}</p>
+        <ReviewRow label={t("エンドポイント","Endpoint")} value={data.endpointUrl} />
+        <ReviewRow label={t("価格","Price")} value={data.price ? `${data.price} USDC / ${t("コール","call")}` : ""} />
+        <ReviewRow label={t("トークンタイプ","Token Types")} value={data.tokenTypes.map(tt => tt.toUpperCase()).join(" / ")} />
+        <ReviewRow label={t("トークン有効期間","Token TTL")} value={data.maxTokenTtl ? `${data.maxTokenTtl} ${t("秒","sec")}` : ""} />
       </div>
       <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">本人確認要件</p>
-        <ReviewRow label="認証レベル" value={kycLabels[data.requiredKyc]} />
-        <ReviewRow label="利用可能地域" value={data.allowedRegions.length ? data.allowedRegions.join("、") : "全世界"} />
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("本人確認要件","KYC Requirements")}</p>
+        <ReviewRow label={t("認証レベル","Verification Level")} value={kycLabels[data.requiredKyc]} />
+        <ReviewRow label={t("利用可能地域","Allowed Regions")} value={data.allowedRegions.length ? data.allowedRegions.join("、") : t("全世界","Global")} />
       </div>
       <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
         <span className="text-base shrink-0">⚠️</span>
-        <p className="text-xs text-amber-800">登録後、運営チームによる審査（1〜3営業日）が行われます。承認後にマーケットプレイスに公開されます。</p>
+        <p className="text-xs text-amber-800">{t("登録後、運営チームによる審査（1〜3営業日）が行われます。承認後にマーケットプレイスに公開されます。","After submission, the operations team will review your listing (1–3 business days). It will be published upon approval.")}</p>
       </div>
     </div>
   );
@@ -2494,9 +2545,9 @@ function SellerWizardPanel({
               <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">申請が完了しました！</h2>
-          <p className="text-sm text-gray-500 mb-5">「{data.name}」の審査を開始しました。</p>
-          <button onClick={onClose} className="w-full py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl text-sm transition-colors">閉じる</button>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">{t("申請が完了しました！","Submission complete!")}</h2>
+          <p className="text-sm text-gray-500 mb-5">「{data.name}」{t("の審査を開始しました。","is now under review.")}</p>
+          <button onClick={onClose} className="w-full py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl text-sm transition-colors">{t("閉じる","Close")}</button>
         </div>
       </div>
     );
@@ -2511,8 +2562,8 @@ function SellerWizardPanel({
         {/* ヘッダー */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div>
-            <h2 className="text-base font-bold text-gray-900">サービスを作成</h2>
-            <p className="text-xs text-gray-400">ステップ {step + 1} / {SELLER_STEPS.length}</p>
+            <h2 className="text-base font-bold text-gray-900">{t("サービスを作成","Create Service")}</h2>
+            <p className="text-xs text-gray-400">{t("ステップ","Step")} {step + 1} / {SELLER_STEPS.length}</p>
           </div>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
             <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
@@ -2554,14 +2605,14 @@ function SellerWizardPanel({
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
               <path d="M9 11L5 7l4-4" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            戻る
+            {t("戻る","Back")}
           </button>
           {step < 3 ? (
             <button
               onClick={() => setStep(s => s + 1)}
               disabled={!canNext}
               className={`flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${canNext ? "bg-gray-900 hover:bg-gray-800 text-white" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
-              次へ
+              {t("次へ","Next")}
               <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
                 <path d="M5 3l4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -2569,7 +2620,7 @@ function SellerWizardPanel({
           ) : (
             <button onClick={handleSubmit} disabled={submitting}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-gray-900 hover:bg-gray-800 text-white transition-all disabled:opacity-60">
-              {submitting ? (<><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40 20" opacity="0.3"/><path d="M12 2a10 10 0 0110 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>登録中...</>) : "サービスを登録する"}
+              {submitting ? (<><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40 20" opacity="0.3"/><path d="M12 2a10 10 0 0110 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>{t("登録中...","Submitting...")}</>) : t("サービスを登録する","Register Service")}
             </button>
           )}
         </div>
@@ -2587,6 +2638,7 @@ function SellerProfilePanel({
   onClose: () => void;
   onSave: (p: SellerProfile) => void;
 }) {
+  const t = useT();
   const [d, setD] = useState<SellerProfile>(initial);
   const patch = (p: Partial<SellerProfile>) => setD(prev => ({ ...prev, ...p }));
   const canSave = d.storeName.trim().length > 0 && d.contactEmail.trim().length > 0;
@@ -2598,8 +2650,8 @@ function SellerProfilePanel({
         {/* ヘッダー */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div>
-            <h2 className="text-base font-bold text-gray-900">販売者プロフィール</h2>
-            <p className="text-xs text-gray-400">マーケットプレイスに表示されるあなたの情報</p>
+            <h2 className="text-base font-bold text-gray-900">{t("販売者プロフィール","Seller Profile")}</h2>
+            <p className="text-xs text-gray-400">{t("マーケットプレイスに表示されるあなたの情報","Your information displayed on the marketplace")}</p>
           </div>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
             <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
@@ -2615,30 +2667,30 @@ function SellerProfilePanel({
               {d.storeName ? d.storeName[0].toUpperCase() : "?"}
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-800">{d.storeName || "ストア名未設定"}</p>
-              <p className="text-xs text-gray-400 mt-0.5">プロフィール画像のアップロードは審査後に対応予定</p>
+              <p className="text-sm font-semibold text-gray-800">{d.storeName || t("ストア名未設定","Store name not set")}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{t("プロフィール画像のアップロードは審査後に対応予定","Profile image upload available after review")}</p>
             </div>
           </div>
 
           <div>
-            <FLabel req>ストア名 / 事業者名</FLabel>
-            <FInput placeholder="例: OpenWeather Inc." value={d.storeName} onChange={e => patch({ storeName: e.target.value })} />
+            <FLabel req>{t("ストア名 / 事業者名","Store Name / Business Name")}</FLabel>
+            <FInput placeholder={t("例: OpenWeather Inc.","e.g. OpenWeather Inc.")} value={d.storeName} onChange={e => patch({ storeName: e.target.value })} />
           </div>
           <div>
-            <FLabel>自己紹介・説明</FLabel>
-            <FTextarea rows={3} placeholder="あなたのサービスや会社について教えてください。" value={d.bio} onChange={e => patch({ bio: e.target.value })} />
+            <FLabel>{t("自己紹介・説明","Bio / Description")}</FLabel>
+            <FTextarea rows={3} placeholder={t("あなたのサービスや会社について教えてください。","Tell us about your service or company.")} value={d.bio} onChange={e => patch({ bio: e.target.value })} />
           </div>
           <div>
-            <FLabel req>連絡先メールアドレス</FLabel>
+            <FLabel req>{t("連絡先メールアドレス","Contact Email")}</FLabel>
             <FInput type="email" placeholder="contact@yourcompany.com" value={d.contactEmail} onChange={e => patch({ contactEmail: e.target.value })} />
-            <p className="text-xs text-gray-400 mt-1">審査連絡・通知の受け取りに使用します。公開はされません。</p>
+            <p className="text-xs text-gray-400 mt-1">{t("審査連絡・通知の受け取りに使用します。公開はされません。","Used for review notifications. Not publicly displayed.")}</p>
           </div>
           <div>
-            <FLabel>ウェブサイトURL</FLabel>
+            <FLabel>{t("ウェブサイトURL","Website URL")}</FLabel>
             <FInput type="url" placeholder="https://yourcompany.com" value={d.websiteUrl} onChange={e => patch({ websiteUrl: e.target.value })} />
           </div>
           <div>
-            <FLabel req>カテゴリ</FLabel>
+            <FLabel req>{t("カテゴリ","Category")}</FLabel>
             <select value={d.category} onChange={e => patch({ category: e.target.value as SellerProfile["category"] })}
               className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-gray-300">
               {(["AI/ML","データ","DevTools","ファイナンス","その他"] as SellerProfile["category"][]).map(c => (
@@ -2649,7 +2701,7 @@ function SellerProfilePanel({
 
           <div className="flex items-start gap-2.5 p-3.5 bg-blue-50 border border-blue-200 rounded-xl">
             <span className="text-base shrink-0">ℹ️</span>
-            <p className="text-xs text-blue-800">プロフィールを保存後、サービスの登録・管理ができるようになります。プロフィール情報は後から編集可能です。</p>
+            <p className="text-xs text-blue-800">{t("プロフィールを保存後、サービスの登録・管理ができるようになります。プロフィール情報は後から編集可能です。","After saving your profile, you can register and manage services. Profile info can be edited later.")}</p>
           </div>
         </div>
         {/* フッター */}
@@ -2658,14 +2710,14 @@ function SellerProfilePanel({
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
               <path d="M9 11L5 7l4-4" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            キャンセル
+            {t("キャンセル","Cancel")}
           </button>
           <button
             onClick={() => canSave && onSave(d)}
             disabled={!canSave}
             className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold rounded-xl transition-colors"
           >
-            保存してマイサービスへ
+            {t("保存してマイサービスへ","Save & Go to My Services")}
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
               <path d="M3 7h8M7 3l4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -2689,6 +2741,7 @@ interface ServiceStatsItem {
 }
 
 function SellerStatsPage({ services }: { services: MyServiceEntry[] }) {
+  const t = useT();
   const [statsMap, setStatsMap] = useState<Map<string, ServiceStatsItem>>(new Map());
   const [loading,  setLoading]  = useState(true);
 
@@ -2723,7 +2776,7 @@ function SellerStatsPage({ services }: { services: MyServiceEntry[] }) {
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
       </svg>
-      統計データを読み込み中…
+      {t("統計データを読み込み中…","Loading statistics…")}
     </div>
   );
 
@@ -2732,9 +2785,9 @@ function SellerStatsPage({ services }: { services: MyServiceEntry[] }) {
       {/* サマリーカード */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "サービス数",    value: services.length.toString(), sub: "掲載中" },
-          { label: "累計課金回数",  value: totalCharges.toLocaleString(), sub: "charges" },
-          { label: "累計収益",      value: `${totalUsdc} USDC`, sub: "earned" },
+          { label: t("サービス数","Services"),       value: services.length.toString(), sub: t("掲載中","listed") },
+          { label: t("累計課金回数","Total Charges"), value: totalCharges.toLocaleString(), sub: "charges" },
+          { label: t("累計収益","Total Revenue"),     value: `${totalUsdc} USDC`, sub: "earned" },
         ].map(({ label, value, sub }) => (
           <div key={label} className="rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm">
             <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1">{label}</p>
@@ -2748,19 +2801,19 @@ function SellerStatsPage({ services }: { services: MyServiceEntry[] }) {
       {services.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
           <IconChart cls="w-10 h-10 text-gray-300" />
-          <p className="text-sm text-gray-500">サービスを登録すると統計が表示されます</p>
+          <p className="text-sm text-gray-500">{t("サービスを登録すると統計が表示されます","Statistics will appear once you register a service")}</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/60">
-                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">サービス名</th>
-                <th className="text-left px-4 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">タイプ</th>
-                <th className="text-right px-4 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">単価</th>
-                <th className="text-right px-4 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">課金回数</th>
-                <th className="text-right px-4 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">収益 (USDC)</th>
-                <th className="text-right px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">最終課金</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t("サービス名","Service Name")}</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t("タイプ","Type")}</th>
+                <th className="text-right px-4 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t("単価","Unit Price")}</th>
+                <th className="text-right px-4 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t("課金回数","Charges")}</th>
+                <th className="text-right px-4 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t("収益 (USDC)","Revenue (USDC)")}</th>
+                <th className="text-right px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t("最終課金","Last Charge")}</th>
               </tr>
             </thead>
             <tbody>
@@ -2772,7 +2825,7 @@ function SellerStatsPage({ services }: { services: MyServiceEntry[] }) {
                       r.status === "approved" ? "bg-green-50 text-green-700 border-green-200"
                       : r.status === "rejected" ? "bg-red-50 text-red-600 border-red-200"
                       : "bg-amber-50 text-amber-700 border-amber-200"
-                    }`}>{r.status === "approved" ? "公開中" : r.status === "rejected" ? "却下" : "審査中"}</span>
+                    }`}>{r.status === "approved" ? t("公開中","Published") : r.status === "rejected" ? t("却下","Rejected") : t("審査中","Under Review")}</span>
                   </td>
                   <td className="px-4 py-3.5 text-gray-500">{r.serviceType}</td>
                   <td className="px-4 py-3.5 text-right font-mono text-gray-700">${r.price}</td>
@@ -2790,20 +2843,21 @@ function SellerStatsPage({ services }: { services: MyServiceEntry[] }) {
 }
 
 function SellerSetupPrompt({ onStart }: { onStart: () => void }) {
+  const t = useT();
   return (
     <div className="flex flex-col items-center justify-center h-full py-24 gap-6 text-center">
       <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
         <IconStore cls="w-8 h-8 text-gray-400" />
       </div>
       <div>
-        <p className="text-base font-bold text-gray-900 mb-1">販売者プロフィールを作成する</p>
-        <p className="text-sm text-gray-500 max-w-xs">サービスをマーケットプレイスに掲載するには、まず販売者プロフィールを作成してください。</p>
+        <p className="text-base font-bold text-gray-900 mb-1">{t("販売者プロフィールを作成する","Create Seller Profile")}</p>
+        <p className="text-sm text-gray-500 max-w-xs">{t("サービスをマーケットプレイスに掲載するには、まず販売者プロフィールを作成してください。","Create a seller profile to list your services on the marketplace.")}</p>
       </div>
       <button
         onClick={onStart}
         className="px-5 py-2.5 bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold rounded-xl transition-colors"
       >
-        プロフィールを作成する
+        {t("プロフィールを作成する","Create Profile")}
       </button>
     </div>
   );
@@ -2818,10 +2872,11 @@ function SellerServicesPage({
   onEditProfile: () => void;
   onCreateService: () => void;
 }) {
+  const t = useT();
   const statusCfg: Record<MyServiceEntry["status"], { label: string; cls: string }> = {
-    pending:  { label: "審査中", cls: "bg-amber-50 text-amber-700 border-amber-200" },
-    approved: { label: "公開中", cls: "bg-green-50 text-green-700 border-green-200" },
-    rejected: { label: "却下",   cls: "bg-red-50 text-red-600 border-red-200" },
+    pending:  { label: t("審査中","Under Review"), cls: "bg-amber-50 text-amber-700 border-amber-200" },
+    approved: { label: t("公開中","Published"),    cls: "bg-green-50 text-green-700 border-green-200" },
+    rejected: { label: t("却下","Rejected"),       cls: "bg-red-50 text-red-600 border-red-200" },
   };
 
   return (
@@ -2838,24 +2893,24 @@ function SellerServicesPage({
         </div>
         <button onClick={onEditProfile}
           className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
-          編集
+          {t("編集","Edit")}
         </button>
       </div>
 
       {/* サービス一覧 */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <span className="text-sm font-semibold text-gray-900">登録サービス <span className="text-gray-400 font-normal text-xs ml-1">{services.length}件</span></span>
+          <span className="text-sm font-semibold text-gray-900">{t("登録サービス","Registered Services")} <span className="text-gray-400 font-normal text-xs ml-1">{services.length}{t("件","")}</span></span>
           <button onClick={onCreateService}
             className="px-3 py-1.5 bg-gray-900 hover:bg-gray-700 text-white text-xs font-semibold rounded-lg transition-colors">
-            + サービスを追加
+            + {t("サービスを追加","Add Service")}
           </button>
         </div>
         {services.length === 0 ? (
           <div className="py-12 text-center text-sm text-gray-400">
-            <p>まだサービスが登録されていません</p>
+            <p>{t("まだサービスが登録されていません","No services registered yet")}</p>
             <button onClick={onCreateService} className="mt-3 text-gray-600 font-semibold hover:text-gray-900 underline text-xs">
-              最初のサービスを作成する
+              {t("最初のサービスを作成する","Create your first service")}
             </button>
           </div>
         ) : (
@@ -2888,14 +2943,15 @@ function SellerMyServicesPanel({
   onEditProfile: () => void;
   onCreateService: () => void;
 }) {
+  const t = useT();
   const statusCfg: Record<MyServiceEntry["status"], { label: string; cls: string }> = {
-    pending:  { label: "審査中",   cls: "bg-amber-50 text-amber-700 border-amber-200" },
-    approved: { label: "公開中",   cls: "bg-green-50 text-green-700 border-green-200" },
-    rejected: { label: "却下",     cls: "bg-red-50 text-red-600 border-red-200" },
+    pending:  { label: t("審査中","Under Review"), cls: "bg-amber-50 text-amber-700 border-amber-200" },
+    approved: { label: t("公開中","Published"),    cls: "bg-green-50 text-green-700 border-green-200" },
+    rejected: { label: t("却下","Rejected"),       cls: "bg-red-50 text-red-600 border-red-200" },
   };
   const typeLabels: Record<SellerServiceType, string> = {
-    API: "API", WebPage: "ウェブページ",
-    MCPLocal: "MCPローカル", MCPRemote: "MCPリモート", FetchAI: "Fetch.ai",
+    API: "API", WebPage: t("ウェブページ","Web Page"),
+    MCPLocal: t("MCPローカル","MCP Local"), MCPRemote: t("MCPリモート","MCP Remote"), FetchAI: "Fetch.ai",
   };
 
   return (
@@ -2909,7 +2965,7 @@ function SellerMyServicesPanel({
               {profile.storeName[0].toUpperCase()}
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-900">マイサービス</h2>
+              <h2 className="text-base font-bold text-gray-900">{t("マイサービス","My Services")}</h2>
               <p className="text-xs text-gray-400">{profile.storeName}</p>
             </div>
           </div>
@@ -2924,13 +2980,13 @@ function SellerMyServicesPanel({
           {/* プロフィールカード */}
           <div className="rounded-2xl border border-gray-200 p-5">
             <div className="flex items-start justify-between mb-3">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">販売者プロフィール</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t("販売者プロフィール","Seller Profile")}</p>
               <button onClick={onEditProfile}
                 className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg transition-colors">
                 <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-3 h-3">
                   <path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                編集
+                {t("編集","Edit")}
               </button>
             </div>
             <div className="flex items-center gap-4">
@@ -2960,13 +3016,13 @@ function SellerMyServicesPanel({
           {/* サービス一覧 */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-bold text-gray-900">登録サービス <span className="text-gray-400 font-normal">({services.length})</span></p>
+              <p className="text-sm font-bold text-gray-900">{t("登録サービス","Registered Services")} <span className="text-gray-400 font-normal">({services.length})</span></p>
               <button onClick={onCreateService}
                 className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold rounded-xl transition-colors">
                 <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2.2} className="w-3 h-3">
                   <line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/>
                 </svg>
-                新しいサービスを作成
+                {t("新しいサービスを作成","Create New Service")}
               </button>
             </div>
 
@@ -2976,12 +3032,12 @@ function SellerMyServicesPanel({
                   <IconStore cls="w-6 h-6 text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-700">まだサービスがありません</p>
-                  <p className="text-xs text-gray-400 mt-0.5">最初のサービスを登録してマーケットプレイスに掲載しましょう。</p>
+                  <p className="text-sm font-semibold text-gray-700">{t("まだサービスがありません","No services yet")}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{t("最初のサービスを登録してマーケットプレイスに掲載しましょう。","Register your first service to list it on the marketplace.")}</p>
                 </div>
                 <button onClick={onCreateService}
                   className="mt-1 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold rounded-xl transition-colors">
-                  サービスを作成する
+                  {t("サービスを作成する","Create Service")}
                 </button>
               </div>
             ) : (
@@ -3000,7 +3056,7 @@ function SellerMyServicesPanel({
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-mono font-semibold bg-gray-100 text-gray-500 border border-gray-200">{typeLabels[svc.serviceType]}</span>
                         </div>
                         {svc.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{svc.description}</p>}
-                        <p className="text-[10px] text-gray-400 mt-1">{svc.price ? `${svc.price} USDC / コール` : "—"} · 登録日: {svc.createdAt}</p>
+                        <p className="text-[10px] text-gray-400 mt-1">{svc.price ? `${svc.price} USDC / ${t("コール","call")}` : "—"} · {t("登録日","Registered")}: {svc.createdAt}</p>
                       </div>
                     </div>
                   );
@@ -3021,6 +3077,7 @@ interface UserProfile {
 }
 
 function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () => void }) {
+  const t = useT();
   const [profile,  setProfile]  = useState<UserProfile | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [saving,   setSaving]   = useState(false);
@@ -3033,7 +3090,7 @@ function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () 
     fetch(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then((d: UserProfile) => { setProfile(d); setName(d.name); setWallet(d.buyer?.walletAddress ?? ""); })
-      .catch(() => setError("プロフィールの取得に失敗しました"))
+      .catch(() => setError(t("プロフィールの取得に失敗しました","Failed to load profile")))
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -3046,7 +3103,7 @@ function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () 
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body:    JSON.stringify({ name, walletAddress: wallet }),
       });
-      if (!res.ok) throw new Error("保存に失敗しました");
+      if (!res.ok) throw new Error(t("保存に失敗しました","Failed to save"));
       setSaved(true);
       if (profile) setProfile({ ...profile, name, buyer: profile.buyer ? { ...profile.buyer, walletAddress: wallet } : null });
       setTimeout(() => setSaved(false), 2500);
@@ -3059,7 +3116,7 @@ function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () 
 
   const inputCls = "w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:border-gray-400 bg-white transition-all";
 
-  if (loading) return <div className="flex items-center justify-center h-48 text-sm text-gray-400">読み込み中…</div>;
+  if (loading) return <div className="flex items-center justify-center h-48 text-sm text-gray-400">{t("読み込み中…","Loading…")}</div>;
 
   return (
     <div className="max-w-2xl flex flex-col gap-6">
@@ -3067,16 +3124,16 @@ function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () 
         <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.75} className="text-gray-900">
           <circle cx="10" cy="7" r="3"/><path d="M3 17a7 7 0 0114 0" strokeLinecap="round"/>
         </svg>
-        <h1 className="text-xl font-bold text-gray-900">アカウント設定</h1>
+        <h1 className="text-xl font-bold text-gray-900">{t("アカウント設定","Account Settings")}</h1>
       </div>
 
       {/* 残高カード */}
       {profile?.buyer && (
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "USDC 残高",   value: parseFloat(profile.buyer.balanceUsdc).toFixed(4), unit: "USDC" },
-            { label: "KYC ティア",  value: profile.buyer.kycTier, unit: "" },
-            { label: "Buyer ID",    value: profile.buyer.id.slice(0,12) + "…", unit: "" },
+            { label: t("USDC 残高","USDC Balance"),  value: parseFloat(profile.buyer.balanceUsdc).toFixed(4), unit: "USDC" },
+            { label: t("KYC ティア","KYC Tier"),     value: profile.buyer.kycTier, unit: "" },
+            { label: "Buyer ID",                     value: profile.buyer.id.slice(0,12) + "…", unit: "" },
           ].map(c => (
             <div key={c.label} className="bg-white border border-gray-200 rounded-2xl p-4">
               <p className="text-xs text-gray-400 mb-1">{c.label}</p>
@@ -3089,31 +3146,31 @@ function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () 
 
       {/* プロフィール編集 */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
-        <h2 className="text-sm font-bold text-gray-900 mb-4">プロフィール編集</h2>
+        <h2 className="text-sm font-bold text-gray-900 mb-4">{t("プロフィール編集","Edit Profile")}</h2>
         <form onSubmit={handleSave} className="flex flex-col gap-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">お名前</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("お名前","Name")}</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} className={inputCls} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">メールアドレス</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("メールアドレス","Email")}</label>
             <input type="email" value={profile?.email ?? ""} disabled
               className={inputCls + " opacity-50 cursor-not-allowed"} />
-            <p className="text-[10px] text-gray-400 mt-1">メールアドレスは変更できません</p>
+            <p className="text-[10px] text-gray-400 mt-1">{t("メールアドレスは変更できません","Email cannot be changed")}</p>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">ウォレットアドレス（USDC受取用）</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("ウォレットアドレス（USDC受取用）","Wallet Address (for USDC)")}</label>
             <input type="text" value={wallet} onChange={e => setWallet(e.target.value)}
               className={inputCls} placeholder="0x..." />
           </div>
 
           {error  && <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>}
-          {saved  && <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">✓ 保存しました</div>}
+          {saved  && <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">✓ {t("保存しました","Saved")}</div>}
 
           <div className="flex justify-end pt-2">
             <button type="submit" disabled={saving}
               className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">
-              {saving ? "保存中…" : "変更を保存する"}
+              {saving ? t("保存中…","Saving…") : t("変更を保存する","Save Changes")}
             </button>
           </div>
         </form>
@@ -3121,11 +3178,11 @@ function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () 
 
       {/* ログアウト */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
-        <h2 className="text-sm font-bold text-gray-900 mb-1">セッション</h2>
-        <p className="text-xs text-gray-500 mb-4">ログアウトするとこのデバイスでのセッションが終了します。</p>
+        <h2 className="text-sm font-bold text-gray-900 mb-1">{t("セッション","Session")}</h2>
+        <p className="text-xs text-gray-500 mb-4">{t("ログアウトするとこのデバイスでのセッションが終了します。","Logging out will end your session on this device.")}</p>
         <button onClick={onLogout}
           className="px-5 py-2.5 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium rounded-xl transition-colors">
-          ログアウト
+          {t("ログアウト","Log Out")}
         </button>
       </div>
     </div>
@@ -3306,16 +3363,10 @@ export default function Dashboard() {
     setHaltLoading(false);
   }, [isDemoMode, isHalted]);
 
-  const PAGE_TITLES: Record<Page, string> = {
-    home: "ホーム", transactions: "トークン発行", agents: "販売者向けAPIキー",
-    fraud: "課金履歴", jpyc: "JPYCチャージ", directory: "ディレクトリ", account: "アカウント設定",
-    "seller-services":  "マイサービス",
-    "seller-stats":     "売上統計",
-    "seller-directory": "ディレクトリ",
-    "seller-account":   "アカウント設定",
-  };
+  // PAGE_TITLES unused in render — kept for reference only
 
   return (
+    <LangContext.Provider value={lang}>
     <div className="flex h-screen overflow-hidden bg-canvas">
       {isHalted && (
         <div className="fixed inset-0 z-50 pointer-events-none flex items-start justify-center pt-6"
@@ -3397,5 +3448,6 @@ export default function Dashboard() {
         />
       )}
     </div>
+    </LangContext.Provider>
   );
 }
