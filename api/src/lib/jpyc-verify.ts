@@ -124,24 +124,54 @@ export async function verifyJpycTransfer(
   return { valid: true, actualJpyc };
 }
 
+// レートキャッシュ（5分）
+let _rateCache: { rate: number; at: number } | null = null;
+
 /**
- * リアルタイム JPYC/USDC レートを取得（CoinGecko）
+ * リアルタイム JPYC/USDC レートを取得
  * JPYC ≈ 1 JPY なので JPY/USD レートを使用
+ * 優先順: Frankfurter API → ExchangeRate-API → 環境変数フォールバック
  */
 export async function fetchJpycRate(): Promise<number> {
+  // キャッシュが有効なら返す
+  if (_rateCache && Date.now() - _rateCache.at < 5 * 60 * 1000) {
+    return _rateCache.rate;
+  }
+
+  // ① Frankfurter API（ECBデータ、無料・キー不要）
   try {
-    // CoinGecko: USD-Coin の JPY 建て価格 = 1 USDC = X JPY = X JPYC
     const res = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=usd-coin&vs_currencies=jpy",
+      "https://api.frankfurter.dev/v1/latest?from=USD&to=JPY",
       { signal: AbortSignal.timeout(5000) }
     );
-    if (!res.ok) throw new Error("CoinGecko API error");
-    const data = await res.json() as { "usd-coin": { jpy: number } };
-    const rate = data["usd-coin"]?.jpy;
-    if (!rate || rate < 100 || rate > 300) throw new Error("Invalid rate");
-    return Math.round(rate * 10) / 10; // 小数点1桁に丸める
-  } catch {
-    // フォールバック: 環境変数の設定値
-    return parseFloat(process.env.JPYC_RATE ?? "150");
-  }
+    if (res.ok) {
+      const data = await res.json() as { rates: { JPY: number } };
+      const rate = data?.rates?.JPY;
+      if (rate && rate > 100 && rate < 300) {
+        const rounded = Math.round(rate * 10) / 10;
+        _rateCache = { rate: rounded, at: Date.now() };
+        return rounded;
+      }
+    }
+  } catch { /* fallthrough */ }
+
+  // ② ExchangeRate-API（無料・キー不要）
+  try {
+    const res = await fetch(
+      "https://open.er-api.com/v6/latest/USD",
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (res.ok) {
+      const data = await res.json() as { rates: { JPY: number } };
+      const rate = data?.rates?.JPY;
+      if (rate && rate > 100 && rate < 300) {
+        const rounded = Math.round(rate * 10) / 10;
+        _rateCache = { rate: rounded, at: Date.now() };
+        return rounded;
+      }
+    }
+  } catch { /* fallthrough */ }
+
+  // ③ フォールバック: 環境変数
+  return parseFloat(process.env.JPYC_RATE ?? "150");
 }
