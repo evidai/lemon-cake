@@ -94,12 +94,13 @@ export async function sendUsdcOnPolygon(
   const amountRaw = parseUnits(params.amountUsdc, USDC_DECIMALS);
 
   // ─── 送金前残高チェック ──────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const balance = await publicClient.readContract({
     address:      contractAddress,
     abi:          USDC_ABI,
     functionName: "balanceOf",
     args:         [account.address],
-  }) as bigint;
+  } as any) as bigint;
 
   if (balance < amountRaw) {
     throw new Error(
@@ -108,12 +109,13 @@ export async function sendUsdcOnPolygon(
   }
 
   // ERC-20 transfer 呼び出し
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const txHash = await walletClient.writeContract({
     address:      contractAddress,
     abi:          USDC_ABI,
     functionName: "transfer",
     args:         [toAddress, amountRaw],
-  });
+  } as any);
 
   // トランザクション確定を待機（1 confirmation）
   await publicClient.waitForTransactionReceipt({
@@ -136,10 +138,11 @@ export async function getHotWalletUsdcBalance(): Promise<bigint> {
     transport: http(rpcUrl),
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return publicClient.readContract({
     address:      contractAddress,
     abi:          USDC_ABI,
     functionName: "balanceOf",
     args:         [account.address],
-  }) as Promise<bigint>;
+  } as any) as Promise<bigint>;
 }

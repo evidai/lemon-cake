@@ -61,7 +61,8 @@ providersRouter.openapi(
       },
     },
   }),
-  async (c) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async (c: any) => {
     const auth = c.req.header("Authorization");
     if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401);
     if (!(await verifyAdminToken(auth.slice(7)))) return c.json({ error: "Invalid token" }, 401);
@@ -96,7 +97,8 @@ providersRouter.openapi(
       },
     },
   }),
-  async (c) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async (c: any) => {
     const auth = c.req.header("Authorization");
     if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401);
     if (!(await verifyAdminToken(auth.slice(7)))) return c.json({ error: "Invalid token" }, 401);

@@ -180,7 +180,8 @@ servicesRouter.openapi(
       },
     },
   }),
-  async (c) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async (c: any) => {
     const authError = await requireAdmin(c.req.header("Authorization"));
     if (authError) return c.json({ error: authError }, 401);
 
@@ -230,14 +231,15 @@ servicesRouter.openapi(
         select: { id: true, name: true, provider: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.charge.groupBy({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (prisma.charge.groupBy as any)({
         by: ["serviceId"],
         _count:  { id: true },
         _sum:    { amountUsdc: true },
         _max:    { createdAt: true },
         where:   { status: "COMPLETED" },
       }),
-    ]);
+    ]) as [typeof services, any[]];
 
     const statsMap = new Map(chargeGroups.map(g => [g.serviceId, g]));
 
