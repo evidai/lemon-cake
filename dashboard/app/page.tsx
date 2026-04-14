@@ -1462,28 +1462,7 @@ interface JpycDepositReq {
 
 interface JpycInfo { platformWallet: string; jpycRate: number; network: string; }
 
-// ── JPY/USD 為替レートキャッシュ (5分)
-// JPYC は 1 JPYC = 1 JPY にペグされているため
-// JPYC/USDC レート ≈ JPY/USD 為替レート
-let _rateCache: { rate: number; at: number } | null = null;
-async function fetchLiveJpycRate(): Promise<number | null> {
-  if (_rateCache && Date.now() - _rateCache.at < 5 * 60 * 1000) return _rateCache.rate;
-  try {
-    // Frankfurter API — 無料・キー不要・ECBデータ
-    const res = await fetch(
-      "https://api.frankfurter.dev/v1/latest?from=USD&to=JPY",
-      { cache: "no-store" }
-    );
-    const data = await res.json();
-    const jpyPerUsd: number = data?.rates?.JPY;
-    if (!jpyPerUsd || jpyPerUsd <= 0) return null;
-    const rate = Math.round(jpyPerUsd); // 1 USDC ≈ N JPYC
-    _rateCache = { rate, at: Date.now() };
-    return rate;
-  } catch {
-    return null;
-  }
-}
+// レートは /api/jpyc/info から取得（CoinGecko経由）
 
 function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
   const t = useT();
@@ -1505,10 +1484,8 @@ function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
     Promise.all([
       fetch(`${API}/api/jpyc/info`).then(r => r.json()),
       fetch(`${API}/api/jpyc/deposits?limit=50`, { headers: hdrs }).then(r => r.json()),
-      fetchLiveJpycRate(),
-    ]).then(([inf, dep, liveRate]) => {
-      const base = inf as JpycInfo;
-      setInfo(liveRate ? { ...base, jpycRate: liveRate } : base);
+    ]).then(([inf, dep]) => {
+      setInfo(inf as JpycInfo);
       setRequests((dep as { data: JpycDepositReq[] }).data ?? []);
     }).catch(console.error).finally(() => setLoading(false));
   }
