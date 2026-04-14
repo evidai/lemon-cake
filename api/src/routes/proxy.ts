@@ -142,30 +142,36 @@ proxyRouter.all("/:serviceId/*", async (c) => {
   const pathSuffix = c.req.path.replace(`/api/proxy/${serviceId}`, "") || "/";
   const upstreamUrl = service.endpoint.replace(/\/$/, "") + pathSuffix;
 
-  // クエリパラメータをそのまま引き継ぐ
-  const searchParams = new URL(c.req.url).search;
-  const forwardUrl = upstreamUrl + searchParams;
+  // クエリパラメータをそのまま引き継ぎ、クエリ認証があれば注入
+  const clientSearch = new URL(c.req.url).searchParams;
 
-  const method = c.req.method;
-
-  // 転送ヘッダーの構築（Authorization を上流のものに差し替え）
+  // authHeader の3形式:
+  //   "Bearer xxx"            → Authorization ヘッダー
+  //   "X-Custom-Header:value" → 任意ヘッダー
+  //   "QUERY:param:value"     → クエリパラメータとして注入（APIキーをエージェントに隠す）
+  let queryAuthParam: [string, string] | null = null;
   const forwardHeaders: Record<string, string> = {
     "Content-Type": c.req.header("Content-Type") ?? "application/json",
     "Accept":       c.req.header("Accept") ?? "application/json",
-    "X-Charge-Id":  chargeId,  // デバッグ用
+    "X-Charge-Id":  chargeId,
   };
   if (service.authHeader) {
-    // "Bearer xxx"          → Authorization: Bearer xxx
-    // "X-Custom-Header:val" → X-Custom-Header: val (カスタムヘッダー名)
-    const colonIdx = service.authHeader.indexOf(":");
-    if (service.authHeader.startsWith("Bearer ") || colonIdx === -1) {
+    if (service.authHeader.startsWith("QUERY:")) {
+      // QUERY:param_name:value → クエリパラメータとして付加
+      const parts = service.authHeader.slice(6).split(":");
+      queryAuthParam = [parts[0], parts.slice(1).join(":")];
+    } else if (service.authHeader.startsWith("Bearer ") || !service.authHeader.includes(":")) {
       forwardHeaders["Authorization"] = service.authHeader;
     } else {
-      const headerName  = service.authHeader.slice(0, colonIdx).trim();
-      const headerValue = service.authHeader.slice(colonIdx + 1).trim();
-      forwardHeaders[headerName] = headerValue;
+      const idx = service.authHeader.indexOf(":");
+      forwardHeaders[service.authHeader.slice(0, idx).trim()] = service.authHeader.slice(idx + 1).trim();
     }
   }
+
+  if (queryAuthParam) clientSearch.set(queryAuthParam[0], queryAuthParam[1]);
+  const forwardUrl = upstreamUrl + (clientSearch.toString() ? "?" + clientSearch.toString() : "");
+
+  const method = c.req.method;
 
   const hasBody = method !== "GET" && method !== "HEAD";
   const body = hasBody ? await c.req.text() : undefined;

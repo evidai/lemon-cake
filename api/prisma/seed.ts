@@ -59,6 +59,43 @@ const SERVICES: Array<{
     endpoint:         "https://laws.e-gov.go.jp/api/1",
     authHeader:       undefined, // 認証不要（完全オープン）
   },
+  // ── 🌍 グローバル・コンプライアンス API ───────────────────────
+  {
+    name:             "Abstract API — VAT Validation",
+    type:             "API",
+    pricePerCallUsdc: "0.000200",
+    endpoint:         "https://vat.abstractapi.com/v1",
+    authHeader:       process.env.ABSTRACT_API_KEY
+                        ? `QUERY:api_key:${process.env.ABSTRACT_API_KEY}`
+                        : undefined,
+  },
+  {
+    name:             "IPinfo — IP Geolocation & Risk",
+    type:             "API",
+    pricePerCallUsdc: "0.000100",
+    endpoint:         "https://ipinfo.io",
+    authHeader:       process.env.IPINFO_TOKEN
+                        ? `Bearer ${process.env.IPINFO_TOKEN}`
+                        : undefined,
+  },
+  {
+    name:             "Open Exchange Rates — 為替レート",
+    type:             "API",
+    pricePerCallUsdc: "0.000200",
+    endpoint:         "https://openexchangerates.org/api",
+    authHeader:       process.env.OPENEXCHANGERATES_APP_ID
+                        ? `QUERY:app_id:${process.env.OPENEXCHANGERATES_APP_ID}`
+                        : undefined,
+  },
+  {
+    name:             "Hunter.io — 企業メール・連絡先検索",
+    type:             "API",
+    pricePerCallUsdc: "0.000500",
+    endpoint:         "https://api.hunter.io/v2",
+    authHeader:       process.env.HUNTER_API_KEY
+                        ? `QUERY:api_key:${process.env.HUNTER_API_KEY}`
+                        : undefined,
+  },
   // ── 検索・Web ──────────────────────────────────────────────
   {
     name:             "Tavily Search",
