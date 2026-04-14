@@ -102,9 +102,10 @@ export async function handleStripeWebhook(
     throw new Error("Webhook signature verification failed");
   }
 
-  if (event.type === "customer.balance.funded") {
+  // customer_cash_balance_transaction.created (新API) または customer.balance.funded (旧API) に対応
+  if (event.type === "customer_cash_balance_transaction.created" || event.type === "customer.balance.funded") {
     const funded     = event.data.object as Record<string, unknown>;
-    const customerId = funded.customer as string;
+    const customerId = (funded.customer ?? funded.customer_id) as string;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const customer  = await stripe.customers.retrieve(customerId) as any;
