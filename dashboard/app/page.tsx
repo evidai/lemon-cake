@@ -288,6 +288,7 @@ type NavItem = { id: Page; label: string; Icon: (p: { cls?: string }) => React.R
 // ── バイヤー用ナビ ────────────────────────────────────────────
 const NAV_BUYER: NavItem[] = [
   { id: "home",         label: "ホーム",               Icon: IconHome },
+  { id: "directory",    label: "サービス一覧",          Icon: IconDirectory },
   { id: "transactions", label: "トークン発行",          Icon: IconToken },
   { id: "agents",       label: "販売者向けAPIキー",     Icon: IconApiKey },
   { id: "fraud",        label: "課金履歴",              Icon: IconClaim },
