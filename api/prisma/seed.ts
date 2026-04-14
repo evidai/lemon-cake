@@ -165,23 +165,33 @@ async function main() {
       where: { name: svc.name, providerId: platform.id },
     });
 
+    const data = {
+      providerId:       platform.id,
+      name:             svc.name,
+      type:             svc.type,
+      pricePerCallUsdc: svc.pricePerCallUsdc,
+      endpoint:         svc.endpoint   ?? null,
+      // authHeader は undefined の場合は既存値を保持、明示的に値がある場合のみ上書き
+      ...(svc.authHeader !== undefined ? { authHeader: svc.authHeader } : {}),
+      reviewStatus:     "APPROVED" as const,
+      verified:         true,
+    };
+
     if (existing) {
+      // 既存レコードは authHeader / endpoint を更新（再シードで反映できるように）
+      await prisma.service.update({
+        where: { id: existing.id },
+        data: {
+          endpoint:   data.endpoint,
+          ...(svc.authHeader !== undefined ? { authHeader: svc.authHeader } : {}),
+        },
+      });
+      console.log(`  🔄 ${svc.type.padEnd(3)} | ${svc.name.padEnd(40)} | updated`);
       skipped++;
       continue;
     }
 
-    await prisma.service.create({
-      data: {
-        providerId:       platform.id,
-        name:             svc.name,
-        type:             svc.type,
-        pricePerCallUsdc: svc.pricePerCallUsdc,
-        ...(svc.endpoint   ? { endpoint:   svc.endpoint }   : {}),
-        ...(svc.authHeader ? { authHeader: svc.authHeader } : {}),
-        reviewStatus:     "APPROVED",
-        verified:         true,
-      },
-    });
+    await prisma.service.create({ data });
     console.log(`  ➕ ${svc.type.padEnd(3)} | ${svc.name.padEnd(40)} | $${svc.pricePerCallUsdc}/call`);
     created++;
   }
