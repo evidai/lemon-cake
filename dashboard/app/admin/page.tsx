@@ -499,7 +499,7 @@ function OverviewPage({setNav, services, logs, circuits, accounts}: {
     <div className="space-y-6">
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="総流通額（30d）" value={`$${totalVol.toFixed(0)}`} delta="前月比 +12.4%" color="blue"/>
+        <KpiCard label="総流通額（30d）" value={`$${totalVol.toFixed(0)}`} color="blue"/>
         <KpiCard label="登録サービス数" value={services.filter(s=>s.reviewStatus==="approved").length} unit="件" delta={`うち審査中 ${pendingSvc}件`} color="default"/>
         <KpiCard label="アクティブユーザー" value={accounts.filter(a=>!a.suspended).length} unit="名" color="green"/>
         <KpiCard label="未解決フラグ" value={openFlags} unit="件" delta={`CB障害 ${openCB}件`} color={openFlags>0?"red":"default"}/>
@@ -512,7 +512,7 @@ function OverviewPage({setNav, services, logs, circuits, accounts}: {
           <TaskItem icon={<Ico.Marketplace cls="w-4 h-4"/>} label="新規サービス審査待ち" count={pendingSvc} urgent={pendingSvc>3} onClick={()=>setNav("marketplace")}/>
           <TaskItem icon={<Ico.Alert cls="w-4 h-4"/>} label="未解決リスクフラグ" count={openFlags} urgent={openFlags>0} onClick={()=>setNav("monitoring")}/>
           <TaskItem icon={<Ico.Bolt cls="w-4 h-4"/>} label="サーキットブレーカー障害" count={openCB} urgent={openCB>0} onClick={()=>setNav("monitoring")}/>
-          <TaskItem icon={<Ico.Finance cls="w-4 h-4"/>} label="精算待ちプロバイダー" count={DEMO_SETTLEMENTS.filter(s=>s.status==="pending").length} onClick={()=>setNav("finance")}/>
+          <TaskItem icon={<Ico.Finance cls="w-4 h-4"/>} label="精算待ちプロバイダー" count={0} onClick={()=>setNav("finance")}/>
         </div>
       </div>
 
@@ -1289,7 +1289,7 @@ function JpycReviewPage({ token }: { token: string }) {
 function FinancePage() {
   const [fee, setFee] = useState("2.5");
   const [maxTx, setMaxTx] = useState("10000");
-  const [settlements, setSettlements] = useState(DEMO_SETTLEMENTS);
+  const [settlements, setSettlements] = useState<typeof DEMO_SETTLEMENTS[0][]>([]);
   const [saved, setSaved] = useState(false);
   const [toast, setToast] = useState<{msg:string;type:"success"|"error"|"info"}|null>(null);
 
@@ -1458,9 +1458,9 @@ export default function AdminRoot() {
   const [nav, setNav] = useState<NavSection>("overview");
   const [clock, setClock] = useState("--:--:--");
   const [services,  setServices]  = useState<ServiceType[]>([]);
-  const [accounts,  setAccounts]  = useState<AccountType[]>(DEMO_ACCOUNTS);
-  const [logs,      setLogs]      = useState<LogEntry[]>(DEMO_LOGS);
-  const [circuits,  setCircuits]  = useState<CircuitEntry[]>(DEMO_CIRCUITS);
+  const [accounts,  setAccounts]  = useState<AccountType[]>([]);
+  const [logs,      setLogs]      = useState<LogEntry[]>([]);
+  const [circuits,  setCircuits]  = useState<CircuitEntry[]>([]);
   const [token,     setToken]     = useState<string>("");
   const [authReady, setAuthReady] = useState(false);
 
@@ -1485,14 +1485,14 @@ export default function AdminRoot() {
       .then((data: ApiServiceRaw[]) => {
         if (Array.isArray(data)) setServices(data.map(mapApiService));
       })
-      .catch(() => setServices(DEMO_SERVICES));
+      .catch(() => setServices([]));
   }, [authReady]);
 
   useEffect(() => {
     // accounts/logs/circuits は localStorage から復元
-    setAccounts( load("admin_accounts", DEMO_ACCOUNTS) );
-    setLogs(     load("admin_logs",     DEMO_LOGS)     );
-    setCircuits( load("admin_circuits", DEMO_CIRCUITS) );
+    setAccounts( load("admin_accounts", []) );
+    setLogs(     load("admin_logs",     []) );
+    setCircuits( load("admin_circuits", []) );
     const t = setTimeout(() => { canSave.current = true; }, 0);
     return () => clearTimeout(t);
   }, []);
