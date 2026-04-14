@@ -2228,20 +2228,47 @@ function ServiceCard({ service: s, onSelect }: { service: Service; onSelect: () 
   );
 }
 
+function apiServiceToService(s: ApiService): Service {
+  return {
+    id:             s.id,
+    name:           s.name,
+    provider:       s.providerName,
+    type:           s.type,
+    price:          parseFloat(s.pricePerCallUsdc) || 0,
+    description:    "",
+    tags:           [],
+    apiSpecUrl:     "",
+    tokenTypes:     ["kyapay"],
+    minTokenAmount: parseFloat(s.pricePerCallUsdc) || 0,
+  };
+}
+
 function DirectoryPage() {
   const t = useT();
   const [search,     setSearch]     = useState("");
   const [filter,     setFilter]     = useState<"all" | "API" | "MCP">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [services,   setServices]   = useState<Service[]>(DEMO_SERVICES);
+  const [loading,    setLoading]    = useState(true);
 
-  const selected = DEMO_SERVICES.find((s) => s.id === selectedId);
+  useEffect(() => {
+    fetch(`${API_URL}/api/services?reviewStatus=APPROVED&limit=100`)
+      .then((r) => r.ok ? r.json() : Promise.reject(r))
+      .then((data: ApiService[]) => {
+        if (Array.isArray(data) && data.length > 0) setServices(data.map(apiServiceToService));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const selected = services.find((s) => s.id === selectedId);
 
   if (selected) return <ServiceDetail service={selected} onBack={() => setSelectedId(null)} />;
 
-  const filtered = DEMO_SERVICES.filter((s) => {
+  const filtered = services.filter((s) => {
     const matchType = filter === "all" || s.type === filter;
     const q = search.toLowerCase();
-    const matchQ = !q || s.name.toLowerCase().includes(q) || s.provider.toLowerCase().includes(q) || s.tags.some((t) => t.includes(q)) || s.description.toLowerCase().includes(q);
+    const matchQ = !q || s.name.toLowerCase().includes(q) || s.provider.toLowerCase().includes(q) || s.tags.some((tag) => tag.includes(q)) || s.description.toLowerCase().includes(q);
     return matchType && matchQ;
   });
 
@@ -2268,7 +2295,9 @@ function DirectoryPage() {
       </div>
 
       {/* Count */}
-      <p className="text-xs text-gray-400">{filtered.length} {t("件のサービス","services")}</p>
+      <p className="text-xs text-gray-400">
+        {loading ? t("読み込み中…","Loading…") : `${filtered.length} ${t("件のサービス","services")}`}
+      </p>
 
       {/* Grid */}
       {filtered.length === 0 ? (
