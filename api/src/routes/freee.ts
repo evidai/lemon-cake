@@ -27,11 +27,6 @@ freeeRouter.get("/callback", async (c) => {
     return c.html(`<h2>コードが見つかりません</h2>`, 400);
   }
 
-  const redirectUri = process.env.FREEE_REDIRECT_URI ?? "http://localhost:3002/api/freee/callback";
-  console.log("[freee callback] code:", code.slice(0, 10) + "...");
-  console.log("[freee callback] redirect_uri:", redirectUri);
-  console.log("[freee callback] client_id:", process.env.FREEE_CLIENT_ID ?? "MISSING");
-
   try {
     const tokens = await exchangeFreeeCode(code);
 
@@ -88,14 +83,6 @@ freeeRouter.get("/callback", async (c) => {
     `);
   } catch (err) {
     console.error("[freee] Callback error:", err);
-    return c.html(`
-      <h2>トークン交換エラー</h2>
-      <pre>${err instanceof Error ? err.message : String(err)}</pre>
-      <hr>
-      <h3>デバッグ情報</h3>
-      <pre>FREEE_REDIRECT_URI: ${redirectUri}
-FREEE_CLIENT_ID: ${process.env.FREEE_CLIENT_ID ?? "MISSING"}
-code (先頭10文字): ${code.slice(0, 10)}...</pre>
-    `, 500);
+    return c.html(`<h2>トークン交換エラー</h2><pre>${err instanceof Error ? err.message : String(err)}</pre>`, 500);
   }
 });
