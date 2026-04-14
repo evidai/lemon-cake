@@ -155,7 +155,16 @@ proxyRouter.all("/:serviceId/*", async (c) => {
     "X-Charge-Id":  chargeId,  // デバッグ用
   };
   if (service.authHeader) {
-    forwardHeaders["Authorization"] = service.authHeader;
+    // "Bearer xxx"          → Authorization: Bearer xxx
+    // "X-Custom-Header:val" → X-Custom-Header: val (カスタムヘッダー名)
+    const colonIdx = service.authHeader.indexOf(":");
+    if (service.authHeader.startsWith("Bearer ") || colonIdx === -1) {
+      forwardHeaders["Authorization"] = service.authHeader;
+    } else {
+      const headerName  = service.authHeader.slice(0, colonIdx).trim();
+      const headerValue = service.authHeader.slice(colonIdx + 1).trim();
+      forwardHeaders[headerName] = headerValue;
+    }
   }
 
   const hasBody = method !== "GET" && method !== "HEAD";

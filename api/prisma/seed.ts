@@ -41,6 +41,24 @@ const SERVICES: Array<{
     endpoint:         "https://web-api.invoice-kohyo.nta.go.jp/api/1",
     authHeader:       undefined,
   },
+  // ── 🇯🇵 政府系データ API ───────────────────────────────────────
+  {
+    name:             "gBizINFO 法人情報 API",
+    type:             "API",
+    pricePerCallUsdc: "0.000500",
+    endpoint:         "https://info.gbiz.go.jp/api/ene/v1",
+    // X-hojin-info-api-key ヘッダー形式: "X-hojin-info-api-key:<key>"
+    authHeader:       process.env.GBIZINFO_API_KEY
+                        ? `X-hojin-info-api-key:${process.env.GBIZINFO_API_KEY}`
+                        : undefined,
+  },
+  {
+    name:             "e-Gov 法令検索 API",
+    type:             "API",
+    pricePerCallUsdc: "0.000300",
+    endpoint:         "https://laws.e-gov.go.jp/api/1",
+    authHeader:       undefined, // 認証不要（完全オープン）
+  },
   // ── 検索・Web ──────────────────────────────────────────────
   {
     name:             "Tavily Search",
