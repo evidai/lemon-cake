@@ -14,6 +14,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "../lib/prisma.js";
 import { verifyBuyerToken, verifyAdminToken } from "../lib/jwt.js";
 import { Decimal } from "@prisma/client/runtime/library";
+import { verifyJpycTransfer, fetchJpycRate } from "../lib/jpyc-verify.js";
 
 export const jpycRouter = new OpenAPIHono();
 
@@ -83,9 +84,10 @@ jpycRouter.openapi(
     },
   }),
   async (c) => {
+    const liveRate = await fetchJpycRate();
     return c.json({
       platformWallet: PLATFORM_WALLET,
-      jpycRate:       JPYC_RATE,
+      jpycRate:       liveRate,
       network:        "Polygon",
     });
   },
@@ -149,12 +151,46 @@ jpycRouter.openapi(
       return c.json({ error: "このTXハッシュはすでに申請されています" }, 409) as any;
     }
 
-    const req = await prisma.jpycDepositRequest.create({
-      data: {
-        buyerId:    buyerPayload.buyerId,
-        txHash,
-        amountJpyc: amountJpycDecimal,
-      },
+    // ── オンチェーン自動検証 ──────────────────────────────────
+    const verify = await verifyJpycTransfer(txHash, PLATFORM_WALLET, amountJpyc);
+
+    if (!verify.valid) {
+      // 検証失敗 → REJECTED で記録して返す
+      const rejected = await prisma.jpycDepositRequest.create({
+        data: {
+          buyerId:    buyerPayload.buyerId,
+          txHash,
+          amountJpyc: amountJpycDecimal,
+          status:     "REJECTED",
+          reviewNote: verify.error ?? "オンチェーン検証失敗",
+          reviewedAt: new Date(),
+        },
+      });
+      return c.json({ error: verify.error ?? "オンチェーン検証に失敗しました" }, 400) as any;
+    }
+
+    // ── 検証OK → 自動承認・USDC付与 ──────────────────────────
+    const liveRate  = await fetchJpycRate();
+    const actualJpyc = new Decimal(verify.actualJpyc);
+    const usdcAmount = actualJpyc.div(liveRate).toDecimalPlaces(6);
+
+    const req = await prisma.$transaction(async (tx) => {
+      const deposit = await tx.jpycDepositRequest.create({
+        data: {
+          buyerId:    buyerPayload.buyerId,
+          txHash,
+          amountJpyc: actualJpyc,
+          amountUsdc: usdcAmount,
+          status:     "APPROVED",
+          reviewNote: `自動承認 (レート: ${liveRate} JPYC/USDC)`,
+          reviewedAt: new Date(),
+        },
+      });
+      await tx.buyer.update({
+        where: { id: buyerPayload.buyerId },
+        data:  { balanceUsdc: { increment: usdcAmount } },
+      });
+      return deposit;
     });
 
     return c.json(serializeRequest(req), 201);

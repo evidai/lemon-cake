@@ -1552,7 +1552,7 @@ function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
         <p className="text-sm font-semibold text-gray-900 mb-1">{t("JPYCチャージの手順","JPYC Deposit Instructions")}</p>
         <p className="text-xs text-gray-500 mb-4">
-          {t("以下のウォレットアドレスにJPYCを送金し、TXハッシュを申請してください。管理者が確認後、USDC残高に反映されます。","Send JPYC to the wallet address below, then submit the TX hash. After admin review, your USDC balance will be updated.")}
+          {t("以下のウォレットアドレスにJPYCを送金し、TXハッシュを入力してください。オンチェーンで自動検証され、即座にUSDC残高に反映されます。","Send JPYC to the wallet address below, then enter your TX hash. It will be verified on-chain automatically and your USDC balance will be updated instantly.")}
         </p>
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between gap-3">
           <div>
@@ -1596,7 +1596,7 @@ function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
             )}
           </div>
           {submitErr && <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{submitErr}</div>}
-          {submitOk  && <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">{t("申請を受け付けました。管理者が確認後、残高に反映されます。","Request submitted. Your balance will be updated after admin review.")}</div>}
+          {submitOk  && <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">✅ {t("オンチェーン検証完了。USDC残高に即座に反映されました。","On-chain verification complete. Your USDC balance has been updated instantly.")}</div>}
           <button type="submit" disabled={submitting}
             className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">
             {submitting ? t("申請中…","Submitting…") : t("チャージを申請する","Submit Deposit Request")}
