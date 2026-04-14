@@ -11,7 +11,8 @@
  * - FREEE_COMPANY_ID:    freee 事業所ID
  */
 
-const FREEE_API_BASE = "https://api.freee.co.jp";
+const FREEE_API_BASE    = "https://api.freee.co.jp";
+const FREEE_AUTH_BASE   = "https://accounts.secure.freee.co.jp";
 
 // ─── OAuth トークン取得 ──────────────────────────────────────
 export async function refreshFreeeToken(refreshToken: string): Promise<{
@@ -19,7 +20,7 @@ export async function refreshFreeeToken(refreshToken: string): Promise<{
   refreshToken: string;
   expiresIn:    number;
 }> {
-  const res = await fetch(`${FREEE_API_BASE}/oauth/token`, {
+  const res = await fetch(`${FREEE_AUTH_BASE}/public_api/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -161,7 +162,7 @@ export function getFreeeAuthorizationUrl(state: string): string {
     scope:         "read write",
     state,
   });
-  return `${FREEE_API_BASE}/oauth/authorize?${params}`;
+  return `${FREEE_AUTH_BASE}/public_api/authorize?${params}`;
 }
 
 // ─── freee 認可コード → トークン交換 ─────────────────────────
@@ -170,7 +171,7 @@ export async function exchangeFreeeCode(code: string): Promise<{
   refreshToken: string;
   companyId?:   string;
 }> {
-  const res = await fetch(`${FREEE_API_BASE}/oauth/token`, {
+  const res = await fetch(`${FREEE_AUTH_BASE}/public_api/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -181,8 +182,9 @@ export async function exchangeFreeeCode(code: string): Promise<{
       code,
     }),
   });
-  if (!res.ok) throw new Error(`freee code exchange failed: ${res.status}`);
-  const data = await res.json() as {
+  const body = await res.text();
+  if (!res.ok) throw new Error(`freee code exchange failed: ${res.status} — ${body}`);
+  const data = JSON.parse(body) as {
     access_token: string; refresh_token: string;
   };
   return {
