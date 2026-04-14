@@ -309,6 +309,7 @@ const NAV_SECONDARY: NavItem[] = [{ id: "directory", label: "ディレクトリ"
 function Sidebar({
   page, setPage, role, setRole, isDemoMode, onModeToggle, isHalted,
   connStatus, clock, uptime, openFlags, sellerProfile, onSellerSetup,
+  lang, setLang,
 }: {
   page: Page; setPage: (p: Page) => void;
   role: Role; setRole: (r: Role) => void;
@@ -317,6 +318,7 @@ function Sidebar({
   clock: string; uptime: number; openFlags: number;
   sellerProfile: SellerProfile | null;
   onSellerSetup: () => void;
+  lang: "ja" | "en"; setLang: (l: "ja" | "en") => void;
 }) {
   function NavBtn({ id, label, Icon }: NavItem) {
     const active = page === id;
@@ -337,18 +339,20 @@ function Sidebar({
 
   return (
     <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-gray-200">
-      {/* ── Header: ロゴ + デモ/LIVE ── */}
+      {/* ── Header: ロゴ + 言語切り替え ── */}
       <div className="px-4 pt-4 pb-3 flex items-center justify-between gap-2">
         <img src="/logo.png" alt="LEMON cake" className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
-        {/* デモ/LIVE ボタン（小さく右端に） */}
-        <button
-          onClick={onModeToggle}
-          title={isDemoMode ? "デモモード" : "LIVEモード"}
-          className="flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-[10px] font-medium text-gray-500 transition-colors"
-        >
-          <span className={`w-1.5 h-1.5 rounded-full ${isDemoMode ? "bg-amber-400 animate-pulse" : "bg-green-500"}`} />
-          {isDemoMode ? "デモ" : "LIVE"}
-        </button>
+        {/* 言語切り替えボタン */}
+        <div className="flex rounded-md border border-gray-200 overflow-hidden text-[10px] font-semibold">
+          <button
+            onClick={() => setLang("ja")}
+            className={`px-2 py-1 transition-colors ${lang === "ja" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+          >JA</button>
+          <button
+            onClick={() => setLang("en")}
+            className={`px-2 py-1 transition-colors ${lang === "en" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+          >EN</button>
+        </div>
       </div>
 
       {/* ── ロール切り替えタブ: バイヤー / セラー ── */}
@@ -3136,6 +3140,7 @@ export default function Dashboard() {
   const [authReady,   setAuthReady]  = useState(false);
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
   const [isDemoMode,  setIsDemoMode] = useState(true);
+  const [lang,        setLang]       = useState<"ja"|"en">("ja");
   const [tps,         setTps]        = useState(0);
   const [totalTx,     setTotalTx]    = useState(0);
   const [totalAgents, setTotalAgents]= useState(24);
@@ -3327,6 +3332,7 @@ export default function Dashboard() {
         clock={clock} uptime={uptime} openFlags={openFlags}
         sellerProfile={sellerProfile}
         onSellerSetup={() => sellerProfile ? setSellerView("myservices") : setSellerView("onboarding")}
+        lang={lang} setLang={setLang}
       />
 
       <main className="flex-1 flex flex-col overflow-hidden">
