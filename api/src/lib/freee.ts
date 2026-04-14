@@ -22,13 +22,13 @@ export async function refreshFreeeToken(refreshToken: string): Promise<{
 }> {
   const res = await fetch(`${FREEE_AUTH_BASE}/public_api/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
       grant_type:    "refresh_token",
-      client_id:     process.env.FREEE_CLIENT_ID,
-      client_secret: process.env.FREEE_CLIENT_SECRET,
+      client_id:     process.env.FREEE_CLIENT_ID ?? "",
+      client_secret: process.env.FREEE_CLIENT_SECRET ?? "",
       refresh_token: refreshToken,
-    }),
+    }).toString(),
   });
   if (!res.ok) throw new Error(`freee token refresh failed: ${res.status}`);
   const data = await res.json() as {
@@ -171,16 +171,17 @@ export async function exchangeFreeeCode(code: string): Promise<{
   refreshToken: string;
   companyId?:   string;
 }> {
+  const redirectUri = process.env.FREEE_REDIRECT_URI ?? "http://localhost:3002/api/freee/callback";
   const res = await fetch(`${FREEE_AUTH_BASE}/public_api/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
       grant_type:    "authorization_code",
-      client_id:     process.env.FREEE_CLIENT_ID,
-      client_secret: process.env.FREEE_CLIENT_SECRET,
-      redirect_uri:  process.env.FREEE_REDIRECT_URI ?? "http://localhost:3002/api/freee/callback",
+      client_id:     process.env.FREEE_CLIENT_ID ?? "",
+      client_secret: process.env.FREEE_CLIENT_SECRET ?? "",
+      redirect_uri:  redirectUri,
       code,
-    }),
+    }).toString(),
   });
   const body = await res.text();
   if (!res.ok) throw new Error(`freee code exchange failed: ${res.status} — ${body}`);
