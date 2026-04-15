@@ -289,7 +289,7 @@ export default function AboutPage() {
 
       {/* ── CTA ── */}
       <div className="bg-white w-full">
-        <section className="max-w-6xl mx-auto px-6 pb-28 text-center">
+        <section className="max-w-6xl mx-auto px-6 pt-20 pb-28 text-center">
         <div className="rounded-3xl bg-gray-50 border border-gray-200 px-8 py-16">
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">Ready to Power AI Transactions?</p>
           <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 leading-tight">
