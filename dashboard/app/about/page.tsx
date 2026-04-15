@@ -268,22 +268,36 @@ export default function AboutPage() {
       </div>
 
       {/* ── Philosophy ── */}
-      <section className="max-w-4xl mx-auto px-6 pt-28 pb-40 text-center">
-        <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-6">Our Philosophy</p>
-        <h2 className="text-3xl md:text-4xl font-black text-white leading-tight mb-8">
-          鋼鉄の素材を、<br />
-          <span className="text-[#fffd43]">ひと口のレモンケーキに。</span>
-        </h2>
-        <div className="text-left max-w-2xl mx-auto space-y-5 text-[15px] text-white/50 leading-relaxed">
-          <p>
-            AAE（自律型エージェント経済圏）の構築は、本来、無機質で消化の悪い「鋼鉄の素材」を扱うような地獄の体験でした。複雑な税法・金融インフラ・国際コンプライアンスをコードに落とし込む作業は、想像を絶する泥臭さです。
-          </p>
-          <p>
-            私たちは、その複雑で酸っぱい現実のすべてを、プラットフォームの裏側に隠しました。
-          </p>
-          <p className="text-white/80 font-medium">
-            開発者やエージェントが触れるのは、極めてシンプルに洗練された1つのエンドポイントだけ。まるで、複雑な素材の組み合わせから生まれた、ひと口で食べられる美味しい「レモンケーキ」のように。
-          </p>
+      <section className="relative overflow-hidden px-6 pt-28 pb-40 text-center">
+        {/* Video background */}
+        <video
+          className="absolute inset-0 w-full h-full object-cover opacity-20"
+          src="/dvd_screensaver.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-[#06060a]/60" />
+        {/* Content */}
+        <div className="relative z-10 max-w-4xl mx-auto">
+          <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-6">Our Philosophy</p>
+          <h2 className="text-3xl md:text-4xl font-black text-white leading-tight mb-8">
+            鋼鉄の素材を、<br />
+            <span className="text-[#fffd43]">ひと口のレモンケーキに。</span>
+          </h2>
+          <div className="text-left max-w-2xl mx-auto space-y-5 text-[15px] text-white/50 leading-relaxed">
+            <p>
+              AAE（自律型エージェント経済圏）の構築は、本来、無機質で消化の悪い「鋼鉄の素材」を扱うような地獄の体験でした。複雑な税法・金融インフラ・国際コンプライアンスをコードに落とし込む作業は、想像を絶する泥臭さです。
+            </p>
+            <p>
+              私たちは、その複雑で酸っぱい現実のすべてを、プラットフォームの裏側に隠しました。
+            </p>
+            <p className="text-white/80 font-medium">
+              開発者やエージェントが触れるのは、極めてシンプルに洗練された1つのエンドポイントだけ。まるで、複雑な素材の組み合わせから生まれた、ひと口で食べられる美味しい「レモンケーキ」のように。
+            </p>
+          </div>
         </div>
       </section>
 
