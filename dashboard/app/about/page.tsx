@@ -271,7 +271,7 @@ export default function AboutPage() {
       <section className="relative overflow-hidden px-6 pt-28 pb-40 text-center">
         {/* Video background */}
         <video
-          className="absolute inset-0 w-full h-full object-cover opacity-20"
+          className="absolute inset-0 w-full h-full object-cover opacity-40"
           src="/dvd_screensaver.mp4"
           autoPlay
           loop
@@ -279,7 +279,7 @@ export default function AboutPage() {
           playsInline
         />
         {/* Dark overlay */}
-        <div className="absolute inset-0 bg-[#06060a]/60" />
+        <div className="absolute inset-0 bg-[#06060a]/40" />
         {/* Content */}
         <div className="relative z-10 max-w-4xl mx-auto">
           <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-6">Our Philosophy</p>
