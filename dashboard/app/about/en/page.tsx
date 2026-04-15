@@ -249,22 +249,36 @@ export default function AboutPageEn() {
       </div>
 
       {/* ── Philosophy ── */}
-      <section className="max-w-4xl mx-auto px-6 pt-28 pb-40 text-center">
-        <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-6">Our Philosophy</p>
-        <h2 className="text-3xl md:text-4xl font-black text-white leading-tight mb-8">
-          Raw steel, transformed into<br />
-          <span className="text-[#fffd43]">a single bite of lemon cake.</span>
-        </h2>
-        <div className="text-left max-w-2xl mx-auto space-y-5 text-[15px] text-white/50 leading-relaxed">
-          <p>
-            Building an AAE (Autonomous Agent Economy) was, at its core, a hellish experience of working with cold, indigestible "raw steel." Translating complex tax law, financial infrastructure, and international compliance into code is an unglamorous grind beyond imagination.
-          </p>
-          <p>
-            We hid all of that complexity and sourness behind the platform.
-          </p>
-          <p className="text-white/80 font-medium">
-            What developers and agents touch is a single, elegantly simple endpoint. Like a delicious lemon cake — born from a complex combination of ingredients, yet consumed in a single perfect bite.
-          </p>
+      <section className="relative overflow-hidden px-6 pt-28 pb-40 text-center">
+        {/* Video background */}
+        <video
+          className="absolute inset-0 w-full h-full object-cover opacity-40"
+          src="/dvd_screensaver.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-[#06060a]/40" />
+        {/* Content */}
+        <div className="relative z-10 max-w-4xl mx-auto">
+          <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-6">Our Philosophy</p>
+          <h2 className="text-3xl md:text-4xl font-black text-white leading-tight mb-8">
+            Raw steel, transformed into<br />
+            <span className="text-[#fffd43]">a single bite of lemon cake.</span>
+          </h2>
+          <div className="text-left max-w-2xl mx-auto space-y-5 text-[15px] text-white/50 leading-relaxed">
+            <p>
+              Building an AAE (Autonomous Agent Economy) was, at its core, a hellish experience of working with cold, indigestible "raw steel." Translating complex tax law, financial infrastructure, and international compliance into code is an unglamorous grind beyond imagination.
+            </p>
+            <p>
+              We hid all of that complexity and sourness behind the platform.
+            </p>
+            <p className="text-white/80 font-medium">
+              What developers and agents touch is a single, elegantly simple endpoint. Like a delicious lemon cake — born from a complex combination of ingredients, yet consumed in a single perfect bite.
+            </p>
+          </div>
         </div>
       </section>
 
