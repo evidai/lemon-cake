@@ -138,12 +138,21 @@ proxyRouter.all("/:serviceId/*", async (c) => {
   }
 
   // ── 9. 上流サービスにリクエスト転送 ─────────────────────────
-  // パスのサービスID以降を転送先URLに付加 (/api/proxy/:serviceId/path → endpoint/path)
-  const pathSuffix = c.req.path.replace(`/api/proxy/${serviceId}`, "") || "/";
-  const upstreamUrl = service.endpoint.replace(/\/$/, "") + pathSuffix;
-
-  // クエリパラメータをそのまま引き継ぎ、クエリ認証があれば注入
   const clientSearch = new URL(c.req.url).searchParams;
+
+  // Jina Reader 特殊処理:
+  //   ?url=https://example.com → https://r.jina.ai/https://example.com
+  // HTTP クライアントが // をパスに含めると / に正規化されるため、
+  // クエリパラメータ経由で受け取りパスに展開する。
+  let pathSuffix: string;
+  const urlParam = clientSearch.get("url");
+  if (urlParam && service.endpoint?.includes("r.jina.ai")) {
+    pathSuffix = "/" + urlParam;
+    clientSearch.delete("url");
+  } else {
+    pathSuffix = c.req.path.replace(`/api/proxy/${serviceId}`, "") || "/";
+  }
+  const upstreamUrl = service.endpoint.replace(/\/$/, "") + pathSuffix;
 
   // authHeader の3形式:
   //   "Bearer xxx"            → Authorization ヘッダー

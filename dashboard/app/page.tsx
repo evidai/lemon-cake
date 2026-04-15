@@ -145,7 +145,7 @@ function CopyButton({ text }: { text: string }) {
   }
   return (
     <button onClick={handleCopy}
-      className="absolute top-2 right-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded-lg hover:bg-gray-700 transition-colors min-w-[3.5rem]">
+      className="absolute top-2 right-2 px-2 py-1 bg-navy text-white text-[10px] rounded-lg hover:bg-navy-light transition-colors min-w-[3.5rem]">
       {copied ? t("✓ コピー済", "✓ Copied") : t("コピー", "Copy")}
     </button>
   );
@@ -372,11 +372,11 @@ function Sidebar({
         <div className="flex rounded-md border border-gray-200 overflow-hidden text-[10px] font-semibold">
           <button
             onClick={() => setLang("ja")}
-            className={`px-2 py-1 transition-colors ${lang === "ja" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+            className={`px-2 py-1 transition-colors ${lang === "ja" ? "bg-navy text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
           >JA</button>
           <button
             onClick={() => setLang("en")}
-            className={`px-2 py-1 transition-colors ${lang === "en" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+            className={`px-2 py-1 transition-colors ${lang === "en" ? "bg-navy text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
           >EN</button>
         </div>
       </div>
@@ -586,7 +586,7 @@ function OnboardingChecklist({ onDismiss }: { onDismiss: () => void }) {
               <button
                 onClick={() => toggle(item.key)}
                 className={`absolute top-4 right-4 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors focus:outline-none ${
-                  isDone ? "bg-gray-900 border-gray-900" : "bg-white border-gray-300 hover:border-gray-400"
+                  isDone ? "bg-navy border-navy" : "bg-white border-gray-300 hover:border-gray-400"
                 }`}
               >
                 {isDone && (
@@ -653,7 +653,7 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
             <div className="grid grid-cols-3 gap-2 mb-3">
               {STRIPE_AMOUNTS.map((a) => (
                 <button key={a} onClick={() => { setSelected(a); setCustom(""); }}
-                  className={`py-2.5 rounded-xl text-sm font-semibold border transition-colors ${selected === a ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"}`}>
+                  className={`py-2.5 rounded-xl text-sm font-semibold border transition-colors ${selected === a ? "bg-navy text-white border-navy" : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"}`}>
                   ${a}
                 </button>
               ))}
@@ -662,7 +662,7 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
               onChange={(e) => { setCustom(e.target.value); setSelected(null); }}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-gray-400 mb-4"/>
             <button disabled={!amount} onClick={() => setStep("card")}
-              className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${amount ? "bg-gray-900 text-white hover:bg-gray-800" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
+              className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${amount ? "bg-lemon text-text-primary hover:bg-lemon-hover" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
               {t("続ける","Continue")} → ${amount.toFixed(2)}
             </button>
           </>)}
@@ -694,7 +694,7 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
             </div>
             <button onClick={handlePay}
               disabled={!card.number || !card.expiry || !card.cvc || !card.name}
-              className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${card.number && card.expiry && card.cvc && card.name ? "bg-gray-900 text-white hover:bg-gray-800" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
+              className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${card.number && card.expiry && card.cvc && card.name ? "bg-lemon text-text-primary hover:bg-lemon-hover" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
               {t("支払う","Pay")} ${amount.toFixed(2)}
             </button>
             <p className="text-center text-[11px] text-gray-400 mt-2 flex items-center justify-center gap-1">
@@ -719,7 +719,7 @@ function FundModal({ buyer, onClose, onSuccess }: { buyer: Buyer; onClose: () =>
               </div>
               <p className="text-sm font-semibold text-gray-900">{t("追加しました","Added")} ${amount.toFixed(2)}</p>
               <p className="text-xs text-gray-400">{t("残高に反映されました","Balance updated")}</p>
-              <button onClick={onClose} className="mt-2 px-6 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors">{t("閉じる","Close")}</button>
+              <button onClick={onClose} className="mt-2 px-6 py-2.5 bg-lemon text-text-primary text-sm font-semibold rounded-xl hover:bg-lemon-hover transition-colors">{t("閉じる","Close")}</button>
             </div>
           )}
         </div>
@@ -755,7 +755,7 @@ function BuyerCard({ buyer, onFund }: { buyer: Buyer; onFund: () => void }) {
           <p className="text-[11px] text-gray-400 mt-0.5">{buyer.email}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={onFund} className="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors">
+          <button onClick={onFund} className="px-5 py-2.5 bg-lemon text-text-primary text-sm font-semibold rounded-xl hover:bg-lemon-hover transition-colors">
             {t("資金ウォレット", "Fund Wallet")}
           </button>
           <button className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-200 bg-white text-sm text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors">
@@ -863,7 +863,7 @@ function BuyersSection({ buyers, onCreateBuyer, onAddFunds, loading }: {
           {errMsg && <p className="text-xs text-red-500">{errMsg}</p>}
           <div className="flex items-center gap-2">
             <button onClick={handleCreate} disabled={!newName.trim() || saving}
-              className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${newName.trim() && !saving ? "bg-gray-900 text-white hover:bg-gray-800" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
+              className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${newName.trim() && !saving ? "bg-lemon text-text-primary hover:bg-lemon-hover" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
               {saving ? t("作成中...", "Creating...") : t("作成", "Create")}
             </button>
             <button onClick={() => { setCreating(false); setErrMsg(""); }} className="px-4 py-2.5 border border-gray-200 text-sm text-gray-600 rounded-xl hover:bg-gray-50 transition-colors">{t("キャンセル", "Cancel")}</button>
@@ -980,7 +980,7 @@ function BuyerOverviewCard({ buyerToken, onNavigate, refreshKey }: { buyerToken:
           ].map(a => (
             <button key={a.label} onClick={() => onNavigate(a.page)}
               className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors text-left">
-              <div className="w-9 h-9 rounded-xl bg-gray-900 text-white flex items-center justify-center flex-shrink-0">{a.icon}</div>
+              <div className="w-9 h-9 rounded-xl bg-navy text-white flex items-center justify-center flex-shrink-0">{a.icon}</div>
               <div>
                 <p className="text-sm font-semibold text-gray-900">{a.label}</p>
                 <p className="text-xs text-gray-500">{a.desc}</p>
@@ -1135,7 +1135,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
                 </div>
               </div>
               <button onClick={() => { setIssued(null); setShowForm(false); }}
-                className="self-end px-5 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800">
+                className="self-end px-5 py-2 bg-lemon text-text-primary text-sm font-semibold rounded-xl hover:bg-lemon-hover">
                 {t("完了", "Done")}
               </button>
             </div>
@@ -1169,7 +1169,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
               {issueErr && <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{issueErr}</div>}
               <div className="flex justify-end">
                 <button type="submit" disabled={issuing || !svcId}
-                  className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-colors">
+                  className="px-6 py-2.5 bg-lemon hover:bg-lemon-hover text-text-primary text-sm font-semibold rounded-xl disabled:opacity-50 transition-colors">
                   {issuing ? t("発行中…", "Issuing…") : t("トークンを発行する", "Issue Token")}
                 </button>
               </div>
@@ -1185,7 +1185,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400">{tokens.length} {t("件","items")}</span>
             <button onClick={() => { setShowForm(true); setIssued(null); setIssueErr(""); }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold rounded-xl transition-colors">
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-lemon hover:bg-lemon-hover text-text-primary text-xs font-semibold rounded-xl transition-colors">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
               {t("トークンを発行", "Issue Token")}
             </button>
@@ -1605,7 +1605,7 @@ function JPYCDepositPage({ buyerToken }: { buyerToken: string }) {
             </div>
             {cardErr && <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{cardErr}</div>}
             <button type="submit" disabled={cardLoading}
-              className="w-full py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              className="w-full py-2.5 bg-lemon hover:bg-lemon-hover text-text-primary text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
               {cardLoading ? t("リダイレクト中…","Redirecting…") : <>💳 {t("Stripeで決済する","Pay with Stripe")}</>}
             </button>
             <p className="text-[10px] text-gray-400 text-center">{t("Stripeの安全な決済ページへ遷移します","You will be redirected to Stripe's secure payment page")}</p>
@@ -1733,7 +1733,7 @@ function ApiKeysPage({ keys, onAdd, onRevoke }: {
         </div>
         <button
           onClick={onAdd}
-          className="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors"
+          className="px-5 py-2.5 bg-lemon text-text-primary text-sm font-semibold rounded-xl hover:bg-lemon-hover transition-colors"
         >
           {t("APIキーを作成する","Create API Key")}
         </button>
@@ -1744,7 +1744,7 @@ function ApiKeysPage({ keys, onAdd, onRevoke }: {
         onClick={() => setShowRevoked((v) => !v)}
         className="self-start flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
       >
-        <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${showRevoked ? "bg-gray-900 border-gray-900" : "border-gray-300"}`}>
+        <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${showRevoked ? "bg-navy border-navy" : "border-gray-300"}`}>
           {showRevoked && <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5 5 4 7.5 8.5 2.5"/></svg>}
         </span>
         {t("無効化されたAPIキーを表示する","Show revoked API keys")}
@@ -1877,7 +1877,7 @@ function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreate
           </p>
           <div className="flex justify-end">
             <button onClick={() => setStep(1)}
-              className="px-6 py-3 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors">
+              className="px-6 py-3 bg-lemon text-text-primary text-sm font-semibold rounded-xl hover:bg-lemon-hover transition-colors">
               さあ、始めましょう
             </button>
           </div>
@@ -1968,7 +1968,7 @@ function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreate
               disabled={submitting || !buyerId || !serviceId || !limitUsdc}
               className={`px-6 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
                 !submitting && buyerId && serviceId && limitUsdc
-                  ? "bg-gray-900 text-white hover:bg-gray-800"
+                  ? "bg-lemon text-text-primary hover:bg-lemon-hover"
                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
               }`}>
               {submitting ? "発行中…" : "トークンを発行する"}
@@ -2008,7 +2008,7 @@ function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreate
               <pre className="text-xs font-mono text-green-400 break-all whitespace-pre-wrap">{result.jwt}</pre>
               <button
                 onClick={() => navigator.clipboard.writeText(result.jwt)}
-                className="absolute top-3 right-3 px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px] rounded-md transition-colors">
+                className="absolute top-3 right-3 px-2 py-1 bg-navy hover:bg-navy-light text-white text-[10px] rounded-md transition-colors">
                 コピー
               </button>
             </div>
@@ -2017,7 +2017,7 @@ function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreate
 
           <div className="flex justify-end">
             <button onClick={() => { setStep(1); setResult(null); setErrMsg(""); }}
-              className="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors">
+              className="px-5 py-2.5 bg-lemon text-text-primary text-sm font-semibold rounded-xl hover:bg-lemon-hover transition-colors">
               別のトークンを発行する
             </button>
           </div>
@@ -2158,7 +2158,7 @@ function ServiceDetail({ service, onBack }: { service: Service; onBack: () => vo
               <div className="flex gap-2">
                 {service.tokenTypes.map((t) => (
                   <button key={t} onClick={() => setTokenType(t)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${tokenType === t ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}>
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${tokenType === t ? "bg-navy text-white border-navy" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}>
                     {t}
                   </button>
                 ))}
@@ -2369,7 +2369,7 @@ function SellerOnboardingModal({ onClose, onStart }: { onClose: () => void; onSt
         </p>
         <div className="flex flex-col gap-2.5">
           <button onClick={onStart}
-            className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl transition-colors text-sm">
+            className="w-full py-3 bg-lemon hover:bg-lemon-hover text-text-primary font-semibold rounded-xl transition-colors text-sm">
             {t("プロフィールを作成する","Create Profile")}
           </button>
           <button onClick={onClose}
@@ -2394,9 +2394,12 @@ interface SellerProfile {
   websiteUrl: string;
   contactEmail: string;
   category: "AI/ML" | "データ" | "DevTools" | "ファイナンス" | "その他";
+  walletAddress: string;   // ← 追加
+  providerId: string;      // ← 追加（API登録後に設定）
 }
 const SELLER_PROFILE_INITIAL: SellerProfile = {
   storeName: "", bio: "", websiteUrl: "", contactEmail: "", category: "AI/ML",
+  walletAddress: "", providerId: "",   // ← 追加
 };
 
 interface MyServiceEntry {
@@ -2439,10 +2442,11 @@ const FLabel = ({ children, req }: { children: React.ReactNode; req?: boolean })
 );
 
 function SellerWizardPanel({
-  onClose, onSubmitted,
+  onClose, onSubmitted, sellerProviderId,
 }: {
   onClose: () => void;
   onSubmitted?: (entry: MyServiceEntry) => void;
+  sellerProviderId: string;
 }) {
   const t = useT();
   const SELLER_STEPS = SELLER_STEPS_JA.map((ja, i) => t(ja, SELLER_STEPS_EN[i]));
@@ -2458,20 +2462,44 @@ function SellerWizardPanel({
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setSubmitting(false);
-    setSubmitted(true);
-    const entry: MyServiceEntry = {
-      id: Math.random().toString(36).slice(2),
-      name: data.name,
-      description: data.description,
-      serviceType: data.serviceType,
-      priceModel: data.priceModel,
-      price: data.price,
-      status: "pending",
-      createdAt: new Date().toLocaleDateString("ja-JP"),
-    };
-    onSubmitted?.(entry);
+    try {
+      const token = localStorage.getItem("buyer_token");
+      if (!token || !sellerProviderId) {
+        throw new Error("プロフィールのウォレット登録が必要です");
+      }
+      const res = await fetch(`${API_URL}/api/services/seller`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({
+          name: data.name,
+          type: data.serviceType === "MCPLocal" || data.serviceType === "MCPRemote" ? "MCP" : "API",
+          pricePerCallUsdc: data.price || "0.001",
+          endpoint: data.endpointUrl || undefined,
+          description: data.description,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).error ?? `Error ${res.status}`);
+      }
+      const service = await res.json();
+      setSubmitted(true);
+      const entry: MyServiceEntry = {
+        id: service.id,
+        name: service.name,
+        description: data.description,
+        serviceType: data.serviceType,
+        priceModel: data.priceModel,
+        price: data.price,
+        status: "pending",
+        createdAt: new Date().toLocaleDateString("ja-JP"),
+      };
+      onSubmitted?.(entry);
+    } catch (e: any) {
+      alert(e.message ?? "サービス登録に失敗しました");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // ── Step 0 コンテンツ（インラインJSX）──
@@ -2586,7 +2614,7 @@ function SellerWizardPanel({
         <div className="flex flex-wrap gap-2">
           {regionOpts.map(r => (
             <button key={r.v} type="button" onClick={() => toggleRegion(r.v)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${data.allowedRegions.includes(r.v) ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${data.allowedRegions.includes(r.v) ? "bg-navy text-white border-navy" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}>
               {r.l}
             </button>
           ))}
@@ -2646,7 +2674,7 @@ function SellerWizardPanel({
           </div>
           <h2 className="text-lg font-bold text-gray-900 mb-2">{t("申請が完了しました！","Submission complete!")}</h2>
           <p className="text-sm text-gray-500 mb-5">「{data.name}」{t("の審査を開始しました。","is now under review.")}</p>
-          <button onClick={onClose} className="w-full py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl text-sm transition-colors">{t("閉じる","Close")}</button>
+          <button onClick={onClose} className="w-full py-2.5 bg-lemon hover:bg-lemon-hover text-text-primary font-semibold rounded-xl text-sm transition-colors">{t("閉じる","Close")}</button>
         </div>
       </div>
     );
@@ -2678,12 +2706,12 @@ function SellerWizardPanel({
               return (
                 <div key={i} className="flex items-center">
                   <div className="flex items-center gap-1.5">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${done ? "bg-gray-900 text-white" : active ? "bg-gray-900 text-white ring-4 ring-gray-200" : "bg-gray-200 text-gray-500"}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${done ? "bg-navy text-white" : active ? "bg-lemon text-text-primary ring-4 ring-lemon-muted" : "bg-gray-200 text-gray-500"}`}>
                       {done ? <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth={2.2} className="w-3 h-3"><path d="M2 5l2 2L8 3" strokeLinecap="round" strokeLinejoin="round"/></svg> : i + 1}
                     </div>
-                    <span className={`text-xs font-medium whitespace-nowrap ${active ? "text-gray-900" : done ? "text-gray-600" : "text-gray-400"}`}>{label}</span>
+                    <span className={`text-xs font-medium whitespace-nowrap ${active ? "text-text-primary font-semibold" : done ? "text-gray-600" : "text-gray-400"}`}>{label}</span>
                   </div>
-                  {!last && <div className={`h-px w-6 mx-2 ${done ? "bg-gray-900" : "bg-gray-200"}`} />}
+                  {!last && <div className={`h-px w-6 mx-2 ${done ? "bg-navy" : "bg-gray-200"}`} />}
                 </div>
               );
             })}
@@ -2710,7 +2738,7 @@ function SellerWizardPanel({
             <button
               onClick={() => setStep(s => s + 1)}
               disabled={!canNext}
-              className={`flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${canNext ? "bg-gray-900 hover:bg-gray-800 text-white" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
+              className={`flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${canNext ? "bg-lemon hover:bg-lemon-hover text-text-primary" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
               {t("次へ","Next")}
               <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
                 <path d="M5 3l4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -2718,7 +2746,7 @@ function SellerWizardPanel({
             </button>
           ) : (
             <button onClick={handleSubmit} disabled={submitting}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-gray-900 hover:bg-gray-800 text-white transition-all disabled:opacity-60">
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-lemon hover:bg-lemon-hover text-text-primary transition-all disabled:opacity-60">
               {submitting ? (<><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40 20" opacity="0.3"/><path d="M12 2a10 10 0 0110 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>{t("登録中...","Submitting...")}</>) : t("サービスを登録する","Register Service")}
             </button>
           )}
@@ -2740,7 +2768,40 @@ function SellerProfilePanel({
   const t = useT();
   const [d, setD] = useState<SellerProfile>(initial);
   const patch = (p: Partial<SellerProfile>) => setD(prev => ({ ...prev, ...p }));
-  const canSave = d.storeName.trim().length > 0 && d.contactEmail.trim().length > 0;
+  const canSave = d.storeName.trim().length > 0 && d.contactEmail.trim().length > 0 && /^0x[a-fA-F0-9]{40}$/.test(d.walletAddress);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const token = localStorage.getItem("buyer_token");
+      if (!token) throw new Error("ログインが必要です");
+      const res = await fetch(`${API_URL}/api/providers/me`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({
+          name: d.storeName,
+          email: d.contactEmail,
+          walletAddress: d.walletAddress,
+          bio: d.bio,
+          websiteUrl: d.websiteUrl,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).error ?? `Error ${res.status}`);
+      }
+      const provider = await res.json();
+      onSave({ ...d, providerId: provider.id });
+    } catch (e: any) {
+      setSaveError(e.message ?? "保存に失敗しました");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex" style={{ animation: "wizardSlideIn 0.3s ease-out" }}>
@@ -2797,6 +2858,17 @@ function SellerProfilePanel({
               ))}
             </select>
           </div>
+          <div>
+            <FLabel req>{t("受取ウォレットアドレス (Polygon USDC)","Payout Wallet Address (Polygon USDC)")}</FLabel>
+            <FInput
+              placeholder="0xAbCd1234..."
+              value={d.walletAddress}
+              onChange={e => patch({ walletAddress: e.target.value })}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              {t("サービス利用料の受け取りに使用するPolygon上のウォレットアドレスです。","Polygon wallet address to receive service fees.")}
+            </p>
+          </div>
 
           <div className="flex items-start gap-2.5 p-3.5 bg-blue-50 border border-blue-200 rounded-xl">
             <span className="text-base shrink-0">ℹ️</span>
@@ -2804,23 +2876,29 @@ function SellerProfilePanel({
           </div>
         </div>
         {/* フッター */}
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between shrink-0">
-          <button onClick={onClose} className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
-              <path d="M9 11L5 7l4-4" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            {t("キャンセル","Cancel")}
-          </button>
-          <button
-            onClick={() => canSave && onSave(d)}
-            disabled={!canSave}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold rounded-xl transition-colors"
-          >
-            {t("保存してマイサービスへ","Save & Go to My Services")}
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
-              <path d="M3 7h8M7 3l4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
+        <div className="px-6 py-4 border-t border-gray-100 flex flex-col gap-2 shrink-0">
+          {saveError && (
+            <p className="text-xs text-red-600 text-right">{saveError}</p>
+          )}
+          <div className="flex items-center justify-between">
+            <button onClick={onClose} className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
+                <path d="M9 11L5 7l4-4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {t("キャンセル","Cancel")}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!canSave || saving}
+              className="flex items-center gap-2 px-5 py-2.5 bg-lemon hover:bg-lemon-hover disabled:bg-gray-200 disabled:text-gray-400 text-text-primary text-sm font-semibold rounded-xl transition-colors"
+            >
+              {saving ? (
+                <><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40 20" opacity="0.3"/><path d="M12 2a10 10 0 0110 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>{t("保存中...","Saving...")}</>
+              ) : (
+                <>{t("保存してマイサービスへ","Save & Go to My Services")}<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path d="M3 7h8M7 3l4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/></svg></>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -2954,7 +3032,7 @@ function SellerSetupPrompt({ onStart }: { onStart: () => void }) {
       </div>
       <button
         onClick={onStart}
-        className="px-5 py-2.5 bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold rounded-xl transition-colors"
+        className="px-5 py-2.5 bg-lemon hover:bg-lemon-hover text-text-primary text-sm font-semibold rounded-xl transition-colors"
       >
         {t("プロフィールを作成する","Create Profile")}
       </button>
@@ -2982,7 +3060,7 @@ function SellerServicesPage({
     <div className="flex flex-col gap-5 max-w-3xl">
       {/* プロフィールカード */}
       <div className="bg-white rounded-2xl border border-gray-200 p-5 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-gray-900 flex items-center justify-center text-white text-lg font-bold shrink-0">
+        <div className="w-12 h-12 rounded-2xl bg-navy flex items-center justify-center text-white text-lg font-bold shrink-0">
           {profile.storeName[0].toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
@@ -3001,7 +3079,7 @@ function SellerServicesPage({
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <span className="text-sm font-semibold text-gray-900">{t("登録サービス","Registered Services")} <span className="text-gray-400 font-normal text-xs ml-1">{services.length}{t("件","")}</span></span>
           <button onClick={onCreateService}
-            className="px-3 py-1.5 bg-gray-900 hover:bg-gray-700 text-white text-xs font-semibold rounded-lg transition-colors">
+            className="px-3 py-1.5 bg-lemon hover:bg-lemon-hover text-text-primary text-xs font-semibold rounded-lg transition-colors">
             + {t("サービスを追加","Add Service")}
           </button>
         </div>
@@ -3060,7 +3138,7 @@ function SellerMyServicesPanel({
         {/* ヘッダー */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gray-900 flex items-center justify-center text-white font-bold text-sm shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center text-white font-bold text-sm shrink-0">
               {profile.storeName[0].toUpperCase()}
             </div>
             <div>
@@ -3117,7 +3195,7 @@ function SellerMyServicesPanel({
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-bold text-gray-900">{t("登録サービス","Registered Services")} <span className="text-gray-400 font-normal">({services.length})</span></p>
               <button onClick={onCreateService}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold rounded-xl transition-colors">
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-lemon hover:bg-lemon-hover text-text-primary text-xs font-semibold rounded-xl transition-colors">
                 <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2.2} className="w-3 h-3">
                   <line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/>
                 </svg>
@@ -3135,7 +3213,7 @@ function SellerMyServicesPanel({
                   <p className="text-xs text-gray-400 mt-0.5">{t("最初のサービスを登録してマーケットプレイスに掲載しましょう。","Register your first service to list it on the marketplace.")}</p>
                 </div>
                 <button onClick={onCreateService}
-                  className="mt-1 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold rounded-xl transition-colors">
+                  className="mt-1 px-4 py-2 bg-lemon hover:bg-lemon-hover text-text-primary text-xs font-semibold rounded-xl transition-colors">
                   {t("サービスを作成する","Create Service")}
                 </button>
               </div>
@@ -3268,7 +3346,7 @@ function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () 
 
           <div className="flex justify-end pt-2">
             <button type="submit" disabled={saving}
-              className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">
+              className="px-6 py-2.5 bg-lemon hover:bg-lemon-hover text-text-primary text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">
               {saving ? t("保存中…","Saving…") : t("変更を保存する","Save Changes")}
             </button>
           </div>
@@ -3544,6 +3622,7 @@ export default function Dashboard() {
             setMyServices(prev => [...prev, entry]);
             setSellerView("myservices");
           }}
+          sellerProviderId={sellerProfile?.providerId ?? ""}
         />
       )}
     </div>

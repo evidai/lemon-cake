@@ -5,7 +5,7 @@
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "../lib/prisma.js";
-import { verifyAdminToken } from "../lib/jwt.js";
+import { verifyAdminToken, verifyBuyerToken } from "../lib/jwt.js";
 
 export const providersRouter = new OpenAPIHono();
 
@@ -110,3 +110,44 @@ providersRouter.openapi(
     return c.json(serializeProvider(provider), 201);
   },
 );
+
+// ─── POST /api/providers/me  (Buyer JWT) ─────────────────────
+
+providersRouter.post("/me", async (c) => {
+  const auth = c.req.header("Authorization");
+  if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401);
+  let payload: { buyerId: string; email: string; name: string };
+  try {
+    payload = await verifyBuyerToken(auth.slice(7)) as any;
+  } catch {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+
+  let body: { name: string; email: string; walletAddress: string; bio?: string; websiteUrl?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  if (!body.name || !body.email || !body.walletAddress) {
+    return c.json({ error: "name, email, and walletAddress are required" }, 400);
+  }
+  if (!/^0x[a-fA-F0-9]{40}$/.test(body.walletAddress)) {
+    return c.json({ error: "Invalid Ethereum wallet address" }, 400);
+  }
+
+  // 他のbuyerのProviderが同じwalletを使っていないかチェック
+  const existing = await prisma.provider.findUnique({ where: { walletAddress: body.walletAddress } });
+  if (existing && existing.buyerId !== payload.buyerId) {
+    return c.json({ error: "Wallet address already used by another provider" }, 409);
+  }
+
+  const provider = await prisma.provider.upsert({
+    where: { buyerId: payload.buyerId },
+    update: { name: body.name, email: body.email, walletAddress: body.walletAddress },
+    create: { name: body.name, email: body.email, walletAddress: body.walletAddress, buyerId: payload.buyerId },
+  });
+
+  return c.json(serializeProvider(provider), 201);
+});

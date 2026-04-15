@@ -6,7 +6,7 @@
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "../lib/prisma.js";
-import { verifyAdminToken } from "../lib/jwt.js";
+import { verifyAdminToken, verifyBuyerToken } from "../lib/jwt.js";
 import { HTTPException } from "hono/http-exception";
 
 /** Admin JWT を検証するヘルパー（未認証なら401を返す） */
@@ -263,3 +263,46 @@ servicesRouter.openapi(
     }));
   },
 );
+
+// ─── POST /api/services/seller  (Buyer JWT) ──────────────────
+
+servicesRouter.post("/seller", async (c) => {
+  const auth = c.req.header("Authorization");
+  if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401);
+  let payload: { buyerId: string; email: string; name: string };
+  try {
+    payload = await verifyBuyerToken(auth.slice(7)) as any;
+  } catch {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+
+  let body: { name: string; type?: "API" | "MCP"; pricePerCallUsdc: string; endpoint?: string; description?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  if (!body.name || !body.pricePerCallUsdc) {
+    return c.json({ error: "name and pricePerCallUsdc are required" }, 400);
+  }
+
+  const provider = await prisma.provider.findUnique({ where: { buyerId: payload.buyerId } });
+  if (!provider) {
+    return c.json({ error: "Provider not registered. Please register your seller profile first." }, 400);
+  }
+
+  const service = await prisma.service.create({
+    data: {
+      providerId:       provider.id,
+      name:             body.name,
+      type:             body.type ?? "API",
+      pricePerCallUsdc: body.pricePerCallUsdc,
+      ...(body.endpoint ? { endpoint: body.endpoint } : {}),
+      reviewStatus:     "PENDING",
+    },
+    include: { provider: { select: { name: true } } },
+  });
+
+  return c.json(serializeService(service), 201);
+});

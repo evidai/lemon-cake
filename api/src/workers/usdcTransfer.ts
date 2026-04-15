@@ -109,6 +109,36 @@ async function processJob(job: Job<UsdcTransferJobData>): Promise<void> {
     }),
   ]);
 
+  // ── freee 仕訳自動作成 ───────────────────────────────────────
+  // 送金完了後に freee へ仕訳。失敗しても送金は確定済みなので catch で握りつぶす。
+  try {
+    const { createFreeeTransaction } = await import("../lib/freee.js");
+    const { checkWithholdingTax }    = await import("../lib/tax.js");
+    const jpyRate   = Number(process.env.JPY_USDC_RATE ?? "150");
+    const amountJpy = Math.round(Number(amountUsdc) * jpyRate);
+    const withholding = checkWithholdingTax(service.name, amountJpy);
+
+    await createFreeeTransaction({
+      issueDate:         new Date().toISOString().slice(0, 10),
+      description:       `${service.name} API利用料`,
+      amountUsdc,
+      amountJpy,
+      providerName:      service.provider.name,
+      invoiceRegistered: false, // 国税庁 API 復活後に実照合へ変更予定
+      ...(withholding.required ? {
+        withholding: {
+          required:     true,
+          taxAmount:    withholding.taxAmount,
+          netAmount:    withholding.netAmount,
+          evidenceHash: "",
+        },
+      } : {}),
+    });
+    console.log(`[Worker] 📒 freee 仕訳作成完了 — chargeId: ${chargeId}`);
+  } catch (freeeErr) {
+    console.error("[Worker] freee 仕訳作成失敗（送金は完了済み）:", freeeErr);
+  }
+
   await job.updateProgress(100);
 }
 

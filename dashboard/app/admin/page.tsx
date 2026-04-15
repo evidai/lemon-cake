@@ -217,7 +217,7 @@ function TaskItem({icon, label, count, urgent, onClick}: {icon:React.ReactNode; 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function Toast({msg, type, onDone}: {msg:string; type:"success"|"error"|"info"; onDone:()=>void}) {
   useEffect(() => { const t = setTimeout(onDone, 2500); return ()=>clearTimeout(t); }, [onDone]);
-  const bg = type==="success"?"bg-gray-900 text-white" : type==="error"?"bg-red-600 text-white" : "bg-blue-600 text-white";
+  const bg = type==="success"?"bg-navy text-white" : type==="error"?"bg-red-600 text-white" : "bg-blue-600 text-white";
   return (
     <div className={`fixed bottom-6 right-6 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold ${bg} animate-fade-in`}>
       {type==="success" && <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l3.5 3.5L13 4"/></svg>}
@@ -671,7 +671,7 @@ function MarketplacePage({services, setServices, accounts, setAccounts, token}: 
         {tab==="services" && (
           <div className="flex items-center gap-1">
             {(["all","pending","approved","rejected"] as const).map(f=>(
-              <button key={f} onClick={()=>setReviewFilter(f)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${reviewFilter===f?"bg-gray-900 text-white":"bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"}`}>
+              <button key={f} onClick={()=>setReviewFilter(f)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${reviewFilter===f?"bg-navy text-white":"bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"}`}>
                 {f==="all"?"すべて":f==="pending"?"審査中":f==="approved"?"承認済み":"却下"}
               </button>
             ))}
@@ -871,7 +871,7 @@ function MonitoringPage({logs, setLogs, circuits, setCircuits}: {
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="エージェント・アクションで絞り込み" className="text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 w-52"/>
             <div className="flex items-center gap-1">
               {(["all","warn","block"] as const).map(t=>(
-                <button key={t} onClick={()=>setTab(t)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab===t?"bg-gray-900 text-white":"bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"}`}>
+                <button key={t} onClick={()=>setTab(t)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab===t?"bg-navy text-white":"bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"}`}>
                   {t==="all"?"すべて":t==="warn"?"注意":"ブロック"}
                 </button>
               ))}
@@ -1079,7 +1079,7 @@ function BuyersManagePage({ token }: { token: string }) {
                       <button
                         onClick={() => handleDeposit(b.id)}
                         disabled={saving === b.id || !deposit[b.id]}
-                        className="px-3 py-1.5 bg-gray-900 hover:bg-gray-700 text-white text-xs font-semibold rounded-lg disabled:opacity-40 transition-colors whitespace-nowrap"
+                        className="px-3 py-1.5 bg-lemon hover:bg-lemon-hover text-text-primary text-xs font-semibold rounded-lg disabled:opacity-40 transition-colors whitespace-nowrap"
                       >
                         {saving === b.id ? "…" : "チャージ"}
                       </button>
@@ -1202,7 +1202,7 @@ function JpycReviewPage({ token }: { token: string }) {
         <span className="text-sm font-semibold text-gray-700">ステータス絞り込み:</span>
         {(["", "PENDING", "APPROVED", "REJECTED"] as const).map(s => (
           <button key={s} onClick={() => setFilter(s)}
-            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${filter === s ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}>
+            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${filter === s ? "bg-navy text-white border-navy" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}>
             {s === "" ? "すべて" : s === "PENDING" ? "審査中" : s === "APPROVED" ? "承認済み" : "却下"}
           </button>
         ))}
@@ -1381,7 +1381,7 @@ function FinancePage() {
           </div>
         </div>
         <div className="pt-2 flex items-center gap-3">
-          <button onClick={saveParams} className={`px-4 py-2 text-white text-sm font-semibold rounded-lg transition-all ${saved?"bg-green-600 hover:bg-green-700":"bg-gray-900 hover:bg-gray-800"}`}>
+          <button onClick={saveParams} className={`px-4 py-2 text-white text-sm font-semibold rounded-lg transition-all ${saved?"bg-green-600 hover:bg-green-700":"bg-lemon hover:bg-lemon-hover text-text-primary"}`}>
             {saved ? "✓ 保存しました" : "変更を保存"}
           </button>
           {saved && <span className="text-xs text-green-600 font-medium">設定が反映されました</span>}

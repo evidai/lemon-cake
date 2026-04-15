@@ -28,7 +28,13 @@ import { taxRouter }       from "./routes/tax.js";
 import { stripeRouter }    from "./routes/stripe.js";
 import { freeeRouter }     from "./routes/freee.js";
 import { proxyRouter }     from "./routes/proxy.js";
+import { workflowRouter }           from "./routes/workflows.js";
+import { cloudsignWebhookRouter }   from "./routes/webhooks/cloudsign.js";
+import { aftershipWebhookRouter }   from "./routes/webhooks/aftership.js";
+import { githubWebhookRouter }      from "./routes/webhooks/github.js";
+import { kybRouter }                from "./routes/kyb.js";
 import { startUsdcTransferWorker, handleFailedJob } from "./workers/usdcTransfer.js";
+import { startWorkflowWorker }      from "./workers/workflowStep.js";
 
 // ─── アプリ初期化 ────────────────────────────────────────────
 const app = new OpenAPIHono();
@@ -68,6 +74,11 @@ app.route("/api/tax",       taxRouter);
 app.route("/api/stripe",    stripeRouter);
 app.route("/api/freee",     freeeRouter);
 app.route("/api/proxy",     proxyRouter);
+app.route("/api/workflows",              workflowRouter);
+app.route("/api/webhooks/cloudsign",     cloudsignWebhookRouter);
+app.route("/api/webhooks/aftership",     aftershipWebhookRouter);
+app.route("/api/webhooks/github",        githubWebhookRouter);
+app.route("/api/kyb",                    kybRouter);
 
 // ─── OpenAPI ドキュメント定義 ────────────────────────────────
 app.doc("/openapi.json", {
@@ -140,6 +151,7 @@ async function main(): Promise<void> {
   // ─── BullMQ ワーカー起動 ───────────────────────────────────
   // SKIP_WORKER=true でスキップ可能（テスト・マイグレーション実行時等）
   if (process.env.SKIP_WORKER !== "true") {
+    const workflowWorker = startWorkflowWorker();
     const worker = startUsdcTransferWorker();
 
     // 最終失敗時の補償処理（リトライ上限を超えた場合）

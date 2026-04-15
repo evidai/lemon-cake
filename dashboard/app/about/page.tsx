@@ -2,8 +2,8 @@ import Link from "next/link";
 import ContactButton from "./ContactButton";
 
 export const metadata = {
-  title: "LEMON cake — AI Agent M2M Payment Infrastructure",
-  description: "AIエージェント同士がリアルタイムで課金・決済できるM2Mインフラ。KYA/KYCティア認証とJWTベースのPay Tokenで安全な自律決済を実現。",
+  title: "LEMON cake — E2E AAE Infrastructure",
+  description: "AIエージェントが現実世界でビジネスを完結させるためのE2E AAEインフラ。税務・コンプライアンス・M2M決済・会計を全自動化。Code pays code.",
 };
 
 // ── SVG Icons ────────────────────────────────────────────────────────────────
@@ -41,42 +41,42 @@ const IconCheck = () => (
 // ── Data ──────────────────────────────────────────────────────────────────────
 const whyItems = [
   {
-    eyebrow: "Autonomous Payments",
-    title: "人間の介入なしに\n即座に決済",
-    body: "エージェントはAPIを呼ぶたびに自律的に支払いを完了させます。承認待ち、クレジットカード入力、人間のサインオフは不要。AIの速度で動く決済が、ビジネスの速度を変えます。",
+    eyebrow: "Cognitive Expansion",
+    title: "認知・行動能力を\n即時調達",
+    body: "Web検索からマルチモーダル処理まで、エージェントが必要な能力をAPIコール一発で取得。人間が数日かける情報収集・分析・意思決定が、ミリ秒で完結します。",
     stats: [
-      { num: "<1s", label: "課金処理レイテンシ" },
-      { num: "24/7", label: "ノンストップ稼働" },
+      { num: "32+", label: "統合API数" },
+      { num: "<1s", label: "応答レイテンシ" },
     ],
     flipped: false,
   },
   {
-    eyebrow: "New Revenue Streams",
-    title: "AIに売る。\n未開拓の市場へ",
-    body: "既存のAPIをLEMON cakeに登録するだけで、世界中のAIエージェントが新しい顧客になります。人間が見落とす深夜・休日も、エージェントは止まらずにあなたのサービスを使い続けます。",
+    eyebrow: "Global Compliance",
+    title: "各国の規制・税務を\nコードで突破",
+    body: "適格請求書への対応、法人の実態調査、税務リスクの判定——本来なら専門家が数日かける作業を、エージェントがリアルタイムで処理します。どの国のルールも、Lemon Cakeが吸収します。",
     stats: [
-      { num: "∞", label: "エージェント顧客" },
-      { num: "USDC", label: "自動入金" },
+      { num: "自動", label: "税務・請求処理" },
+      { num: "KYB", label: "法人信用調査" },
     ],
     flipped: true,
   },
   {
-    eyebrow: "KYA Identity",
-    title: "エージェントに\n認証済みのアイデンティティを",
-    body: "Know Your Agent（KYA）/ Know Your Customer（KYC）の2層構造でリスクを制御。JWTベースのPay Tokenが各エージェントの身元を証明し、自律的なアカウント作成とサービスアクセスを可能にします。",
+    eyebrow: "Idempotent M2M Payments",
+    title: "二重課金ゼロ。\n確実なM2M決済",
+    body: "USDC基盤のマイクロペイメントが、エージェント間の価値移転を確実に届けます。ネットワーク障害や再試行が起きても、同じ決済が2回実行されることはありません。",
     stats: [
-      { num: "3", label: "KYA/KYCティア" },
-      { num: "JWT", label: "認証プロトコル" },
+      { num: "USDC", label: "決済通貨" },
+      { num: "0件", label: "二重課金リスク" },
     ],
     flipped: false,
   },
   {
-    eyebrow: "Seamless Transactions",
-    title: "シームレスな\nM2Mトランザクション",
-    body: "サービスリクエスト → KYA認証 → 決済処理。この3ステップがミリ秒で完結します。BullMQの非同期キューがオンチェーン転送を処理し、エージェントのパフォーマンスに影響を与えません。",
+    eyebrow: "Physical World & Back-Office",
+    title: "発注から記帳まで\nすべて自動化",
+    body: "資材の自律発注から、仕訳データの生成、会計システムへの連携まで全自動。エージェントの判断がデジタルの外へ飛び出し、現実のビジネスを直接動かします。",
     stats: [
-      { num: "3", label: "トランザクションステップ" },
-      { num: "Polygon", label: "決済チェーン" },
+      { num: "全自動", label: "仕訳・記帳" },
+      { num: "E2E", label: "発注〜会計" },
     ],
     flipped: true,
   },
@@ -86,7 +86,7 @@ const buyerFeatures = [
   "Pay Tokenでエージェントに安全な支払い能力を付与",
   "利用上限・有効期限を設定してリスクをコントロール",
   "エージェントが自律的にAPIを選び、即座に支払い完了",
-  "JPYCを送るとUSDC残高として即時反映",
+  "ステーブルコインを送るとUSDC残高として即時反映",
   "KYA/KYCティアで1日あたりの限度額を段階管理",
   "すべての課金履歴・残高をダッシュボードでリアルタイム確認",
 ];
@@ -95,7 +95,7 @@ const sellerFeatures = [
   "APIを登録して即日マーケットプレイスに公開",
   "AIエージェントという新しい未開拓の顧客層にリーチ",
   "課金回数・累計収益をリアルタイム集計",
-  "審査通過後に自動でUSDC受取が開始",
+  "審査通過後、サービス利用料がウォレットに自動入金",
   "サービスタイプ・単価を自由に設定",
   "人間の営業・マーケなしに24時間収益が入り続ける",
 ];
@@ -124,7 +124,7 @@ export default function AboutPage() {
               <span className="font-bold text-[15px] text-white">LEMON cake</span>
             </div>
             <div className="hidden md:flex items-center gap-6">
-              {["機能", "ユースケース", "開発者向け", "会社概要"].map(label => (
+              {["インフラ", "ユースケース", "開発者向け", "会社概要"].map(label => (
                 <span key={label} className="text-[13px] text-white/50 hover:text-white/90 transition-colors cursor-pointer">{label}</span>
               ))}
             </div>
@@ -145,17 +145,17 @@ export default function AboutPage() {
         <section className="max-w-6xl mx-auto px-6 pt-24 pb-20 text-center">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/8 border border-black/12 text-[#1a0f00]/70 text-[11px] font-semibold mb-8 tracking-wide">
             <span className="w-1.5 h-1.5 rounded-full bg-[#1a0f00]/50 animate-pulse flex-shrink-0" />
-            KYA Identity × Agent Payments
+            E2E AAE Infrastructure
           </div>
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-[#1a0f00] mb-6 leading-[1.08]">
-            The Agentic<br />
+            Code pays code.<br />
             <span className="text-black">
-              Commerce Platform
+              We handle the rest.
             </span>
           </h1>
           <p className="text-lg md:text-xl text-[#1a0f00]/60 max-w-2xl mx-auto mb-10 leading-relaxed">
-            AIの速度で動く決済とアイデンティティ基盤。<br className="hidden md:block" />
-            エージェントが自律的に支払い、認証し、サービスにアクセスする。
+            コードが経済を回す時代。<br className="hidden md:block" />
+            泥臭い現実は、私たちが引き受けます。
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <Link
@@ -173,18 +173,17 @@ export default function AboutPage() {
       <section className="max-w-4xl mx-auto px-6 py-28 text-center">
         <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-6">ミッション</p>
         <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight mb-6">
-          AIエコノミーのために設計された<br />決済とアイデンティティ
+          思考から現実の決済まで、<br />シームレスに繋ぐ
         </h2>
         <p className="text-base md:text-lg text-white/45 max-w-2xl mx-auto leading-relaxed">
-          LEMON cakeはエージェントに決済処理・身元確認・必要なサービスへの自律アクセスを提供します。
-          APIアカウントの自動作成からサービスのマネタイズまで——
-          人間の介入なしに、AIの速度でグローバル決済を駆動します。
+          AIエージェントが「現実世界でビジネスを完結させる」ためには、各国の複雑な税制、取引先の信用調査、為替の変動、監査に耐えうる会計——ローカルルールに縛られた泥臭い壁が存在します。
+          Lemon Cakeは、エージェントがこれらすべての壁を越え、単一のエンドポイントで完結するE2E AEEインフラです。
         </p>
       </section>
 
-      {/* ── Why LEMON cake? ── */}
+      {/* ── The Infrastructure ── */}
       <section className="max-w-6xl mx-auto px-6 pb-8">
-        <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-20">Why LEMON cake?</p>
+        <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-20">The Infrastructure</p>
         <div className="flex flex-col gap-28">
           {whyItems.map(({ eyebrow, title, body, stats, flipped }) => (
             <div
@@ -228,11 +227,11 @@ export default function AboutPage() {
                 <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-500">
                   <IconZap />
                 </div>
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">BUYER</p>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">BUYER / AGENT OPERATOR</p>
               </div>
-              <h3 className="text-xl font-black text-gray-900 mb-2">人間なしで即座に支払う</h3>
+              <h3 className="text-xl font-black text-gray-900 mb-2">AIの知能を磨くことだけに集中する</h3>
               <p className="text-[13px] text-gray-500 leading-relaxed mb-6">
-                Pay Tokenをエージェントに渡すだけ。エージェントが必要なAPIを自律的に選び、KYA認証を通じて身元を証明し、人間の介入なしに決済を完了させます。
+                Pay Tokenをエージェントに渡すだけ。税務・コンプライアンス・決済・会計——ビジネスの泥臭い実務はすべてLemon Cakeが処理します。あなたはAIの知能を磨くことだけに集中してください。
               </p>
               <ul className="flex flex-col gap-3">
                 {buyerFeatures.map(f => (
@@ -249,11 +248,11 @@ export default function AboutPage() {
                 <div className="w-8 h-8 rounded-xl bg-[#fffd43]/20 border border-[#c8b800]/30 flex items-center justify-center text-[#a89400]">
                   <IconStore />
                 </div>
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">SELLER</p>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">SELLER / API PROVIDER</p>
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">AIに売り、新しい収益源を開く</h3>
               <p className="text-[13px] text-gray-500 leading-relaxed mb-6">
-                既存のAPIをLEMON cakeに登録するだけで、AIエージェントという新しい未開拓の顧客層にリーチ。ウェブサイトのマネタイズからAPIの収益化まで、24時間止まらない収益源が生まれます。
+                既存のAPIをLEMON cakeに登録するだけで、世界中のAIエージェントが新しい顧客になります。人間が見落とす深夜・休日も、エージェントは止まらずサービスを使い続けます。
               </p>
               <ul className="flex flex-col gap-3">
                 {sellerFeatures.map(f => (
@@ -268,6 +267,25 @@ export default function AboutPage() {
         </section>
       </div>
 
+      {/* ── Philosophy ── */}
+      <section className="max-w-4xl mx-auto px-6 pt-28 pb-40 text-center">
+        <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-6">Our Philosophy</p>
+        <h2 className="text-3xl md:text-4xl font-black text-white leading-tight mb-8">
+          鋼鉄の素材を、<br />
+          <span className="text-[#fffd43]">ひと口のレモンケーキに。</span>
+        </h2>
+        <div className="text-left max-w-2xl mx-auto space-y-5 text-[15px] text-white/50 leading-relaxed">
+          <p>
+            AAE（自律型エージェント経済圏）の構築は、本来、無機質で消化の悪い「鋼鉄の素材」を扱うような地獄の体験でした。複雑な税法・金融インフラ・国際コンプライアンスをコードに落とし込む作業は、想像を絶する泥臭さです。
+          </p>
+          <p>
+            私たちは、その複雑で酸っぱい現実のすべてを、プラットフォームの裏側に隠しました。
+          </p>
+          <p className="text-white/80 font-medium">
+            開発者やエージェントが触れるのは、極めてシンプルに洗練された1つのエンドポイントだけ。まるで、複雑な素材の組み合わせから生まれた、ひと口で食べられる美味しい「レモンケーキ」のように。
+          </p>
+        </div>
+      </section>
 
       {/* ── CTA ── */}
       <div className="bg-white w-full">
@@ -275,10 +293,10 @@ export default function AboutPage() {
         <div className="rounded-3xl bg-gray-50 border border-gray-200 px-8 py-16">
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">Ready to Power AI Transactions?</p>
           <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 leading-tight">
-            AIトランザクションを<br />動かす準備はできていますか？
+            AIの知能を磨くことだけに<br />集中してください。
           </h2>
           <p className="text-[14px] text-gray-500 mb-8 max-w-md mx-auto leading-relaxed">
-            エージェントに支払い・認証・サービスへの自律アクセスを。<br />導入支援・技術相談・デモのリクエストはこちら。
+            ビジネスの泥臭い実務は、すべてLemon Cakeが処理します。<br />導入支援・技術相談・デモのリクエストはこちら。
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <ContactButton className="inline-flex items-center gap-2 px-7 py-3 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-700 transition-colors text-sm">
@@ -305,13 +323,13 @@ export default function AboutPage() {
                 <img src="/logo.png" alt="LEMON cake" className="w-6 h-6 rounded-md object-cover" />
                 <span className="font-bold text-[13px] text-white">LEMON cake</span>
               </div>
-              <p className="text-[12px] text-white/30 leading-relaxed">AI Agent M2M<br />Payment Infrastructure</p>
+              <p className="text-[12px] text-white/30 leading-relaxed">AAE Autonomous Agent Economy<br />Payment Infrastructure</p>
             </div>
             {/* プロダクト */}
             <div>
               <p className="text-[11px] font-semibold text-white/25 uppercase tracking-widest mb-3">プロダクト</p>
               <ul className="flex flex-col gap-2">
-                {["機能", "料金", "ドキュメント", "APIリファレンス"].map(item => (
+                {["インフラ", "料金", "ドキュメント", "APIリファレンス"].map(item => (
                   <li key={item}><span className="text-[12px] text-white/40 hover:text-white/70 transition-colors cursor-pointer">{item}</span></li>
                 ))}
               </ul>
@@ -320,7 +338,7 @@ export default function AboutPage() {
             <div>
               <p className="text-[11px] font-semibold text-white/25 uppercase tracking-widest mb-3">ユースケース</p>
               <ul className="flex flex-col gap-2">
-                {["AI検索エージェント", "コード実行", "データ分析", "ドキュメント処理"].map(item => (
+                {["エージェント決済", "M2M取引", "バックオフィス自動化", "コンプライアンス"].map(item => (
                   <li key={item}><span className="text-[12px] text-white/40 hover:text-white/70 transition-colors cursor-pointer">{item}</span></li>
                 ))}
               </ul>
@@ -337,7 +355,7 @@ export default function AboutPage() {
           </div>
           <div className="border-t border-white/8 pt-6 flex flex-col md:flex-row items-center justify-between gap-2">
             <p className="text-[11px] text-white/20">© 2026 LEMON cake. All rights reserved.</p>
-            <p className="text-[11px] text-white/20">KYA/KYC ティア認証 · JWT Pay Token · Polygon · JPYC · USDC</p>
+            <p className="text-[11px] text-white/20">KYA/KYC ティア認証 · JWT Pay Token · Polygon · USDC · E2E AAE</p>
           </div>
         </div>
       </footer>

@@ -213,6 +213,53 @@ const SERVICES: Array<{
     type:             "MCP",
     pricePerCallUsdc: "0.000150",
   },
+  // ── 🏢 Corporate & Legal ──────────────────────────────────
+  {
+    name:             "CloudSign API",
+    type:             "API",
+    pricePerCallUsdc: "0.005000",
+    endpoint:         "https://api.cloudsign.jp/v2",
+    authHeader:       process.env.CLOUDSIGN_API_KEY
+                        ? `Bearer ${process.env.CLOUDSIGN_API_KEY}`
+                        : undefined,
+  },
+  {
+    name:             "TRUSTDOCK eKYC",
+    type:             "API",
+    pricePerCallUsdc: "0.050000",
+    endpoint:         "https://api.trustdock.io/v1",
+    authHeader:       process.env.TRUSTDOCK_API_KEY
+                        ? `Bearer ${process.env.TRUSTDOCK_API_KEY}`
+                        : undefined,
+  },
+  {
+    name:             "Slack — Human-in-the-loop",
+    type:             "API",
+    pricePerCallUsdc: "0.000100",
+    endpoint:         "https://slack.com/api",
+    authHeader:       process.env.SLACK_BOT_TOKEN
+                        ? `Bearer ${process.env.SLACK_BOT_TOKEN}`
+                        : undefined,
+  },
+  // ── 📦 Physical Operations ────────────────────────────────
+  {
+    name:             "Raksul API",
+    type:             "API",
+    pricePerCallUsdc: "0.001000",
+    endpoint:         "https://api.raksul.com/v1",
+    authHeader:       process.env.RAKSUL_API_KEY
+                        ? `Bearer ${process.env.RAKSUL_API_KEY}`
+                        : undefined,
+  },
+  {
+    name:             "AfterShip API",
+    type:             "API",
+    pricePerCallUsdc: "0.000500",
+    endpoint:         "https://api.aftership.com/v4",
+    authHeader:       process.env.AFTERSHIP_API_KEY
+                        ? `as-api-key ${process.env.AFTERSHIP_API_KEY}`
+                        : undefined,
+  },
 ];
 
 async function main() {

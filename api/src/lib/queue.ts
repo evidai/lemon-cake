@@ -46,3 +46,28 @@ export function getUsdcTransferQueue(): Queue<UsdcTransferJobData> {
   }
   return _queue;
 }
+
+// ─── Workflow ステップキュー ──────────────────────────────────
+export interface WorkflowStepJobData {
+  workflowId: string;
+  step:       string;  // WorkflowState value
+}
+
+export const WORKFLOW_QUEUE = "workflow-step";
+
+let _workflowQueue: Queue<WorkflowStepJobData> | null = null;
+
+export function getWorkflowQueue(): Queue<WorkflowStepJobData> {
+  if (!_workflowQueue) {
+    _workflowQueue = new Queue<WorkflowStepJobData>(WORKFLOW_QUEUE, {
+      connection: createRedisConnection(),
+      defaultJobOptions: {
+        attempts: 3,
+        backoff:  { type: "exponential", delay: 5_000 },
+        removeOnComplete: { count: 500 },
+        removeOnFail:     { count: 200 },
+      },
+    });
+  }
+  return _workflowQueue;
+}

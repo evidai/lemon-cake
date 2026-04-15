@@ -56,6 +56,8 @@ model Buyer {
   charges             Charge[]
   user                User?
   jpycDepositRequests JpycDepositRequest[]
+  heldUsdc              Decimal     @default(0) @db.Decimal(38, 18)
+  workflows             Workflow[]
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -79,6 +81,8 @@ model Provider {
 
   // 精算待ち残高
   pendingPayoutUsdc Decimal @default(0) @db.Decimal(38, 18)
+
+  buyerId       String?     @unique  // Buyerとのリンク（セラー登録時に設定）
 
   active        Boolean     @default(true)
 
@@ -233,6 +237,37 @@ model JpycDepositRequest {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Workflow: E2Eビジネスレシピの非同期ステートマシン
+// ─────────────────────────────────────────────────────────────
+model Workflow {
+  id          String        @id @default(cuid())
+
+  buyerId     String
+  buyer       Buyer         @relation(fields: [buyerId], references: [id])
+
+  type        String        @default("E2E_PROCUREMENT")
+  state       WorkflowState @default(RESEARCH)
+
+  // 全ステップのコンテキストデータ（仕入先情報・注文ID・トラッキング等）
+  context     Json          @default("{}")
+
+  // 与信ロック中のUSDC（ORDER_LOCKED〜PAYING 間）
+  heldUsdc    Decimal       @default(0) @db.Decimal(38, 18)
+
+  // 失敗・キャンセル理由
+  error       String?
+
+  // 契約・納品の期限（超過時に自動キャンセル）
+  expiresAt   DateTime?
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([buyerId, state])
+  @@map("workflows")
+}
+
+// ─────────────────────────────────────────────────────────────
 // Enums
 // ─────────────────────────────────────────────────────────────
 enum KycTier {
@@ -262,4 +297,17 @@ enum JpycDepositStatus {
   PENDING    // 審査待ち
   APPROVED   // 承認済み（USDC付与済み）
   REJECTED   // 却下
+}
+
+enum WorkflowState {
+  RESEARCH      // エージェントがリサーチ中
+  CONTRACTING   // CloudSign 契約書送信済み、署名待ち（非同期）
+  ORDER_LOCKED  // 署名完了 → 発注済み、USDC与信ロック中
+  VERIFYING     // AfterShip で納品確認待ち（非同期）
+  TAX_PENDING   // 国税庁 + IPinfo で税務判定中
+  PAYING        // USDC決済実行中
+  BOOKKEEPING   // freee 仕訳作成中
+  COMPLETED     // 全ステップ完了
+  FAILED        // 失敗（error フィールドに理由）
+  CANCELLED     // タイムアウトまたは手動キャンセル
 }
