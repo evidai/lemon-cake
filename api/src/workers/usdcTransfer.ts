@@ -52,7 +52,7 @@ export function startUsdcTransferWorker(): Worker {
 
 // ─── ジョブ処理本体 ───────────────────────────────────────────
 async function processJob(job: Job<UsdcTransferJobData>): Promise<void> {
-  const { chargeId, serviceId, amountUsdc } = job.data;
+  const { chargeId, buyerId, serviceId, amountUsdc } = job.data;
 
   // サービスとプロバイダーのウォレットを取得
   const service = await prisma.service.findUnique({
@@ -109,34 +109,39 @@ async function processJob(job: Job<UsdcTransferJobData>): Promise<void> {
     }),
   ]);
 
-  // ── freee 仕訳自動作成 ───────────────────────────────────────
-  // 送金完了後に freee へ仕訳。失敗しても送金は確定済みなので catch で握りつぶす。
+  // ── バイヤーの会計連携に仕訳作成 ─────────────────────────────
+  // 送金完了後に各バイヤーの会計ソフトへ仕訳。失敗しても送金は確定済みなので catch で握りつぶす。
   try {
-    const { createFreeeTransaction } = await import("../lib/freee.js");
-    const { checkWithholdingTax }    = await import("../lib/tax.js");
-    const jpyRate   = Number(process.env.JPY_USDC_RATE ?? "150");
-    const amountJpy = Math.round(Number(amountUsdc) * jpyRate);
-    const withholding = checkWithholdingTax(service.name, amountJpy);
-
-    await createFreeeTransaction({
-      issueDate:         new Date().toISOString().slice(0, 10),
-      description:       `${service.name} API利用料`,
-      amountUsdc,
-      amountJpy,
-      providerName:      service.provider.name,
-      invoiceRegistered: false, // 国税庁 API 復活後に実照合へ変更予定
-      ...(withholding.required ? {
-        withholding: {
-          required:     true,
-          taxAmount:    withholding.taxAmount,
-          netAmount:    withholding.netAmount,
-          evidenceHash: "",
-        },
-      } : {}),
+    const { createJournalEntry } = await import("../lib/accounting.js");
+    const connections = await prisma.buyerAccountingConnection.findMany({
+      where: { buyerId, active: true }
     });
-    console.log(`[Worker] 📒 freee 仕訳作成完了 — chargeId: ${chargeId}`);
-  } catch (freeeErr) {
-    console.error("[Worker] freee 仕訳作成失敗（送金は完了済み）:", freeeErr);
+    const chargeWithService = await prisma.charge.findUnique({
+      where: { id: chargeId },
+      include: { service: { include: { provider: true } } }
+    });
+
+    const jpyRate      = Number(process.env.JPY_USDC_RATE ?? "150");
+    const amountUsdcNum = Number(amountUsdc);
+
+    for (const conn of connections) {
+      try {
+        await createJournalEntry(conn, {
+          date:        new Date().toISOString().slice(0, 10),
+          description: `${chargeWithService?.service.name ?? "API"} 利用料`,
+          amountUsdc:  amountUsdcNum,
+          amountJpy:   Math.round(amountUsdcNum * jpyRate),
+          serviceName:  chargeWithService?.service.name ?? "",
+          providerName: chargeWithService?.service.provider.name ?? "",
+          chargeId,
+        });
+        console.log(`[Worker] 📒 ${conn.provider} 仕訳作成完了 — buyerId: ${buyerId}`);
+      } catch (err) {
+        console.error(`[Worker] ${conn.provider} 仕訳作成失敗:`, err);
+      }
+    }
+  } catch (err) {
+    console.error("[Worker] 会計連携仕訳失敗:", err);
   }
 
   await job.updateProgress(100);

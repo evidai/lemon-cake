@@ -1,5 +1,9 @@
 /**
- * Global Accounting Integrations — OAuth Token Management
+ * Per-Buyer Accounting Integrations
+ *
+ * Each Buyer connects their own accounting software via OAuth.
+ * Journal entries are created in the Buyer's own accounting system
+ * when their charges complete.
  *
  * Supported:
  *   QuickBooks Online  (OAuth 2.0)
@@ -7,12 +11,31 @@
  *   Zoho Books         (OAuth 2.0)
  *   Sage               (OAuth 2.0)
  *   Oracle NetSuite    (OAuth 1.0a TBA)
+ *   freee              (OAuth 2.0)
  */
 
 import crypto from "crypto";
+import { prisma } from "./prisma.js";
+import type { BuyerAccountingConnection } from "@prisma/client";
+
+export type { BuyerAccountingConnection };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared OAuth 2.0 helpers
+// Journal entry data passed to all providers
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface JournalEntryData {
+  date:         string;  // "YYYY-MM-DD"
+  description:  string;
+  amountUsdc:   number;
+  amountJpy?:   number;
+  serviceName:  string;
+  providerName: string;
+  chargeId:     string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared OAuth 2.0 refresh helper
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function refreshOAuth2(
@@ -20,20 +43,28 @@ async function refreshOAuth2(
   clientId:     string,
   clientSecret: string,
   refreshToken: string,
-  extraBody?:   Record<string, string>,
+  useBasicAuth = false,
 ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
-  const body = new URLSearchParams({
+  const headers: Record<string, string> = {
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+
+  const bodyParams: Record<string, string> = {
     grant_type:    "refresh_token",
-    client_id:     clientId,
-    client_secret: clientSecret,
     refresh_token: refreshToken,
-    ...extraBody,
-  });
+  };
+
+  if (useBasicAuth) {
+    headers["Authorization"] = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
+  } else {
+    bodyParams["client_id"]     = clientId;
+    bodyParams["client_secret"] = clientSecret;
+  }
 
   const res = await fetch(tokenUrl, {
     method:  "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body:    body.toString(),
+    headers,
+    body:    new URLSearchParams(bodyParams).toString(),
   });
 
   if (!res.ok) {
@@ -46,183 +77,378 @@ async function refreshOAuth2(
   };
   return {
     accessToken:  d.access_token,
-    refreshToken: d.refresh_token ?? refreshToken, // some providers don't rotate
+    refreshToken: d.refresh_token ?? refreshToken,
     expiresIn:    d.expires_in ?? 3600,
   };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// QuickBooks Online (Intuit)
-// Env: QB_CLIENT_ID, QB_CLIENT_SECRET, QB_ACCESS_TOKEN, QB_REFRESH_TOKEN, QB_REALM_ID
+// refreshConnectionToken — refresh OAuth token for a BuyerAccountingConnection
+// and persist to DB. Returns the new access token.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function refreshQuickBooksToken(): Promise<string> {
-  const refreshToken = process.env.QB_REFRESH_TOKEN;
-  if (!refreshToken) throw new Error("QB_REFRESH_TOKEN is not set");
+export async function refreshConnectionToken(
+  conn: BuyerAccountingConnection,
+): Promise<string> {
+  if (!conn.refreshToken) {
+    throw new Error(`No refresh token for connection ${conn.id} (${conn.provider})`);
+  }
 
-  const result = await refreshOAuth2(
-    "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
-    process.env.QB_CLIENT_ID ?? "",
-    process.env.QB_CLIENT_SECRET ?? "",
-    refreshToken,
-  );
+  let result: { accessToken: string; refreshToken: string; expiresIn: number };
 
-  // Persist new tokens back to env (Railway/process memory until restart)
-  process.env.QB_ACCESS_TOKEN  = result.accessToken;
-  process.env.QB_REFRESH_TOKEN = result.refreshToken;
+  switch (conn.provider) {
+    case "QUICKBOOKS":
+      result = await refreshOAuth2(
+        "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
+        process.env.QB_CLIENT_ID ?? "",
+        process.env.QB_CLIENT_SECRET ?? "",
+        conn.refreshToken,
+      );
+      break;
 
-  console.log("[QuickBooks] token refreshed");
+    case "XERO":
+      result = await refreshOAuth2(
+        "https://identity.xero.com/connect/token",
+        process.env.XERO_CLIENT_ID ?? "",
+        process.env.XERO_CLIENT_SECRET ?? "",
+        conn.refreshToken,
+        true, // Xero uses HTTP Basic auth
+      );
+      break;
+
+    case "ZOHO": {
+      const region = process.env.ZOHO_REGION ?? "com";
+      result = await refreshOAuth2(
+        `https://accounts.zoho.${region}/oauth/v2/token`,
+        process.env.ZOHO_CLIENT_ID ?? "",
+        process.env.ZOHO_CLIENT_SECRET ?? "",
+        conn.refreshToken,
+      );
+      break;
+    }
+
+    case "SAGE":
+      result = await refreshOAuth2(
+        "https://oauth.accounting.sage.com/token",
+        process.env.SAGE_CLIENT_ID ?? "",
+        process.env.SAGE_CLIENT_SECRET ?? "",
+        conn.refreshToken,
+      );
+      break;
+
+    case "FREEE":
+      result = await refreshOAuth2(
+        "https://accounts.secure.freee.co.jp/public_api/token",
+        process.env.FREEE_CLIENT_ID ?? "",
+        process.env.FREEE_CLIENT_SECRET ?? "",
+        conn.refreshToken,
+      );
+      break;
+
+    case "NETSUITE":
+      throw new Error("NetSuite uses OAuth 1.0a TBA — no token refresh needed");
+
+    default:
+      throw new Error(`Unknown provider: ${conn.provider}`);
+  }
+
+  // Persist updated tokens to DB
+  await prisma.buyerAccountingConnection.update({
+    where: { id: conn.id },
+    data:  {
+      accessToken:  result.accessToken,
+      refreshToken: result.refreshToken,
+    },
+  });
+
+  console.log(`[Accounting] ${conn.provider} token refreshed for buyerId: ${conn.buyerId}`);
   return result.accessToken;
 }
 
-export function getQuickBooksAuthHeader(): string {
-  const token = process.env.QB_ACCESS_TOKEN;
-  if (!token) throw new Error("QB_ACCESS_TOKEN is not set");
-  return `Bearer ${token}`;
+// ─────────────────────────────────────────────────────────────────────────────
+// createJournalEntry — dispatcher
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function createJournalEntry(
+  conn: BuyerAccountingConnection,
+  data: JournalEntryData,
+): Promise<void> {
+  switch (conn.provider) {
+    case "QUICKBOOKS":
+      return createQuickBooksJournalEntry(conn, data);
+    case "XERO":
+      return createXeroJournalEntry(conn, data);
+    case "ZOHO":
+      return createZohoJournalEntry(conn, data);
+    case "SAGE":
+      return createSageJournalEntry(conn, data);
+    case "NETSUITE":
+      return createNetSuiteJournalEntry(conn, data);
+    case "FREEE":
+      return createFreeeJournalEntry(conn, data);
+    default:
+      throw new Error(`Unknown accounting provider: ${conn.provider}`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QuickBooks Online
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function createQuickBooksJournalEntry(
+  conn: BuyerAccountingConnection,
+  data: JournalEntryData,
+): Promise<void> {
+  if (!conn.externalId) throw new Error("QuickBooks realmId (externalId) is not set");
+
+  const amount = data.amountUsdc;
+  const body = {
+    Line: [
+      {
+        Amount: amount,
+        DetailType: "JournalEntryLineDetail",
+        JournalEntryLineDetail: {
+          PostingType: "Debit",
+          AccountRef: { name: conn.expenseAccountRef ?? "API Expenses" },
+        },
+      },
+      {
+        Amount: amount,
+        DetailType: "JournalEntryLineDetail",
+        JournalEntryLineDetail: {
+          PostingType: "Credit",
+          AccountRef: { name: conn.cashAccountRef ?? "Cash and cash equivalents" },
+        },
+      },
+    ],
+    TxnDate: data.date,
+    PrivateNote: data.description,
+  };
+
+  const url = `https://quickbooks.api.intuit.com/v3/company/${conn.externalId}/journalentry`;
+
+  let accessToken = conn.accessToken;
+  let res = await fetch(url, {
+    method:  "POST",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type":  "application/json",
+      "Accept":        "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  // Auto-refresh on 401
+  if (res.status === 401) {
+    accessToken = await refreshConnectionToken(conn);
+    res = await fetch(url, {
+      method:  "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type":  "application/json",
+        "Accept":        "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`QuickBooks journal entry failed [${res.status}]: ${err}`);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Xero
-// Env: XERO_CLIENT_ID, XERO_CLIENT_SECRET, XERO_ACCESS_TOKEN,
-//      XERO_REFRESH_TOKEN, XERO_TENANT_ID
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function refreshXeroToken(): Promise<string> {
-  const refreshToken = process.env.XERO_REFRESH_TOKEN;
-  if (!refreshToken) throw new Error("XERO_REFRESH_TOKEN is not set");
+export async function createXeroJournalEntry(
+  conn: BuyerAccountingConnection,
+  data: JournalEntryData,
+): Promise<void> {
+  if (!conn.externalId) throw new Error("Xero tenantId (externalId) is not set");
 
-  // Xero uses HTTP Basic auth for token refresh (client_id:client_secret)
-  const clientId     = process.env.XERO_CLIENT_ID ?? "";
-  const clientSecret = process.env.XERO_CLIENT_SECRET ?? "";
-  const basicAuth    = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const amount = data.amountUsdc;
+  const body = {
+    Date: data.date,
+    Narration: data.description,
+    JournalLines: [
+      {
+        AccountCode:  conn.expenseAccountRef ?? "300",
+        Description:  data.description,
+        LineAmount:   amount,
+      },
+      {
+        AccountCode:  conn.cashAccountRef ?? "090",
+        Description:  data.description,
+        LineAmount:   -amount,
+      },
+    ],
+  };
 
-  const res = await fetch("https://identity.xero.com/connect/token", {
+  const url = "https://api.xero.com/api.xro/2.0/ManualJournals";
+
+  let accessToken = conn.accessToken;
+  let res = await fetch(url, {
     method:  "POST",
     headers: {
-      "Content-Type":  "application/x-www-form-urlencoded",
-      "Authorization": `Basic ${basicAuth}`,
+      "Authorization":  `Bearer ${accessToken}`,
+      "Xero-tenant-id": conn.externalId,
+      "Content-Type":   "application/json",
+      "Accept":         "application/json",
     },
-    body: new URLSearchParams({
-      grant_type:    "refresh_token",
-      refresh_token: refreshToken,
-    }).toString(),
+    body: JSON.stringify(body),
   });
+
+  if (res.status === 401) {
+    accessToken = await refreshConnectionToken(conn);
+    res = await fetch(url, {
+      method:  "POST",
+      headers: {
+        "Authorization":  `Bearer ${accessToken}`,
+        "Xero-tenant-id": conn.externalId,
+        "Content-Type":   "application/json",
+        "Accept":         "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  }
 
   if (!res.ok) {
     const err = await res.text().catch(() => "");
-    throw new Error(`Xero token refresh failed [${res.status}]: ${err}`);
+    throw new Error(`Xero journal entry failed [${res.status}]: ${err}`);
   }
-
-  const d = await res.json() as { access_token: string; refresh_token: string };
-  process.env.XERO_ACCESS_TOKEN  = d.access_token;
-  process.env.XERO_REFRESH_TOKEN = d.refresh_token;
-
-  console.log("[Xero] token refreshed");
-  return d.access_token;
-}
-
-export function getXeroAuthHeaders(): Record<string, string> {
-  const token    = process.env.XERO_ACCESS_TOKEN;
-  const tenantId = process.env.XERO_TENANT_ID;
-  if (!token)    throw new Error("XERO_ACCESS_TOKEN is not set");
-  if (!tenantId) throw new Error("XERO_TENANT_ID is not set");
-  return {
-    "Authorization": `Bearer ${token}`,
-    "Xero-tenant-id": tenantId,
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Zoho Books
-// Env: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_ACCESS_TOKEN,
-//      ZOHO_REFRESH_TOKEN, ZOHO_ORG_ID, ZOHO_REGION (default: com)
-// Region: com / eu / in / com.au / jp
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function refreshZohoToken(): Promise<string> {
-  const refreshToken = process.env.ZOHO_REFRESH_TOKEN;
-  if (!refreshToken) throw new Error("ZOHO_REFRESH_TOKEN is not set");
+export async function createZohoJournalEntry(
+  conn: BuyerAccountingConnection,
+  data: JournalEntryData,
+): Promise<void> {
+  if (!conn.externalId) throw new Error("Zoho orgId (externalId) is not set");
 
-  const region = process.env.ZOHO_REGION ?? "com";
+  const amount = data.amountUsdc;
+  const body = {
+    journal_date: data.date,
+    notes: data.description,
+    line_items: [
+      {
+        account_name:    conn.expenseAccountRef ?? "API Expenses",
+        debit_or_credit: "debit",
+        amount,
+      },
+      {
+        account_name:    conn.cashAccountRef ?? "Cash",
+        debit_or_credit: "credit",
+        amount,
+      },
+    ],
+  };
 
-  const result = await refreshOAuth2(
-    `https://accounts.zoho.${region}/oauth/v2/token`,
-    process.env.ZOHO_CLIENT_ID ?? "",
-    process.env.ZOHO_CLIENT_SECRET ?? "",
-    refreshToken,
-  );
+  const url = `https://www.zohoapis.com/books/v3/journals?organization_id=${conn.externalId}`;
 
-  process.env.ZOHO_ACCESS_TOKEN  = result.accessToken;
-  process.env.ZOHO_REFRESH_TOKEN = result.refreshToken;
+  let accessToken = conn.accessToken;
+  let res = await fetch(url, {
+    method:  "POST",
+    headers: {
+      "Authorization": `Zoho-oauthtoken ${accessToken}`,
+      "Content-Type":  "application/json",
+    },
+    body: JSON.stringify(body),
+  });
 
-  console.log("[Zoho Books] token refreshed");
-  return result.accessToken;
-}
-
-export function getZohoAuthHeader(): string {
-  const token = process.env.ZOHO_ACCESS_TOKEN;
-  if (!token) throw new Error("ZOHO_ACCESS_TOKEN is not set");
-  return `Zoho-oauthtoken ${token}`;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sage (Sage Accounting / Intacct)
-// Env: SAGE_CLIENT_ID, SAGE_CLIENT_SECRET, SAGE_ACCESS_TOKEN, SAGE_REFRESH_TOKEN
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function refreshSageToken(): Promise<string> {
-  const refreshToken = process.env.SAGE_REFRESH_TOKEN;
-  if (!refreshToken) throw new Error("SAGE_REFRESH_TOKEN is not set");
-
-  const result = await refreshOAuth2(
-    "https://oauth.accounting.sage.com/token",
-    process.env.SAGE_CLIENT_ID ?? "",
-    process.env.SAGE_CLIENT_SECRET ?? "",
-    refreshToken,
-  );
-
-  process.env.SAGE_ACCESS_TOKEN  = result.accessToken;
-  process.env.SAGE_REFRESH_TOKEN = result.refreshToken;
-
-  console.log("[Sage] token refreshed");
-  return result.accessToken;
-}
-
-export function getSageAuthHeader(): string {
-  const token = process.env.SAGE_ACCESS_TOKEN;
-  if (!token) throw new Error("SAGE_ACCESS_TOKEN is not set");
-  return `Bearer ${token}`;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Oracle NetSuite  (OAuth 1.0a Token-Based Authentication)
-// Env: NETSUITE_ACCOUNT_ID, NETSUITE_CONSUMER_KEY, NETSUITE_CONSUMER_SECRET,
-//      NETSUITE_TOKEN_ID, NETSUITE_TOKEN_SECRET
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Generate OAuth 1.0a Authorization header for NetSuite TBA.
- * NetSuite uses HMAC-SHA256 (not HMAC-SHA1).
- */
-export function getNetSuiteAuthHeader(
-  method:  string,
-  url:     string,
-): string {
-  const accountId      = process.env.NETSUITE_ACCOUNT_ID ?? "";
-  const consumerKey    = process.env.NETSUITE_CONSUMER_KEY ?? "";
-  const consumerSecret = process.env.NETSUITE_CONSUMER_SECRET ?? "";
-  const tokenId        = process.env.NETSUITE_TOKEN_ID ?? "";
-  const tokenSecret    = process.env.NETSUITE_TOKEN_SECRET ?? "";
-
-  if (!accountId || !consumerKey || !consumerSecret || !tokenId || !tokenSecret) {
-    throw new Error("NETSUITE_* environment variables are not fully configured");
+  if (res.status === 401) {
+    accessToken = await refreshConnectionToken(conn);
+    res = await fetch(url, {
+      method:  "POST",
+      headers: {
+        "Authorization": `Zoho-oauthtoken ${accessToken}`,
+        "Content-Type":  "application/json",
+      },
+      body: JSON.stringify(body),
+    });
   }
 
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Zoho journal entry failed [${res.status}]: ${err}`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sage
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function createSageJournalEntry(
+  conn: BuyerAccountingConnection,
+  data: JournalEntryData,
+): Promise<void> {
+  const amount = data.amountUsdc;
+  const body = {
+    date: data.date,
+    reference: `LEMON-${data.chargeId}`,
+    journal_entry_lines: [
+      {
+        ledger_account: { displayed_as: conn.expenseAccountRef ?? "API Expenses" },
+        debit: amount,
+      },
+      {
+        ledger_account: { displayed_as: conn.cashAccountRef ?? "Bank Account" },
+        credit: amount,
+      },
+    ],
+  };
+
+  const url = "https://api.accounting.sage.com/v3.1/journal_entries";
+
+  let accessToken = conn.accessToken;
+  let res = await fetch(url, {
+    method:  "POST",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type":  "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (res.status === 401) {
+    accessToken = await refreshConnectionToken(conn);
+    res = await fetch(url, {
+      method:  "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type":  "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Sage journal entry failed [${res.status}]: ${err}`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Oracle NetSuite (OAuth 1.0a TBA)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildNetSuiteAuthHeader(
+  method:          string,
+  url:             string,
+  accountId:       string,
+  consumerKey:     string,
+  consumerSecret:  string,
+  tokenId:         string,
+  tokenSecret:     string,
+): string {
   const nonce     = crypto.randomBytes(16).toString("hex");
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const realm     = accountId.toUpperCase().replace(/-/g, "_");
 
-  // Build base string
   const params: Record<string, string> = {
     oauth_consumer_key:     consumerKey,
     oauth_nonce:            nonce,
@@ -232,7 +458,6 @@ export function getNetSuiteAuthHeader(
     oauth_version:          "1.0",
   };
 
-  // Parse URL query params and merge for signature
   const urlObj = new URL(url);
   urlObj.searchParams.forEach((v, k) => { params[k] = v; });
 
@@ -259,32 +484,171 @@ export function getNetSuiteAuthHeader(
   ].join(", ");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Unified: detect service by endpoint and return refreshed token
-// Called by proxy on 401
-// ─────────────────────────────────────────────────────────────────────────────
+export async function createNetSuiteJournalEntry(
+  conn: BuyerAccountingConnection,
+  data: JournalEntryData,
+): Promise<void> {
+  if (!conn.nsAccountId || !conn.nsConsumerKey || !conn.nsConsumerSecret || !conn.nsTokenId || !conn.nsTokenSecret) {
+    throw new Error("NetSuite TBA credentials are not fully configured for this connection");
+  }
 
-export async function refreshTokenForEndpoint(endpoint: string): Promise<string | null> {
-  if (endpoint.includes("quickbooks.api.intuit.com")) {
-    return refreshQuickBooksToken();
+  const amount = data.amountUsdc;
+  // NetSuite uses the account number from the external fields
+  const accountId = conn.nsAccountId.toUpperCase().replace(/-/g, "_");
+  const url = `https://${accountId}.suitetalk.api.netsuite.com/services/rest/record/v1/journalentry`;
+
+  const body = {
+    memo: data.description,
+    trandate: data.date,
+    line: {
+      items: [
+        {
+          account: { id: conn.expenseAccountRef ?? "1" },
+          debit: amount,
+          memo: data.description,
+        },
+        {
+          account: { id: conn.cashAccountRef ?? "1000" },
+          credit: amount,
+          memo: data.description,
+        },
+      ],
+    },
+  };
+
+  const authHeader = buildNetSuiteAuthHeader(
+    "POST",
+    url,
+    conn.nsAccountId,
+    conn.nsConsumerKey,
+    conn.nsConsumerSecret,
+    conn.nsTokenId,
+    conn.nsTokenSecret,
+  );
+
+  const res = await fetch(url, {
+    method:  "POST",
+    headers: {
+      "Authorization": authHeader,
+      "Content-Type":  "application/json",
+      "Prefer":        "return=representation",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`NetSuite journal entry failed [${res.status}]: ${err}`);
   }
-  if (endpoint.includes("api.xero.com")) {
-    return refreshXeroToken();
-  }
-  if (endpoint.includes("zohoapis.com")) {
-    return refreshZohoToken();
-  }
-  if (endpoint.includes("accounting.sage.com")) {
-    return refreshSageToken();
-  }
-  // NetSuite: no token to refresh (OAuth 1.0a is stateless per-request)
-  return null;
 }
 
-/**
- * Get the Xero tenant-id header value (needed as extra header in proxy).
- * Returns empty string if not set.
- */
-export function getXeroTenantId(): string {
-  return process.env.XERO_TENANT_ID ?? "";
+// ─────────────────────────────────────────────────────────────────────────────
+// freee (per-buyer, using conn.accessToken)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function createFreeeJournalEntry(
+  conn: BuyerAccountingConnection,
+  data: JournalEntryData,
+): Promise<void> {
+  if (!conn.externalId) throw new Error("freee company_id (externalId) is not set");
+
+  const amountJpy = data.amountJpy ?? Math.round(data.amountUsdc * Number(process.env.JPY_USDC_RATE ?? "150"));
+
+  const body = {
+    deal_type: "expense",
+    company_id: Number(conn.externalId),
+    issue_date: data.date,
+    description: data.description,
+    details: [
+      {
+        account_item_id: conn.expenseAccountRef ? Number(conn.expenseAccountRef) : undefined,
+        tax_code: 1,
+        amount: amountJpy,
+        entry_side: "debit",
+        description: data.description,
+      },
+      {
+        account_item_id: conn.cashAccountRef ? Number(conn.cashAccountRef) : undefined,
+        tax_code: 1,
+        amount: amountJpy,
+        entry_side: "credit",
+        description: data.description,
+      },
+    ],
+  };
+
+  const url = "https://api.freee.co.jp/api/1/manual_journals";
+
+  let accessToken = conn.accessToken;
+  let res = await fetch(url, {
+    method:  "POST",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type":  "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (res.status === 401) {
+    accessToken = await refreshConnectionToken(conn);
+    res = await fetch(url, {
+      method:  "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type":  "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`freee journal entry failed [${res.status}]: ${err}`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Xero: get tenantId after OAuth callback
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getXeroTenantId(accessToken: string): Promise<string> {
+  const res = await fetch("https://api.xero.com/connections", {
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type":  "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Xero GET /connections failed [${res.status}]: ${err}`);
+  }
+
+  const connections = await res.json() as Array<{ tenantId: string; tenantName?: string }>;
+  if (!connections.length) throw new Error("No Xero connections found");
+
+  return connections[0].tenantId;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Zoho: get orgId after OAuth callback
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getZohoOrgId(accessToken: string, region = "com"): Promise<string> {
+  const res = await fetch(`https://www.zohoapis.${region}/books/v3/organizations`, {
+    headers: {
+      "Authorization": `Zoho-oauthtoken ${accessToken}`,
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Zoho GET /organizations failed [${res.status}]: ${err}`);
+  }
+
+  const d = await res.json() as { organizations?: Array<{ organization_id: string; name?: string }> };
+  const orgs = d.organizations ?? [];
+  if (!orgs.length) throw new Error("No Zoho organizations found");
+
+  return orgs[0].organization_id;
 }

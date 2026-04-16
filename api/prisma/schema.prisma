@@ -59,6 +59,7 @@ model Buyer {
   jpycDepositRequests JpycDepositRequest[]
   heldUsdc              Decimal     @default(0) @db.Decimal(38, 18)
   workflows             Workflow[]
+  accountingConnections BuyerAccountingConnection[]
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -311,4 +312,42 @@ enum WorkflowState {
   COMPLETED     // 全ステップ完了
   FAILED        // 失敗（error フィールドに理由）
   CANCELLED     // タイムアウトまたは手動キャンセル
+}
+
+// ─────────────────────────────────────────────────────────────
+// BuyerAccountingConnection: バイヤーが接続した会計ソフトウェア
+// ─────────────────────────────────────────────────────────────
+model BuyerAccountingConnection {
+  id           String             @id @default(cuid())
+  buyerId      String
+  buyer        Buyer              @relation(fields: [buyerId], references: [id])
+  provider     AccountingProvider
+  accessToken  String
+  refreshToken String?
+  externalId   String?            // QB=realmId, Xero=tenantId, Zoho=orgId, Sage=businessId
+  externalName String?            // 表示名 e.g. "My Company"
+  // NetSuite TBA (no OAuth)
+  nsAccountId      String?
+  nsConsumerKey    String?
+  nsConsumerSecret String?
+  nsTokenId        String?
+  nsTokenSecret    String?
+  // Account code mapping for journal entries
+  expenseAccountRef String?       // debit account code/id/name
+  cashAccountRef    String?       // credit account code/id/name
+  active       Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@unique([buyerId, provider])
+  @@map("buyer_accounting_connections")
+}
+
+enum AccountingProvider {
+  QUICKBOOKS
+  XERO
+  ZOHO
+  SAGE
+  NETSUITE
+  FREEE
 }
