@@ -149,7 +149,7 @@ export default function AboutPageEn() {
               href="/register"
               className="inline-flex items-center gap-2 px-6 py-3 bg-[#1a0f00] text-white font-semibold rounded-xl hover:bg-[#1a0f00]/80 transition-colors text-sm"
             >
-              Get started free <IconArrowRight />
+              Issue a Pay Token <IconArrowRight />
             </Link>
           </div>
         </section>

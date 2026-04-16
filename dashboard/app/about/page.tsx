@@ -166,7 +166,7 @@ export default function AboutPage() {
               href="/register"
               className="inline-flex items-center gap-2 px-6 py-3 bg-[#1a0f00] text-white font-semibold rounded-xl hover:bg-[#1a0f00]/80 transition-colors text-sm"
             >
-              無料で始める <IconArrowRight />
+              Pay Token を発行する <IconArrowRight />
             </Link>
           </div>
         </section>
