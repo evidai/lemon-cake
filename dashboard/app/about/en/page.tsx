@@ -104,8 +104,12 @@ export default function AboutPageEn() {
               <span className="font-bold text-[15px] text-white">LEMON cake</span>
             </div>
             <div className="hidden md:flex items-center gap-6">
-              {["Infrastructure", "Use Cases", "Developers", "About"].map(label => (
-                <span key={label} className="text-[13px] text-white/50 hover:text-white/90 transition-colors cursor-pointer">{label}</span>
+              {[
+                { label: "Infrastructure", href: "#infrastructure" },
+                { label: "Use Cases",      href: "#use-cases" },
+                { label: "Developers",     href: "#stack" },
+              ].map(({ label, href }) => (
+                <a key={label} href={href} className="text-[13px] text-white/50 hover:text-white/90 transition-colors">{label}</a>
               ))}
             </div>
           </div>
@@ -163,7 +167,7 @@ export default function AboutPageEn() {
       </section>
 
       {/* ── The Infrastructure ── */}
-      <section className="max-w-6xl mx-auto px-6 pb-8">
+      <section id="infrastructure" className="max-w-6xl mx-auto px-6 pb-8">
         <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-20">The Infrastructure</p>
         <div className="flex flex-col gap-28">
           {whyItems.map(({ eyebrow, title, body, stats, flipped }) => (
@@ -194,7 +198,7 @@ export default function AboutPageEn() {
       </section>
 
       {/* ── Buyer / Seller 2-column ── */}
-      <div className="bg-white w-full">
+      <div id="use-cases" className="bg-white w-full">
         <section className="max-w-6xl mx-auto px-6 py-28">
           <p className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">Use Cases</p>
           <h2 className="text-center text-3xl md:text-4xl font-black text-gray-900 mb-16 leading-tight">
@@ -247,6 +251,30 @@ export default function AboutPageEn() {
           </div>
         </section>
       </div>
+
+      {/* ── Stack / Developer ── */}
+      <section id="stack" className="max-w-4xl mx-auto px-6 py-28">
+        <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-4">For Developers</p>
+        <h2 className="text-center text-3xl md:text-4xl font-black text-white mb-12 leading-tight">
+          A stack you can trust
+        </h2>
+        <div className="divide-y divide-white/8 border border-white/8 rounded-2xl overflow-hidden">
+          {[
+            { label: "Frontend",  value: "Next.js 14 (App Router) + Tailwind CSS" },
+            { label: "API",       value: "Hono + OpenAPI (Zod)" },
+            { label: "Database",  value: "PostgreSQL (Supabase) + Prisma ORM" },
+            { label: "Auth",      value: "Jose JWT — Buyer / Admin" },
+            { label: "Queue",     value: "BullMQ + Redis" },
+            { label: "Chain",     value: "Polygon — USDC / JPYC ERC-20" },
+            { label: "Protocol",  value: "KYA/KYC Tier Auth + JWT Pay Token" },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex items-center gap-6 px-6 py-4 bg-white/2 hover:bg-white/4 transition-colors">
+              <span className="text-[11px] font-semibold text-white/30 uppercase tracking-widest w-24 flex-shrink-0">{label}</span>
+              <span className="text-[14px] text-white/70">{value}</span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* ── Philosophy ── */}
       <section className="relative overflow-hidden px-6 pt-28 pb-40 text-center">
