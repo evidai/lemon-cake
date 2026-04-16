@@ -22,8 +22,12 @@ authRouter.post(
   zValidator("json", z.object({ email: z.string().email(), password: z.string().min(1) })),
   async (c) => {
     const { email, password } = c.req.valid("json");
-    const adminEmail    = process.env.ADMIN_EMAIL    ?? "admin@kyapay.io";
-    const adminPassword = process.env.ADMIN_PASSWORD ?? "admin1234";
+    const adminEmail    = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminEmail || !adminPassword) {
+      console.error("[Auth] ADMIN_EMAIL or ADMIN_PASSWORD env vars are not set");
+      return c.json({ error: "管理者認証が設定されていません" }, 503);
+    }
     if (email !== adminEmail || password !== adminPassword) {
       return c.json({ error: "メールアドレスまたはパスワードが正しくありません" }, 401);
     }

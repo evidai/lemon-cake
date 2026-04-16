@@ -85,9 +85,9 @@ export async function verifyBuyerToken(token: string): Promise<BuyerTokenPayload
 // ─── Admin JWT ───────────────────────────────────────────────
 
 function getAdminSecret(): Uint8Array {
-  const secret = process.env.ADMIN_JWT_SECRET ?? process.env.JWT_SECRET;
-  if (!secret || secret.length < 16) {
-    throw new Error("ADMIN_JWT_SECRET must be set");
+  const secret = process.env.ADMIN_JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("ADMIN_JWT_SECRET must be set independently (min 32 chars) — do not share with JWT_SECRET");
   }
   return new TextEncoder().encode(secret);
 }

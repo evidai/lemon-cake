@@ -206,7 +206,11 @@ export async function handleStripeWebhook(
 
     const amount   = parseInt(meta?.amount   ?? "0",   10);
     const currency = (meta?.currency ?? "jpy") as SupportedCurrency;
-    if (!amount) return { processed: false };
+    // 金額の妥当性チェック（0以下・異常に大きな値を拒否）
+    if (!amount || amount <= 0 || amount > 10_000_000) {
+      console.warn(`[Stripe] Suspicious amount in webhook metadata: ${meta?.amount}`);
+      return { processed: false };
+    }
 
     const rate       = await getCurrencyToUsdcRate(currency);
     const { Decimal } = await import("@prisma/client/runtime/library");
@@ -237,6 +241,10 @@ export async function handleStripeWebhook(
 
     // Stripe amount は通貨の最小単位
     const stripeAmount = (funded.amount as number) ?? 0;
+    if (!stripeAmount || stripeAmount <= 0 || stripeAmount > 1_000_000_000) {
+      console.warn(`[Stripe] Suspicious stripeAmount in webhook: ${stripeAmount}`);
+      return { processed: false };
+    }
     const currency     = ((funded.currency as string) ?? "jpy") as SupportedCurrency;
     const naturalAmount = fromStripeAmount(stripeAmount, currency);
 

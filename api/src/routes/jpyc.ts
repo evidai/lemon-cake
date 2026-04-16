@@ -18,6 +18,20 @@ import { verifyJpycTransfer, fetchJpycRate } from "../lib/jpyc-verify.js";
 
 export const jpycRouter = new OpenAPIHono();
 
+// レートリミット: JPYC入金申請は 10件/buyerId/1時間
+const depositRateLimit = new Map<string, { count: number; resetAt: number }>();
+function checkDepositRateLimit(buyerId: string): boolean {
+  const now = Date.now();
+  const entry = depositRateLimit.get(buyerId);
+  if (!entry || now > entry.resetAt) {
+    depositRateLimit.set(buyerId, { count: 1, resetAt: now + 60 * 60 * 1000 });
+    return true;
+  }
+  if (entry.count >= 10) return false;
+  entry.count++;
+  return true;
+}
+
 // ─── 設定 ────────────────────────────────────────────────────
 // JPYC_RATE: 1 USDCに対するJPYC数（例: 150 → 150 JPYC = 1 USDC）
 const JPYC_RATE = parseFloat(process.env.JPYC_RATE ?? "150");
@@ -140,6 +154,11 @@ jpycRouter.openapi(
       buyerPayload = await verifyBuyerToken(auth.slice(7));
     } catch {
       return c.json({ error: "Invalid token" }, 401) as any;
+    }
+
+    // レートリミットチェック
+    if (!checkDepositRateLimit(buyerPayload.buyerId)) {
+      return c.json({ error: "申請が多すぎます。1時間後に再試行してください。" }, 429) as any;
     }
 
     const { txHash, amountJpyc } = c.req.valid("json");

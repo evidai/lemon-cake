@@ -13,11 +13,16 @@
  */
 
 import { Hono }       from "hono";
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { checkWithholdingTax, hashEvidence } from "../../lib/tax.js";
 import { createFreeeTransaction }            from "../../lib/freee.js";
 
 export const githubWebhookRouter = new Hono();
+
+// 処理済みPRの記録（再起動でリセットされるが二重送金を防ぐ主要手段）
+// key: "{repoFullName}#{prNumber}", value: processedAt timestamp
+const processedPRs = new Map<string, number>();
+const PR_TTL_MS = 24 * 60 * 60 * 1000; // 24時間
 
 // ─── POST /api/webhooks/github ────────────────────────────────
 githubWebhookRouter.post("/", async (c) => {
@@ -25,14 +30,29 @@ githubWebhookRouter.post("/", async (c) => {
   const event    = c.req.header("X-GitHub-Event");
   const signature = c.req.header("X-Hub-Signature-256");
 
-  // ── 1. HMAC 署名検証 ────────────────────────────────────
+  // ── 1. HMAC 署名検証（timing-safe比較）────────────────────
   const secret = process.env.GITHUB_WEBHOOK_SECRET ?? "";
+  if (!secret) {
+    console.error("[GitHub] GITHUB_WEBHOOK_SECRET is not set — rejecting all webhooks");
+    return c.json({ error: "Webhook secret not configured" }, 503);
+  }
   if (secret && signature) {
     const expected = "sha256=" + createHmac("sha256", secret).update(rawBody).digest("hex");
-    if (signature !== expected) {
-      console.warn("[GitHub] Invalid webhook signature");
+    // timing-safe比較でタイミング攻撃を防ぐ
+    try {
+      const a = Buffer.from(signature);
+      const b = Buffer.from(expected);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        console.warn("[GitHub] Invalid webhook signature");
+        return c.json({ error: "Invalid signature" }, 401);
+      }
+    } catch {
       return c.json({ error: "Invalid signature" }, 401);
     }
+  } else {
+    // secretが設定されているのにsignatureがない場合は拒否
+    console.warn("[GitHub] Missing X-Hub-Signature-256 header");
+    return c.json({ error: "Missing signature" }, 401);
   }
 
   // ── 2. PR マージイベントのみ処理 ─────────────────────────
@@ -64,9 +84,23 @@ githubWebhookRouter.post("/", async (c) => {
     return c.json({ ok: true, skipped: true, reason: "not merged" });
   }
 
-  const login   = pr.user?.login ?? "unknown";
-  const prTitle = pr.title ?? `PR #${pr.number}`;
+  const login    = pr.user?.login ?? "unknown";
+  const prTitle  = pr.title ?? `PR #${pr.number}`;
   const repoName = payload.repository?.full_name ?? "";
+  const prKey    = `${repoName}#${pr.number}`;
+
+  // ── 冪等性チェック: 同じPRを2回処理しない ───────────────
+  // 古いエントリを掃除
+  const now = Date.now();
+  for (const [k, ts] of processedPRs) {
+    if (now - ts > PR_TTL_MS) processedPRs.delete(k);
+  }
+  if (processedPRs.has(prKey)) {
+    console.log(`[GitHub] PR ${prKey} already processed — skipping (idempotency)`);
+    return c.json({ ok: true, skipped: true, reason: "already_processed" });
+  }
+  // 処理開始前にマーク（処理失敗時も再送しない設計）
+  processedPRs.set(prKey, now);
 
   console.log(`[GitHub] PR merged: ${repoName}#${pr.number} by @${login}`);
 

@@ -167,8 +167,14 @@ proxyRouter.all("/:serviceId/*", async (c) => {
   if (service.authHeader) {
     if (service.authHeader.startsWith("QUERY:")) {
       // QUERY:param_name:value → クエリパラメータとして付加
-      const parts = service.authHeader.slice(6).split(":");
-      queryAuthParam = [parts[0], parts.slice(1).join(":")];
+      const parts     = service.authHeader.slice(6).split(":");
+      const paramName = parts[0];
+      // パラメータ名が安全な文字のみで構成されているか検証（SSRF/インジェクション対策）
+      if (!/^[A-Za-z0-9_-]{1,64}$/.test(paramName)) {
+        console.error(`[Proxy] Invalid QUERY param name in authHeader: "${paramName}"`);
+        throw new HTTPException(500, { message: "Invalid service configuration" });
+      }
+      queryAuthParam = [paramName, parts.slice(1).join(":")];
     } else if (service.authHeader.startsWith("Bearer ") || !service.authHeader.includes(":")) {
       forwardHeaders["Authorization"] = service.authHeader;
     } else {
