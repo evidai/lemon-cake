@@ -205,17 +205,19 @@ tokensRouter.openapi(listRoute, async (c) => {
   }
 
   const { page, limit } = c.req.valid("query");
-  const buyerId = buyerPayload.buyerId; // 自分のトークンのみ取得
+  const buyerId = buyerPayload.buyerId;
+  // buyerIdが空なら全件返してしまうため必ず存在チェック
+  if (!buyerId) return c.json({ error: "Unauthorized" }, 401) as never;
   const skip = (page - 1) * limit;
 
   const [tokens, total] = await prisma.$transaction([
     prisma.token.findMany({
-      where:   buyerId ? { buyerId } : undefined,
+      where:   { buyerId },   // 常にbuyerIdでフィルタ（全件漏洩防止）
       orderBy: { createdAt: "desc" },
       skip,
       take:    limit,
     }),
-    prisma.token.count({ where: buyerId ? { buyerId } : undefined }),
+    prisma.token.count({ where: { buyerId } }),
   ]);
 
   return c.json({

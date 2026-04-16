@@ -14,6 +14,35 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
 import { signAdminToken, signBuyerToken, verifyBuyerToken } from "../lib/jwt.js";
 
+// ── ブルートフォース対策: ログイン失敗カウンター ──────────────
+// key: email, value: { failures: number; lockedUntil: number }
+const loginAttempts = new Map<string, { failures: number; lockedUntil: number }>();
+const MAX_FAILURES    = 10;          // 10回失敗でロック
+const LOCKOUT_MS      = 15 * 60 * 1000; // 15分ロック
+
+function checkLoginRateLimit(email: string): { allowed: boolean; retryAfterSec?: number } {
+  const now   = Date.now();
+  const entry = loginAttempts.get(email);
+  if (entry && now < entry.lockedUntil) {
+    return { allowed: false, retryAfterSec: Math.ceil((entry.lockedUntil - now) / 1000) };
+  }
+  return { allowed: true };
+}
+
+function recordLoginFailure(email: string): void {
+  const now   = Date.now();
+  const entry = loginAttempts.get(email) ?? { failures: 0, lockedUntil: 0 };
+  // ロック期間を過ぎていたらリセット
+  if (now > entry.lockedUntil) entry.failures = 0;
+  entry.failures++;
+  if (entry.failures >= MAX_FAILURES) entry.lockedUntil = now + LOCKOUT_MS;
+  loginAttempts.set(email, entry);
+}
+
+function clearLoginFailures(email: string): void {
+  loginAttempts.delete(email);
+}
+
 export const authRouter = new Hono();
 
 // ─── 管理者ログイン ──────────────────────────────────────────
@@ -22,6 +51,10 @@ authRouter.post(
   zValidator("json", z.object({ email: z.string().email(), password: z.string().min(1) })),
   async (c) => {
     const { email, password } = c.req.valid("json");
+    const rl = checkLoginRateLimit(`admin:${email}`);
+    if (!rl.allowed) {
+      return c.json({ error: `ログイン試行が多すぎます。${rl.retryAfterSec}秒後に再試行してください。` }, 429);
+    }
     const adminEmail    = process.env.ADMIN_EMAIL;
     const adminPassword = process.env.ADMIN_PASSWORD;
     if (!adminEmail || !adminPassword) {
@@ -29,8 +62,10 @@ authRouter.post(
       return c.json({ error: "管理者認証が設定されていません" }, 503);
     }
     if (email !== adminEmail || password !== adminPassword) {
+      recordLoginFailure(`admin:${email}`);
       return c.json({ error: "メールアドレスまたはパスワードが正しくありません" }, 401);
     }
+    clearLoginFailures(`admin:${email}`);
     const token = await signAdminToken();
     return c.json({ token, expiresIn: 86400 });
   },
@@ -84,17 +119,24 @@ authRouter.post(
   zValidator("json", z.object({ email: z.string().email(), password: z.string().min(1) })),
   async (c) => {
     const { email, password } = c.req.valid("json");
+    const rl = checkLoginRateLimit(`buyer:${email}`);
+    if (!rl.allowed) {
+      return c.json({ error: `ログイン試行が多すぎます。${rl.retryAfterSec}秒後に再試行してください。` }, 429);
+    }
     const user = await prisma.user.findUnique({ where: { email }, include: { buyer: true } });
     if (!user || !user.passwordHash) {
+      recordLoginFailure(`buyer:${email}`);
       return c.json({ error: "メールアドレスまたはパスワードが正しくありません" }, 401);
     }
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
+      recordLoginFailure(`buyer:${email}`);
       return c.json({ error: "メールアドレスまたはパスワードが正しくありません" }, 401);
     }
     if (!user.buyerId || !user.buyer) {
       return c.json({ error: "アカウントデータが見つかりません" }, 404);
     }
+    clearLoginFailures(`buyer:${email}`);
     const token = await signBuyerToken({
       userId:  user.id,
       buyerId: user.buyerId,
