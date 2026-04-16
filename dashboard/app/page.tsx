@@ -3619,18 +3619,20 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
             return (
               <div key={p.id} className={`bg-white rounded-2xl border p-5 flex items-center gap-4 ${isConnected ? "border-green-200 bg-green-50/30" : "border-gray-200"}`}>
                 {/* Logo */}
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: p.color }}
-                >
-                  {p.svgPath ? (
+                {p.svgPath ? (
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: p.color }}
+                  >
                     <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white" xmlns="http://www.w3.org/2000/svg">
                       <path d={p.svgPath} />
                     </svg>
-                  ) : (
-                    <span className="text-white text-sm font-bold">f</span>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-white border border-gray-100 overflow-hidden">
+                    <img src="/freee-logo.png" alt="freee" className="w-8 h-8 object-contain" />
+                  </div>
+                )}
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
