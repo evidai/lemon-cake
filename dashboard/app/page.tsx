@@ -233,12 +233,15 @@ function IconPlayground({ cls }: { cls?: string }) {
   );
 }
 function IconUSDC({ cls }: { cls?: string }) {
-  return (
-    <svg className={cls} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="8"/>
-      <path d="M10 5v1.5M10 13.5V15M7 7.5c0-1 1.3-1.5 3-1.5s3 .7 3 2c0 2.5-6 1.5-6 4 0 1.4 1.3 2 3 2s3-.5 3-1.5"/>
-    </svg>
-  );
+  // extract size classes (w-* h-*) from cls; ignore color/transition classes for img
+  const sizeMatch = (cls ?? "").match(/(w-\S+)\s+(h-\S+)/);
+  const sizeClass = sizeMatch ? `${sizeMatch[1]} ${sizeMatch[2]}` : "w-5 h-5";
+  return <img src="/usdc.png" alt="USDC" className={`${sizeClass} rounded-full flex-shrink-0 object-cover`} />;
+}
+function IconJPYC({ cls }: { cls?: string }) {
+  const sizeMatch = (cls ?? "").match(/(w-\S+)\s+(h-\S+)/);
+  const sizeClass = sizeMatch ? `${sizeMatch[1]} ${sizeMatch[2]}` : "w-5 h-5";
+  return <img src="/jpyc.png" alt="JPYC" className={`${sizeClass} rounded-full flex-shrink-0 object-cover`} />;
 }
 function IconApiKey({ cls }: { cls?: string }) {
   return (
@@ -311,7 +314,7 @@ const NAV_BUYER: NavItem[] = [
   { id: "agents",       label: "販売者向けAPIキー",     Icon: IconApiKey },
   { id: "fraud",        label: "課金履歴",              Icon: IconClaim },
   { id: "usdc",         label: "USDCチャージ",          Icon: IconUSDC },
-  { id: "jpyc",         label: "JPYCチャージ",          Icon: IconPlayground },
+  { id: "jpyc",         label: "JPYCチャージ",          Icon: IconJPYC },
 ];
 
 // ── セラー用ナビ ──────────────────────────────────────────────
@@ -348,7 +351,7 @@ function Sidebar({
     { id: "agents",       label: t("販売者向けAPIキー", "API Keys"),      Icon: IconApiKey },
     { id: "fraud",        label: t("課金履歴", "Charges"),               Icon: IconClaim },
     { id: "usdc",         label: t("USDCチャージ", "USDC Deposit"),      Icon: IconUSDC },
-    { id: "jpyc",         label: t("JPYCチャージ", "JPYC Deposit"),      Icon: IconPlayground },
+    { id: "jpyc",         label: t("JPYCチャージ", "JPYC Deposit"),      Icon: IconJPYC },
   ];
   const navSeller: NavItem[] = [
     { id: "seller-services",  label: t("マイサービス", "My Services"),   Icon: IconStore },
