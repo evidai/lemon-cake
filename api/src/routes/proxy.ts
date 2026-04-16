@@ -169,6 +169,49 @@ proxyRouter.all("/:serviceId/*", async (c) => {
       // QUERY:param_name:value → クエリパラメータとして付加
       const parts = service.authHeader.slice(6).split(":");
       queryAuthParam = [parts[0], parts.slice(1).join(":")];
+    } else if (service.authHeader === "NETSUITE_OAUTH1") {
+      // NetSuite TBA: per-request OAuth 1.0a 署名を生成
+      try {
+        const { getNetSuiteAuthHeader } = await import("../lib/accounting.js");
+        const baseUrl = (service.endpoint ?? "").replace(/\/$/, "") +
+          c.req.path.replace(`/api/proxy/${serviceId}`, "") || "/";
+        forwardHeaders["Authorization"] = getNetSuiteAuthHeader(c.req.method, baseUrl);
+      } catch (e) {
+        console.error("[Proxy] NetSuite OAuth1 sign failed:", e);
+      }
+    } else if (service.authHeader === "XERO_OAUTH2") {
+      // Xero: Bearer + tenant-id ヘッダー
+      try {
+        const { getXeroAuthHeaders } = await import("../lib/accounting.js");
+        const xeroHeaders = getXeroAuthHeaders();
+        Object.assign(forwardHeaders, xeroHeaders);
+      } catch (e) {
+        console.error("[Proxy] Xero auth header failed:", e);
+      }
+    } else if (service.authHeader === "ZOHO_OAUTH2") {
+      // Zoho: Zoho-oauthtoken ヘッダー
+      try {
+        const { getZohoAuthHeader } = await import("../lib/accounting.js");
+        forwardHeaders["Authorization"] = getZohoAuthHeader();
+      } catch (e) {
+        console.error("[Proxy] Zoho auth header failed:", e);
+      }
+    } else if (service.authHeader === "QB_OAUTH2") {
+      // QuickBooks
+      try {
+        const { getQuickBooksAuthHeader } = await import("../lib/accounting.js");
+        forwardHeaders["Authorization"] = getQuickBooksAuthHeader();
+      } catch (e) {
+        console.error("[Proxy] QuickBooks auth header failed:", e);
+      }
+    } else if (service.authHeader === "SAGE_OAUTH2") {
+      // Sage
+      try {
+        const { getSageAuthHeader } = await import("../lib/accounting.js");
+        forwardHeaders["Authorization"] = getSageAuthHeader();
+      } catch (e) {
+        console.error("[Proxy] Sage auth header failed:", e);
+      }
     } else if (service.authHeader.startsWith("Bearer ") || !service.authHeader.includes(":")) {
       forwardHeaders["Authorization"] = service.authHeader;
     } else {
@@ -192,18 +235,63 @@ proxyRouter.all("/:serviceId/*", async (c) => {
   try {
     upstreamRes = await doFetch(forwardHeaders);
 
-    // 401 かつ freee エンドポイントなら自動リフレッシュして 1 回だけリトライ
-    if (upstreamRes.status === 401 && service.endpoint?.includes("api.freee.co.jp")) {
-      console.log("[Proxy] freee 401 — attempting token refresh");
-      try {
-        const { refreshAndPersistFreeeToken } = await import("../lib/freee.js");
-        const newToken = await refreshAndPersistFreeeToken();
-        forwardHeaders["Authorization"] = `Bearer ${newToken}`;
-        upstreamRes = await doFetch(forwardHeaders);
-      } catch (refreshErr) {
-        console.error("[Proxy] freee token refresh failed:", refreshErr);
-        // リフレッシュ失敗時は元の 401 をそのまま返す
+    // 401 → 自動リフレッシュして 1 回だけリトライ
+    if (upstreamRes.status === 401 && service.endpoint) {
+      const ep = service.endpoint;
+
+      // freee
+      if (ep.includes("api.freee.co.jp")) {
+        console.log("[Proxy] freee 401 — attempting token refresh");
+        try {
+          const { refreshAndPersistFreeeToken } = await import("../lib/freee.js");
+          const newToken = await refreshAndPersistFreeeToken();
+          forwardHeaders["Authorization"] = `Bearer ${newToken}`;
+          upstreamRes = await doFetch(forwardHeaders);
+        } catch (e) { console.error("[Proxy] freee token refresh failed:", e); }
+
+      // QuickBooks
+      } else if (ep.includes("quickbooks.api.intuit.com")) {
+        console.log("[Proxy] QuickBooks 401 — attempting token refresh");
+        try {
+          const { refreshQuickBooksToken } = await import("../lib/accounting.js");
+          const newToken = await refreshQuickBooksToken();
+          forwardHeaders["Authorization"] = `Bearer ${newToken}`;
+          upstreamRes = await doFetch(forwardHeaders);
+        } catch (e) { console.error("[Proxy] QuickBooks token refresh failed:", e); }
+
+      // Xero
+      } else if (ep.includes("api.xero.com")) {
+        console.log("[Proxy] Xero 401 — attempting token refresh");
+        try {
+          const { refreshXeroToken, getXeroTenantId } = await import("../lib/accounting.js");
+          const newToken = await refreshXeroToken();
+          forwardHeaders["Authorization"] = `Bearer ${newToken}`;
+          const tenantId = getXeroTenantId();
+          if (tenantId) forwardHeaders["Xero-tenant-id"] = tenantId;
+          upstreamRes = await doFetch(forwardHeaders);
+        } catch (e) { console.error("[Proxy] Xero token refresh failed:", e); }
+
+      // Zoho Books
+      } else if (ep.includes("zohoapis.com")) {
+        console.log("[Proxy] Zoho 401 — attempting token refresh");
+        try {
+          const { refreshZohoToken } = await import("../lib/accounting.js");
+          const newToken = await refreshZohoToken();
+          forwardHeaders["Authorization"] = `Zoho-oauthtoken ${newToken}`;
+          upstreamRes = await doFetch(forwardHeaders);
+        } catch (e) { console.error("[Proxy] Zoho token refresh failed:", e); }
+
+      // Sage
+      } else if (ep.includes("accounting.sage.com")) {
+        console.log("[Proxy] Sage 401 — attempting token refresh");
+        try {
+          const { refreshSageToken } = await import("../lib/accounting.js");
+          const newToken = await refreshSageToken();
+          forwardHeaders["Authorization"] = `Bearer ${newToken}`;
+          upstreamRes = await doFetch(forwardHeaders);
+        } catch (e) { console.error("[Proxy] Sage token refresh failed:", e); }
       }
+      // NetSuite: OAuth 1.0a は per-request 署名のため 401 リトライ不要
     }
   } catch (err) {
     console.error("[Proxy] Upstream fetch error:", err);
