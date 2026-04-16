@@ -1463,7 +1463,24 @@ function FraudPage({ blockedTx, avgRisk }: { blockedTx: number; avgRisk: number 
 
 // ── USDC Deposit Page ────────────────────────────────────────────────────────
 
-interface BankAccount { accountNumber: string; bankName: string; branchCode: string; }
+type DepositCurrency = "usd" | "jpy" | "eur" | "gbp";
+
+interface BankDetails {
+  type:           "zengin" | "aba" | "iban" | "sort_code" | null;
+  accountNumber?: string; bankName?: string; branchCode?: string;
+  routingNumber?: string; accountType?: string;
+  iban?: string; bic?: string; sortCode?: string;
+}
+
+const CURRENCY_META: Record<DepositCurrency, {
+  symbol: string; label: string; min: number; step: number;
+  presets: number[]; toUsdc: (amt: number, rate: number) => number;
+}> = {
+  usd: { symbol: "$",  label: "USD", min: 1,   step: 1,    presets: [5, 10, 25, 50],            toUsdc: (a) => a },
+  jpy: { symbol: "¥",  label: "JPY", min: 500, step: 100,  presets: [1000, 3000, 5000, 10000],   toUsdc: (a, r) => a / r },
+  eur: { symbol: "€",  label: "EUR", min: 1,   step: 1,    presets: [5, 10, 25, 50],            toUsdc: (a) => a * 1.08 },
+  gbp: { symbol: "£",  label: "GBP", min: 1,   step: 1,    presets: [5, 10, 20, 50],            toUsdc: (a) => a * 1.27 },
+};
 
 function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
   const t   = useT();
@@ -1471,24 +1488,25 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
   const hdrs = { "Content-Type": "application/json", Authorization: `Bearer ${buyerToken}` };
 
   type USDCTab = "card" | "bank" | "onchain";
-  const [tab, setTab] = useState<USDCTab>("card");
+  const [tab,      setTab]      = useState<USDCTab>("card");
+  const [currency, setCurrency] = useState<DepositCurrency>("usd");
 
-  // ── Buyer profile (needed for bank transfer) ─────────────────
+  // ── Profile ──────────────────────────────────────────────────
   const [buyerName,  setBuyerName]  = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
 
-  // ── Card state ───────────────────────────────────────────────
-  const [jpycRate,    setJpycRate]    = useState<number>(150);
-  const [cardAmount,  setCardAmount]  = useState("1000");
+  // ── Card ─────────────────────────────────────────────────────
+  const [jpycRate,    setJpycRate]    = useState(150);
+  const [cardAmount,  setCardAmount]  = useState("10");
   const [cardLoading, setCardLoading] = useState(false);
   const [cardErr,     setCardErr]     = useState("");
 
-  // ── Bank transfer state ──────────────────────────────────────
-  const [bankAccount,  setBankAccount]  = useState<BankAccount | null>(null);
-  const [bankLoading,  setBankLoading]  = useState(false);
-  const [bankErr,      setBankErr]      = useState("");
+  // ── Bank ─────────────────────────────────────────────────────
+  // key = currency, value = fetched bank details
+  const [bankDetailsMap, setBankDetailsMap] = useState<Partial<Record<DepositCurrency, BankDetails | null>>>({});
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankErr,     setBankErr]     = useState("");
 
-  // fetch profile + JPYC rate on mount
   useEffect(() => {
     fetch(`${API}/api/auth/me`, { headers: hdrs }).then(r => r.json())
       .then((d: UserProfile) => { setBuyerName(d.name); setBuyerEmail(d.email); })
@@ -1498,31 +1516,34 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
       .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // fetch bank account when tab switches to bank
+  // fetch bank details when tab=bank or currency changes
   useEffect(() => {
-    if (tab !== "bank" || bankAccount || !buyerEmail) return;
+    if (tab !== "bank" || !buyerEmail) return;
+    if (bankDetailsMap[currency] !== undefined) return; // already fetched
     setBankLoading(true); setBankErr("");
     fetch(`${API}/api/stripe/bank-transfer`, {
-      method: "POST",
-      headers: hdrs,
-      body: JSON.stringify({ email: buyerEmail, name: buyerName }),
-    }).then(r => r.json()).then((d: { virtualAccount?: BankAccount; error?: string }) => {
-      if (d.error) throw new Error(d.error);
-      setBankAccount(d.virtualAccount ?? null);
-    }).catch((e: Error) => setBankErr(e.message))
+      method: "POST", headers: hdrs,
+      body: JSON.stringify({ email: buyerEmail, name: buyerName, currency }),
+    }).then(r => r.json())
+      .then((d: { bankDetails?: BankDetails; error?: string }) => {
+        if (d.error) throw new Error(d.error);
+        setBankDetailsMap(prev => ({ ...prev, [currency]: d.bankDetails ?? null }));
+      })
+      .catch((e: Error) => setBankErr(e.message))
       .finally(() => setBankLoading(false));
-  }, [tab, buyerEmail]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, currency, buyerEmail]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCardCheckout(e: React.FormEvent) {
     e.preventDefault();
-    const amt = parseInt(cardAmount, 10);
-    if (!amt || amt < 500) { setCardErr(t("最低 ¥500 から", "Minimum ¥500")); return; }
+    const meta = CURRENCY_META[currency];
+    const amt  = parseFloat(cardAmount);
+    if (!amt || amt < meta.min) { setCardErr(`Minimum ${meta.symbol}${meta.min}`); return; }
     setCardLoading(true); setCardErr("");
     try {
       const origin = window.location.origin;
       const res = await fetch(`${API}/api/stripe/card-checkout`, {
         method: "POST", headers: hdrs,
-        body: JSON.stringify({ amountJpy: amt, successUrl: `${origin}/?charge=success`, cancelUrl: `${origin}/?charge=cancel` }),
+        body: JSON.stringify({ amount: amt, currency, successUrl: `${origin}/?charge=success`, cancelUrl: `${origin}/?charge=cancel` }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? t("エラーが発生しました", "An error occurred"));
@@ -1533,11 +1554,25 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
     }
   }
 
-  const tabs: { id: USDCTab; label: string }[] = [
-    { id: "card",    label: t("💳 カード", "💳 Card") },
-    { id: "bank",    label: t("🏦 銀行振込", "🏦 Bank Transfer") },
-    { id: "onchain", label: t("🔗 オンチェーン", "🔗 On-chain") },
-  ];
+  const meta = CURRENCY_META[currency];
+
+  // render bank detail rows based on type
+  function renderBankDetails(d: BankDetails) {
+    const rows: { label: string; value: string }[] = [];
+    if (d.bankName)      rows.push({ label: t("銀行名", "Bank"),              value: d.bankName });
+    if (d.branchCode)    rows.push({ label: t("支店コード", "Branch Code"),    value: d.branchCode });
+    if (d.routingNumber) rows.push({ label: t("ルーティング番号", "Routing No."), value: d.routingNumber });
+    if (d.accountNumber) rows.push({ label: t("口座番号", "Account No."),       value: d.accountNumber });
+    if (d.accountType)   rows.push({ label: t("口座種別", "Account Type"),      value: d.accountType });
+    if (d.iban)          rows.push({ label: "IBAN",                              value: d.iban });
+    if (d.bic)           rows.push({ label: "BIC / SWIFT",                       value: d.bic });
+    if (d.sortCode)      rows.push({ label: t("ソートコード", "Sort Code"),      value: d.sortCode });
+    return rows;
+  }
+
+  const usdcPreview = !isNaN(parseFloat(cardAmount)) && parseFloat(cardAmount) >= meta.min
+    ? meta.toUsdc(parseFloat(cardAmount), jpycRate).toFixed(4)
+    : null;
 
   return (
     <div className="flex flex-col gap-5 max-w-2xl">
@@ -1546,9 +1581,26 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
         <p className="text-sm text-gray-500 mt-1">{t("残高に USDC を追加します。", "Add USDC to your balance.")}</p>
       </div>
 
-      {/* Tab switcher */}
+      {/* Currency selector */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold text-gray-400">{t("通貨", "Currency")}:</span>
+        <div className="flex rounded-xl bg-gray-100 p-1 gap-1">
+          {(["usd", "jpy", "eur", "gbp"] as DepositCurrency[]).map(c => (
+            <button key={c} onClick={() => { setCurrency(c); setCardAmount(String(CURRENCY_META[c].presets[1])); }}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all uppercase ${currency === c ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              {CURRENCY_META[c].symbol} {CURRENCY_META[c].label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Method tabs */}
       <div className="flex rounded-xl bg-gray-100 p-1 gap-1 w-fit">
-        {tabs.map(({ id, label }) => (
+        {([
+          { id: "card"    as USDCTab, label: t("💳 カード", "💳 Card") },
+          { id: "bank"    as USDCTab, label: t("🏦 銀行振込", "🏦 Bank Transfer") },
+          { id: "onchain" as USDCTab, label: t("🔗 オンチェーン", "🔗 On-chain") },
+        ]).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)}
             className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab === id ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
             {label}
@@ -1556,7 +1608,7 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
         ))}
       </div>
 
-      {/* ── Card tab ── */}
+      {/* ── Card ── */}
       {tab === "card" && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
           <p className="text-sm font-semibold text-gray-900 mb-1">{t("クレジット／デビットカード", "Credit / Debit Card")}</p>
@@ -1565,24 +1617,27 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
           </p>
           <form onSubmit={handleCardCheckout} className="flex flex-col gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("入金金額（円）", "Amount (JPY)")}</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                {t("入金金額", "Amount")} ({meta.label})
+              </label>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">¥</span>
+                <span className="text-sm text-gray-500">{meta.symbol}</span>
                 <input type="number" value={cardAmount} onChange={e => setCardAmount(e.target.value)}
-                  min="500" step="100"
-                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                  min={meta.min} step={meta.step}
+                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/20"
                   required />
               </div>
-              {cardAmount && !isNaN(parseInt(cardAmount)) && parseInt(cardAmount) >= 500 && (
+              {usdcPreview && (
                 <p className="text-[10px] text-gray-400 mt-1">
-                  {t("換算後", "Converted")}: ≈ {(parseInt(cardAmount) / jpycRate).toFixed(4)} USDC
+                  ≈ {usdcPreview} USDC
+                  {currency === "usd" && <span className="ml-1 text-emerald-500">{t("(1:1)", "(1:1)")}</span>}
                 </p>
               )}
-              <div className="flex gap-2 mt-2">
-                {[1000, 3000, 5000, 10000].map(v => (
+              <div className="flex gap-2 mt-2 flex-wrap">
+                {meta.presets.map(v => (
                   <button key={v} type="button" onClick={() => setCardAmount(String(v))}
                     className="px-2 py-1 rounded-lg border border-gray-200 text-[11px] text-gray-600 hover:bg-gray-50 transition-colors">
-                    ¥{v.toLocaleString()}
+                    {meta.symbol}{v.toLocaleString()}
                   </button>
                 ))}
               </div>
@@ -1597,56 +1652,50 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
         </div>
       )}
 
-      {/* ── Bank transfer tab ── */}
+      {/* ── Bank Transfer ── */}
       {tab === "bank" && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
           <p className="text-sm font-semibold text-gray-900 mb-1">{t("銀行振込", "Bank Transfer")}</p>
           <p className="text-xs text-gray-500 mb-5">
-            {t("下記の口座に振込すると、Stripe が自動検知して USDC 残高に反映します。", "Transfer to the account below. Stripe detects the payment automatically and credits your USDC balance.")}
+            {t("下記の口座に振込すると、Stripe が自動検知して USDC 残高に反映します。", "Transfer to the account below. Stripe detects it automatically and credits your USDC balance.")}
           </p>
-          {bankLoading && <p className="text-sm text-gray-400">{t("口座情報を取得中…", "Fetching account info…")}</p>}
-          {bankErr    && <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{bankErr}</div>}
-          {bankAccount && (
-            <div className="flex flex-col gap-3">
-              {[
-                { label: t("銀行名", "Bank"),          value: bankAccount.bankName },
-                { label: t("支店コード", "Branch Code"), value: bankAccount.branchCode },
-                { label: t("口座番号", "Account No."),  value: bankAccount.accountNumber },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">{label}</p>
-                    <p className="text-sm font-mono font-semibold text-gray-800">{value}</p>
+          {bankLoading && <p className="text-sm text-gray-400 text-center py-4">{t("口座情報を取得中…", "Fetching account info…")}</p>}
+          {bankErr     && <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{bankErr}</div>}
+          {!bankLoading && !bankErr && (() => {
+            const d = bankDetailsMap[currency];
+            if (d === undefined) return null;
+            if (d === null) return <p className="text-sm text-gray-400">{t("口座情報を取得できませんでした。", "Could not retrieve account info.")}</p>;
+            const rows = renderBankDetails(d);
+            return (
+              <div className="flex flex-col gap-3">
+                {rows.map(({ label, value }) => (
+                  <div key={label} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                    <div>
+                      <p className="text-[10px] text-gray-400 mb-0.5">{label}</p>
+                      <p className="text-sm font-mono font-semibold text-gray-800 break-all">{value}</p>
+                    </div>
+                    <CopyButton text={value} />
                   </div>
-                  <CopyButton text={value} />
-                </div>
-              ))}
-              <p className="text-[11px] text-gray-400 mt-1">
-                {t("※ 振込後、反映まで数分〜数時間かかる場合があります。", "※ It may take a few minutes to hours after transfer to reflect in your balance.")}
-              </p>
-            </div>
-          )}
-          {!bankLoading && !bankErr && !bankAccount && (
-            <p className="text-sm text-gray-400">{t("口座情報を取得できませんでした。", "Could not retrieve account info.")}</p>
-          )}
+                ))}
+                <p className="text-[11px] text-gray-400 mt-1">
+                  {t("※ 振込後、反映まで数分〜数時間かかる場合があります。", "※ It may take a few minutes to hours after transfer to reflect in your balance.")}
+                </p>
+              </div>
+            );
+          })()}
         </div>
       )}
 
-      {/* ── On-chain tab ── */}
+      {/* ── On-chain ── */}
       {tab === "onchain" && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col items-center gap-4 text-center py-12">
           <div className="w-12 h-12 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center">
             <IconUSDC cls="w-6 h-6 text-violet-500" />
           </div>
-          <div>
-            <p className="font-semibold text-gray-700 mb-1">{t("準備中", "Coming soon")}</p>
-            <p className="text-sm text-gray-400 max-w-xs">
-              {t(
-                "Polygon ウォレットから直接 USDC を送金できる入金アドレスを近日公開予定です。",
-                "A deposit address for sending USDC directly from a Polygon wallet is coming soon."
-              )}
-            </p>
-          </div>
+          <p className="font-semibold text-gray-700">{t("準備中", "Coming soon")}</p>
+          <p className="text-sm text-gray-400 max-w-xs">
+            {t("Polygon ウォレットから直接 USDC を送金できる入金アドレスを近日公開予定です。", "A Polygon deposit address is coming soon.")}
+          </p>
         </div>
       )}
     </div>

@@ -1,8 +1,9 @@
 /**
- * Stripe 銀行振込チャージ (Customer Balance)
+ * Stripe マルチ通貨チャージ (Customer Balance)
  *
- * AIエージェントオーナーごとにバーチャル口座を発行し、
- * 銀行振込着金をトリガーにエージェント利用可能残高を更新する。
+ * 対応通貨: USD / JPY / EUR / GBP
+ * カード決済・銀行振込どちらも対応
+ * 着金時に USDC へ自動換算して残高に反映
  */
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -11,77 +12,174 @@ const Stripe = require("stripe").default ?? require("stripe");
 type StripeClient = any;
 import { prisma } from "./prisma.js";
 
+export type SupportedCurrency = "usd" | "jpy" | "eur" | "gbp";
+
 function getStripe(): StripeClient {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY is not set");
   return new Stripe(key, { apiVersion: "2026-03-25.dahlia" });
 }
 
-export interface CreateBankTransferAccountResult {
-  customerId:           string;
-  virtualAccountNumber?: string;
-  bankName?:            string;
-  branchCode?:          string;
+// ─── 通貨 → USDC レート取得 ──────────────────────────────────
+// USD: 1:1, JPY: env var, EUR/GBP: env var or CoinGecko fallback
+async function getCurrencyToUsdcRate(currency: SupportedCurrency): Promise<number> {
+  switch (currency) {
+    case "usd": return 1.0;
+    case "jpy": return 1 / parseFloat(process.env.JPY_USDC_RATE ?? "150");
+    case "eur": {
+      const rate = process.env.EUR_USDC_RATE;
+      if (rate) return parseFloat(rate);
+      try {
+        const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=usd-coin&vs_currencies=eur");
+        const d   = await res.json() as { "usd-coin"?: { eur?: number } };
+        const eur = d?.["usd-coin"]?.eur;
+        return eur ? 1 / eur : 1.08;
+      } catch { return 1.08; }
+    }
+    case "gbp": {
+      const rate = process.env.GBP_USDC_RATE;
+      if (rate) return parseFloat(rate);
+      try {
+        const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=usd-coin&vs_currencies=gbp");
+        const d   = await res.json() as { "usd-coin"?: { gbp?: number } };
+        const gbp = d?.["usd-coin"]?.gbp;
+        return gbp ? 1 / gbp : 1.27;
+      } catch { return 1.27; }
+    }
+    default: return 1.0;
+  }
 }
 
-// ─── Stripeカスタマー作成（バーチャル口座付き）────────────────
+// ─── Stripe amount unit ───────────────────────────────────────
+// JPY は最小単位が円 (0 decimal), USD/EUR/GBP は cents (2 decimal)
+function toStripeAmount(amount: number, currency: SupportedCurrency): number {
+  return currency === "jpy" ? Math.round(amount) : Math.round(amount * 100);
+}
+
+function fromStripeAmount(stripeAmount: number, currency: SupportedCurrency): number {
+  return currency === "jpy" ? stripeAmount : stripeAmount / 100;
+}
+
+// ─── 通貨別 bank_transfer type ────────────────────────────────
+function bankTransferType(currency: SupportedCurrency): string {
+  switch (currency) {
+    case "jpy": return "jp_bank_transfer";
+    case "usd": return "us_bank_transfer";
+    case "eur": return "eu_bank_transfer";
+    case "gbp": return "gb_bank_transfer";
+    default:    return "us_bank_transfer";
+  }
+}
+
+// ─── 銀行口座情報の型 ─────────────────────────────────────────
+export interface BankDetails {
+  type:           "zengin" | "aba" | "iban" | "sort_code" | null;
+  // JP zengin
+  accountNumber?: string;
+  bankName?:      string;
+  branchCode?:    string;
+  // US aba
+  routingNumber?: string;
+  accountType?:   string;
+  // EU iban
+  iban?:          string;
+  bic?:           string;
+  // GB sort_code
+  sortCode?:      string;
+}
+
+export interface CreateBankTransferAccountResult {
+  customerId:  string;
+  bankDetails: BankDetails | null;
+}
+
+// ─── バーチャル口座発行 ───────────────────────────────────────
 export async function createBankTransferAccount(
-  buyerId: string,
-  email:   string,
-  name:    string,
+  buyerId:  string,
+  email:    string,
+  name:     string,
+  currency: SupportedCurrency = "jpy",
 ): Promise<CreateBankTransferAccountResult> {
   const stripe = getStripe();
 
-  const customer = await stripe.customers.create({
-    email,
-    name,
-    metadata: { buyerId },
-    preferred_locales: ["ja-JP"],
-  });
+  // 既存カスタマーがあれば再利用
+  const existingBuyer = await prisma.buyer.findUnique({ where: { id: buyerId } });
+  let customerId = existingBuyer?.stripeCustomerId ?? null;
 
-  let virtualAccountNumber: string | undefined;
-  let bankName:   string | undefined;
-  let branchCode: string | undefined;
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      email, name,
+      metadata:          { buyerId },
+      preferred_locales: [currency === "jpy" ? "ja-JP" : "en-US"],
+    });
+    customerId = customer.id as string;
+    await prisma.buyer.update({ where: { id: buyerId }, data: { stripeCustomerId: customerId } });
+  }
+
+  let bankDetails: BankDetails | null = null;
 
   try {
-    // 支払いインテント (JP銀行振込) を作成して口座番号を取得
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount:   100,
-      currency: "jpy",
-      customer: customer.id,
+    const pi = await stripe.paymentIntents.create({
+      amount:               toStripeAmount(1, currency), // dummy ¥1 / $0.01
+      currency,
+      customer:             customerId,
       payment_method_types: ["customer_balance"],
       payment_method_data:  { type: "customer_balance" },
-      confirm: true,
+      confirm:              true,
       payment_method_options: {
         customer_balance: {
           funding_type:  "bank_transfer",
-          bank_transfer: { type: "jp_bank_transfer" },
+          bank_transfer: { type: bankTransferType(currency) },
         },
       },
     } as Parameters<typeof stripe.paymentIntents.create>[0]);
 
-    const instructions = (paymentIntent.next_action as Record<string, unknown>)
+    const instructions = (pi.next_action as Record<string, unknown>)
       ?.display_bank_transfer_instructions as Record<string, unknown> | undefined;
-
     const addresses = instructions?.financial_addresses as Array<Record<string, unknown>> | undefined;
-    const zengin = addresses?.find(fa => fa.type === "zengin")?.zengin as Record<string, string> | undefined;
 
-    virtualAccountNumber = zengin?.account_number;
-    bankName             = zengin?.bank_name;
-    branchCode           = zengin?.branch_code;
-  } catch {
-    // バーチャル口座発行失敗はカスタマー作成自体は成功扱い
+    if (currency === "jpy") {
+      const zengin = addresses?.find(fa => fa.type === "zengin")?.zengin as Record<string, string> | undefined;
+      if (zengin) bankDetails = {
+        type: "zengin",
+        accountNumber: zengin.account_number,
+        bankName:      zengin.bank_name,
+        branchCode:    zengin.branch_code,
+      };
+    } else if (currency === "usd") {
+      const aba = addresses?.find(fa => fa.type === "aba")?.aba as Record<string, string> | undefined;
+      if (aba) bankDetails = {
+        type:          "aba",
+        routingNumber: aba.routing_number,
+        accountNumber: aba.account_number,
+        accountType:   aba.account_type,
+        bankName:      aba.bank_name,
+      };
+    } else if (currency === "eur") {
+      const iban = addresses?.find(fa => fa.type === "iban")?.iban as Record<string, string> | undefined;
+      if (iban) bankDetails = {
+        type: "iban",
+        iban: iban.iban,
+        bic:  iban.bic,
+        bankName: iban.bank_name,
+      };
+    } else if (currency === "gbp") {
+      const sort = addresses?.find(fa => fa.type === "sort_code")?.sort_code as Record<string, string> | undefined;
+      if (sort) bankDetails = {
+        type:          "sort_code",
+        sortCode:      sort.sort_code,
+        accountNumber: sort.account_number,
+        bankName:      sort.bank_name,
+      };
+    }
+  } catch (e) {
+    console.error("[Stripe] bank transfer account creation failed:", e);
   }
 
-  await prisma.buyer.update({
-    where: { id: buyerId },
-    data:  { stripeCustomerId: customer.id },
-  });
-
-  return { customerId: customer.id, virtualAccountNumber, bankName, branchCode };
+  return { customerId, bankDetails };
 }
 
-// ─── Stripeウェブフック処理（着金イベント）──────────────────
+// ─── Stripeウェブフック処理 ───────────────────────────────────
 export async function handleStripeWebhook(
   rawBody:   string,
   signature: string,
@@ -95,42 +193,40 @@ export async function handleStripeWebhook(
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (e) {
-    console.error("[Stripe Webhook] Signature verification failed:", {
-      signature: signature?.slice(0, 20) + "...",
-      error: e instanceof Error ? e.message : String(e),
-    });
+    console.error("[Stripe Webhook] Signature verification failed:", e instanceof Error ? e.message : e);
     throw new Error("Webhook signature verification failed");
   }
 
   // ── カード決済完了 ──────────────────────────────────────────
   if (event.type === "checkout.session.completed") {
-    const session  = event.data.object as Record<string, unknown>;
-    const meta     = session.metadata as Record<string, string> | undefined;
-    const buyerId  = meta?.buyerId;
+    const session = event.data.object as Record<string, unknown>;
+    const meta    = session.metadata as Record<string, string> | undefined;
+    const buyerId = meta?.buyerId;
     if (!buyerId || session.payment_status !== "paid") return { processed: false };
 
-    const amountJpy = parseInt(meta?.amountJpy ?? "0", 10);
-    if (!amountJpy) return { processed: false };
+    const amount   = parseInt(meta?.amount   ?? "0",   10);
+    const currency = (meta?.currency ?? "jpy") as SupportedCurrency;
+    if (!amount) return { processed: false };
 
-    const { fetchJpycRate } = await import("./jpyc-verify.js");
-    const rateStr           = await fetchJpycRate();
-    const { Decimal }       = await import("@prisma/client/runtime/library");
-    const amountUsdc        = new Decimal(amountJpy).div(new Decimal(rateStr));
+    const rate       = await getCurrencyToUsdcRate(currency);
+    const { Decimal } = await import("@prisma/client/runtime/library");
+    const amountUsdc  = new Decimal(amount).mul(new Decimal(rate));
 
     await prisma.$transaction(async (tx) => {
       const buyer          = await tx.buyer.findUniqueOrThrow({ where: { id: buyerId } });
       const currentBalance = new Decimal(String((buyer as Record<string, unknown>).balanceUsdc ?? "0"));
-      await tx.buyer.update({
-        where: { id: buyerId },
-        data:  { balanceUsdc: currentBalance.add(amountUsdc) } as never,
-      });
+      await tx.buyer.update({ where: { id: buyerId }, data: { balanceUsdc: currentBalance.add(amountUsdc) } as never });
     });
 
+    console.log(`[Stripe] card deposit: buyerId=${buyerId} ${amount} ${currency} → ${amountUsdc.toFixed(6)} USDC`);
     return { processed: true, event: event.type };
   }
 
-  // customer_cash_balance_transaction.created (新API) または customer.balance.funded (旧API) に対応
-  if (event.type === "customer_cash_balance_transaction.created" || event.type === "customer.balance.funded") {
+  // ── 銀行振込着金 ────────────────────────────────────────────
+  if (
+    event.type === "customer_cash_balance_transaction.created" ||
+    event.type === "customer.balance.funded"
+  ) {
     const funded     = event.data.object as Record<string, unknown>;
     const customerId = (funded.customer ?? funded.customer_id) as string;
 
@@ -139,50 +235,58 @@ export async function handleStripeWebhook(
     const buyerId   = customer.metadata?.buyerId;
     if (!buyerId) return { processed: false };
 
-    const amountJpy      = (funded.amount as number) ?? 0;
-    const rateJpyPerUsdc = parseFloat(process.env.JPY_USDC_RATE ?? "150");
+    // Stripe amount は通貨の最小単位
+    const stripeAmount = (funded.amount as number) ?? 0;
+    const currency     = ((funded.currency as string) ?? "jpy") as SupportedCurrency;
+    const naturalAmount = fromStripeAmount(stripeAmount, currency);
 
-    // Decimal演算で浮動小数点誤差を回避
+    const rate       = await getCurrencyToUsdcRate(currency);
     const { Decimal } = await import("@prisma/client/runtime/library");
-    const amountUsdc = new Decimal(amountJpy).div(new Decimal(rateJpyPerUsdc));
+    const amountUsdc  = new Decimal(naturalAmount).mul(new Decimal(rate));
 
     await prisma.$transaction(async (tx) => {
-      const buyer = await tx.buyer.findUniqueOrThrow({ where: { id: buyerId } });
+      const buyer          = await tx.buyer.findUniqueOrThrow({ where: { id: buyerId } });
       const currentBalance = new Decimal(String((buyer as Record<string, unknown>).balanceUsdc ?? "0"));
-      await tx.buyer.update({
-        where: { id: buyerId },
-        data:  { balanceUsdc: currentBalance.add(amountUsdc) } as never,
-      });
+      await tx.buyer.update({ where: { id: buyerId }, data: { balanceUsdc: currentBalance.add(amountUsdc) } as never });
     });
 
+    console.log(`[Stripe] bank transfer: buyerId=${buyerId} ${naturalAmount} ${currency} → ${amountUsdc.toFixed(6)} USDC`);
     return { processed: true, event: event.type };
   }
 
   return { processed: false, event: event.type };
 }
 
-// ─── Stripe Checkout セッション作成（カード決済）──────────────
+// ─── カード決済 Checkout セッション ──────────────────────────
 export async function createCardCheckoutSession(
   buyerId:    string,
-  amountJpy:  number,   // JPY 金額 (最低 ¥500)
+  amount:     number,           // 自然単位 (例: USD=5.00, JPY=750)
+  currency:   SupportedCurrency,
   successUrl: string,
   cancelUrl:  string,
 ): Promise<{ sessionId: string; url: string }> {
   const stripe = getStripe();
 
+  const currencyLabels: Record<SupportedCurrency, string> = {
+    usd: "USD", jpy: "JPY", eur: "EUR", gbp: "GBP",
+  };
+
   const session = await stripe.checkout.sessions.create({
     mode:                 "payment",
-    currency:             "jpy",
+    currency,
     payment_method_types: ["card"],
     line_items: [{
       price_data: {
-        currency:     "jpy",
-        unit_amount:  amountJpy,
-        product_data: { name: "LEMON cake USDC残高チャージ", description: `¥${amountJpy.toLocaleString()} → USDCに換算して残高に追加` },
+        currency,
+        unit_amount:  toStripeAmount(amount, currency),
+        product_data: {
+          name:        "LEMON cake USDC残高チャージ",
+          description: `${amount} ${currencyLabels[currency]} → USDCに換算して残高に追加`,
+        },
       },
       quantity: 1,
     }],
-    metadata:    { buyerId, amountJpy: String(amountJpy) },
+    metadata:    { buyerId, amount: String(amount), currency },
     success_url: successUrl,
     cancel_url:  cancelUrl,
   });
@@ -190,7 +294,7 @@ export async function createCardCheckoutSession(
   return { sessionId: session.id, url: session.url as string };
 }
 
-// ─── カスタマーの残高照会 ─────────────────────────────────────
+// ─── カスタマー残高照会 ───────────────────────────────────────
 export async function getStripeCustomerBalance(
   customerId: string,
 ): Promise<{ cash: number; currency: string }> {

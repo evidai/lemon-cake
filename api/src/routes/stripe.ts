@@ -14,6 +14,7 @@ import {
   createCardCheckoutSession,
   handleStripeWebhook,
   getStripeCustomerBalance,
+  type SupportedCurrency,
 } from "../lib/stripe-bank.js";
 import { requireBuyerAuth } from "../middleware/buyerAuth.js";
 import { prisma } from "../lib/prisma.js";
@@ -21,29 +22,23 @@ import { prisma } from "../lib/prisma.js";
 export const stripeRouter = new Hono();
 
 // ─── POST /api/stripe/bank-transfer ─────────────────────────
-// バーチャル口座の発行（Buyer認証必須）
 stripeRouter.post(
   "/bank-transfer",
   requireBuyerAuth,
   zValidator("json", z.object({
-    email: z.string().email(),
-    name:  z.string().min(1),
+    email:    z.string().email(),
+    name:     z.string().min(1),
+    currency: z.enum(["usd", "jpy", "eur", "gbp"]).default("jpy"),
   })),
   async (c) => {
     const buyerId = (c as never as { get: (k: string) => string }).get("buyerId") as string;
-    const { email, name } = c.req.valid("json");
+    const { email, name, currency } = c.req.valid("json");
 
-    const result = await createBankTransferAccount(buyerId, email, name);
+    const result = await createBankTransferAccount(buyerId, email, name, currency as SupportedCurrency);
     return c.json({
-      message:             "バーチャル口座を発行しました",
-      customerId:          result.customerId,
-      virtualAccount:      result.virtualAccountNumber
-        ? {
-            accountNumber: result.virtualAccountNumber,
-            bankName:      result.bankName,
-            branchCode:    result.branchCode,
-          }
-        : null,
+      message:     "バーチャル口座を発行しました",
+      customerId:  result.customerId,
+      bankDetails: result.bankDetails,
     }, 201);
   },
 );
@@ -53,14 +48,21 @@ stripeRouter.post(
   "/card-checkout",
   requireBuyerAuth,
   zValidator("json", z.object({
-    amountJpy:  z.number().int().min(500),
+    amount:     z.number().positive(),
+    currency:   z.enum(["usd", "jpy", "eur", "gbp"]).default("jpy"),
     successUrl: z.string().url(),
     cancelUrl:  z.string().url(),
+    // 後方互換: amountJpy があれば currency=jpy として扱う
+    amountJpy:  z.number().int().min(1).optional(),
   })),
   async (c) => {
     const buyerId = (c as never as { get: (k: string) => string }).get("buyerId") as string;
-    const { amountJpy, successUrl, cancelUrl } = c.req.valid("json");
-    const result = await createCardCheckoutSession(buyerId, amountJpy, successUrl, cancelUrl);
+    const body    = c.req.valid("json");
+
+    const amount   = body.amountJpy ?? body.amount;
+    const currency = (body.amountJpy ? "jpy" : body.currency) as SupportedCurrency;
+
+    const result = await createCardCheckoutSession(buyerId, amount, currency, body.successUrl, body.cancelUrl);
     return c.json(result, 201);
   },
 );
