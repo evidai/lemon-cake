@@ -62,6 +62,7 @@ type TxStatus = "confirmed" | "failed" | "pending" | "blocked";
 type Tier     = "none" | "kya" | "kyc";
 type Role     = "buyer" | "seller";
 type Page     = "home" | "transactions" | "agents" | "usdc" | "jpyc" | "fraud" | "directory" | "account"
+              | "accounting"
               | "seller-services" | "seller-directory" | "seller-account" | "seller-stats";
 
 // ── Service (Directory) ───────────────────────────────────────────────────────
@@ -241,6 +242,14 @@ function IconJPYC({ cls }: { cls?: string }) {
   const sizeClass = sizeMatch ? `${sizeMatch[1]} ${sizeMatch[2]}` : "w-5 h-5";
   return <img src="/jpyc.png" alt="JPYC" className={`${sizeClass} rounded-full flex-shrink-0 object-cover`} />;
 }
+function IconAccounting({ cls }: { cls?: string }) {
+  return (
+    <svg className={cls} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="16" height="14" rx="2"/>
+      <path d="M6 7h2M6 10h2M6 13h2M10 7h4M10 10h4M10 13h2"/>
+    </svg>
+  );
+}
 function IconApiKey({ cls }: { cls?: string }) {
   return (
     <svg className={cls} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -313,6 +322,7 @@ const NAV_BUYER: NavItem[] = [
   { id: "fraud",        label: "課金履歴",              Icon: IconClaim },
   { id: "usdc",         label: "USDCチャージ",          Icon: IconUSDC },
   { id: "jpyc",         label: "JPYCチャージ",          Icon: IconJPYC },
+  { id: "accounting",   label: "会計連携",              Icon: IconAccounting },
 ];
 
 // ── セラー用ナビ ──────────────────────────────────────────────
@@ -350,6 +360,7 @@ function Sidebar({
     { id: "fraud",        label: t("課金履歴", "Charges"),               Icon: IconClaim },
     { id: "usdc",         label: t("USDCチャージ", "USDC Deposit"),      Icon: IconUSDC },
     { id: "jpyc",         label: t("JPYCチャージ", "JPYC Deposit"),      Icon: IconJPYC },
+    { id: "accounting",   label: t("会計連携", "Accounting"),             Icon: IconAccounting },
   ];
   const navSeller: NavItem[] = [
     { id: "seller-services",  label: t("マイサービス", "My Services"),   Icon: IconStore },
@@ -3469,6 +3480,252 @@ function SellerMyServicesPanel({
   );
 }
 
+// ── Accounting Connections Page ──────────────────────────────────────────────
+
+type AccountingProvider = "quickbooks" | "xero" | "zoho" | "sage" | "netsuite" | "freee";
+
+interface AccountingConnection {
+  id: string;
+  provider: string;
+  externalName: string | null;
+  active: boolean;
+  expenseAccountRef: string | null;
+  cashAccountRef: string | null;
+  createdAt: string;
+}
+
+const ACCOUNTING_PROVIDERS: {
+  id: AccountingProvider;
+  name: string;
+  logo: string;
+  color: string;
+  description: string;
+  hasOAuth: boolean;
+}[] = [
+  { id: "quickbooks", name: "QuickBooks Online",  logo: "QB",   color: "#2CA01C", description: "Intuit QuickBooks — 全世界5,700万社が利用",    hasOAuth: true },
+  { id: "xero",       name: "Xero",               logo: "X",    color: "#13B5EA", description: "クラウド会計のグローバルスタンダード",           hasOAuth: true },
+  { id: "zoho",       name: "Zoho Books",          logo: "ZB",   color: "#E42527", description: "Zoho Books — アジア・中東に強い会計SaaS",        hasOAuth: true },
+  { id: "sage",       name: "Sage",                logo: "S",    color: "#00DC06", description: "Sage Accounting — 欧州・北米向け中堅企業向け",    hasOAuth: true },
+  { id: "netsuite",   name: "Oracle NetSuite",     logo: "NS",   color: "#C74634", description: "NetSuite ERP — 大企業向けクラウドERP",            hasOAuth: false },
+  { id: "freee",      name: "freee",               logo: "f",    color: "#3D74C2", description: "freee会計 — 日本No.1クラウド会計ソフト",          hasOAuth: true },
+];
+
+function AccountingPage({ buyerToken }: { buyerToken: string }) {
+  const API = process.env.NEXT_PUBLIC_API_URL ?? "";
+  const hdrs = { "Content-Type": "application/json", Authorization: `Bearer ${buyerToken}` };
+
+  const [connections, setConnections] = useState<AccountingConnection[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [connecting,  setConnecting]  = useState<AccountingProvider | null>(null);
+
+  // NetSuite form state
+  const [nsForm,    setNsForm]    = useState({ accountId: "", consumerKey: "", consumerSecret: "", tokenId: "", tokenSecret: "" });
+  const [nsLoading, setNsLoading] = useState(false);
+  const [nsErr,     setNsErr]     = useState("");
+  const [showNsForm, setShowNsForm] = useState(false);
+
+  function t(ja: string, en: string) {
+    if (typeof window !== "undefined" && document.documentElement.lang === "en") return en;
+    return ja;
+  }
+
+  const fetchConnections = () => {
+    setLoading(true);
+    fetch(`${API}/api/accounting/connections`, { headers: hdrs })
+      .then(r => r.json())
+      .then((d: AccountingConnection[]) => setConnections(Array.isArray(d) ? d : []))
+      .catch(() => setConnections([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchConnections(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Check for OAuth callback success
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("accounting_connected") === "true") {
+      fetchConnections();
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleConnect(provider: AccountingProvider) {
+    setConnecting(provider);
+    try {
+      const res = await fetch(`${API}/api/accounting/oauth/start/${provider}`, { headers: hdrs });
+      const d = await res.json() as { url?: string; error?: string };
+      if (d.error) throw new Error(d.error);
+      if (d.url) window.location.href = d.url;
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "エラーが発生しました");
+    } finally {
+      setConnecting(null);
+    }
+  }
+
+  async function handleDisconnect(id: string) {
+    if (!confirm(t("この会計連携を解除しますか？", "Disconnect this accounting integration?"))) return;
+    await fetch(`${API}/api/accounting/connections/${id}`, { method: "DELETE", headers: hdrs });
+    fetchConnections();
+  }
+
+  async function handleNetSuiteSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setNsLoading(true); setNsErr("");
+    try {
+      const res = await fetch(`${API}/api/accounting/netsuite`, {
+        method: "POST", headers: hdrs,
+        body: JSON.stringify(nsForm),
+      });
+      const d = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(d.error ?? "エラー");
+      setShowNsForm(false);
+      setNsForm({ accountId: "", consumerKey: "", consumerSecret: "", tokenId: "", tokenSecret: "" });
+      fetchConnections();
+    } catch (e) {
+      setNsErr(e instanceof Error ? e.message : "エラーが発生しました");
+    } finally {
+      setNsLoading(false);
+    }
+  }
+
+  const connectedMap = new Map(connections.map(c => [c.provider.toLowerCase(), c]));
+
+  return (
+    <div className="max-w-2xl mx-auto flex flex-col gap-6">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">{t("会計連携", "Accounting Integrations")}</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          {t(
+            "会計ソフトを接続すると、AI エージェントが API 決済を行うたびに自動で仕訳が作成されます。",
+            "Connect your accounting software to automatically create journal entries whenever your AI agents make API payments."
+          )}
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-gray-400 py-8 justify-center">
+          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+          {t("読み込み中…", "Loading…")}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {ACCOUNTING_PROVIDERS.map(p => {
+            const conn = connectedMap.get(p.id);
+            const isConnected = !!conn;
+
+            return (
+              <div key={p.id} className={`bg-white rounded-2xl border p-5 flex items-center gap-4 ${isConnected ? "border-green-200 bg-green-50/30" : "border-gray-200"}`}>
+                {/* Logo */}
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0"
+                  style={{ backgroundColor: p.color }}
+                >
+                  {p.logo}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
+                    {isConnected && (
+                      <span className="text-[10px] font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                        {t("接続済み", "Connected")}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5 truncate">
+                    {isConnected && conn.externalName
+                      ? conn.externalName
+                      : p.description}
+                  </p>
+                </div>
+
+                {/* Action */}
+                <div className="shrink-0">
+                  {isConnected ? (
+                    <button
+                      onClick={() => handleDisconnect(conn.id)}
+                      className="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg px-3 py-1.5 transition-colors"
+                    >
+                      {t("解除", "Disconnect")}
+                    </button>
+                  ) : p.hasOAuth ? (
+                    <button
+                      onClick={() => handleConnect(p.id)}
+                      disabled={connecting === p.id}
+                      className="text-xs font-medium text-white rounded-lg px-3 py-1.5 transition-opacity disabled:opacity-60"
+                      style={{ backgroundColor: p.color }}
+                    >
+                      {connecting === p.id ? t("接続中…", "Connecting…") : t("接続する", "Connect")}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowNsForm(v => !v)}
+                      className="text-xs font-medium text-white bg-[#C74634] rounded-lg px-3 py-1.5"
+                    >
+                      {t("認証設定", "Configure")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* NetSuite TBA form */}
+      {showNsForm && (
+        <form onSubmit={handleNetSuiteSubmit} className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col gap-4">
+          <p className="font-semibold text-gray-900 text-sm">{t("NetSuite TBA 認証情報", "NetSuite TBA Credentials")}</p>
+          <p className="text-xs text-gray-500">
+            {t("NetSuite管理画面 → Setup → Integration → Manage Integrations でToken-Based Authenticationを有効化し、Access Tokenを発行してください。", "Enable Token-Based Authentication in NetSuite Admin → Setup → Integration → Manage Integrations, then generate an Access Token.")}
+          </p>
+          {[
+            { key: "accountId",      label: "Account ID",       placeholder: "TSTDRV123456" },
+            { key: "consumerKey",    label: "Consumer Key",      placeholder: "xxxxxxxxxxxxxxxx" },
+            { key: "consumerSecret", label: "Consumer Secret",   placeholder: "xxxxxxxxxxxxxxxx" },
+            { key: "tokenId",        label: "Token ID",          placeholder: "xxxxxxxxxxxxxxxx" },
+            { key: "tokenSecret",    label: "Token Secret",      placeholder: "xxxxxxxxxxxxxxxx" },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}</label>
+              <input
+                type={f.key.includes("Secret") || f.key.includes("Key") ? "password" : "text"}
+                value={nsForm[f.key as keyof typeof nsForm]}
+                onChange={e => setNsForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                placeholder={f.placeholder}
+                required
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 font-mono"
+              />
+            </div>
+          ))}
+          {nsErr && <p className="text-xs text-red-600">{nsErr}</p>}
+          <div className="flex gap-2">
+            <button type="submit" disabled={nsLoading}
+              className="flex-1 py-2 text-sm font-medium text-white bg-[#C74634] rounded-xl disabled:opacity-60">
+              {nsLoading ? t("保存中…", "Saving…") : t("保存する", "Save")}
+            </button>
+            <button type="button" onClick={() => setShowNsForm(false)}
+              className="px-4 py-2 text-sm text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50">
+              {t("キャンセル", "Cancel")}
+            </button>
+          </div>
+        </form>
+      )}
+
+      <p className="text-xs text-gray-400 text-center">
+        {t(
+          "※ 接続後、AI エージェントの決済が完了するたびに自動で仕訳が作成されます。勘定科目は各会計ソフトの設定に従います。",
+          "※ After connecting, journal entries are automatically created each time your AI agent completes a payment."
+        )}
+      </p>
+    </div>
+  );
+}
+
 // ── AccountSettingsPage ───────────────────────────────────────────────────────
 interface UserProfile {
   id: string; name: string; email: string; buyerId: string | null;
@@ -3795,6 +4052,7 @@ export default function Dashboard() {
           {page === "fraud"        && <ChargesPage buyerToken={buyerToken} />}
           {page === "usdc"         && <USDCDepositPage buyerToken={buyerToken} />}
           {page === "jpyc"         && <JPYCDepositPage buyerToken={buyerToken} />}
+          {page === "accounting"   && <AccountingPage buyerToken={buyerToken} />}
           {page === "directory"    && <DirectoryPage />}
           {page === "account"      && <AccountSettingsPage token={buyerToken} onLogout={handleLogout} />}
           {/* ── セラーページ ── */}
