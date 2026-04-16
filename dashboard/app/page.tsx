@@ -1493,8 +1493,9 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
   const [currency, setCurrency] = useState<DepositCurrency>("usd");
 
   // ── Profile ──────────────────────────────────────────────────
-  const [buyerName,  setBuyerName]  = useState("");
-  const [buyerEmail, setBuyerEmail] = useState("");
+  const [buyerName,     setBuyerName]     = useState("");
+  const [buyerEmail,    setBuyerEmail]    = useState("");
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   // ── Card ─────────────────────────────────────────────────────
   const [jpycRate,    setJpycRate]    = useState(150);
@@ -1507,32 +1508,54 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
   const [bankDetailsMap, setBankDetailsMap] = useState<Partial<Record<DepositCurrency, BankDetails | null>>>({});
   const [bankLoading, setBankLoading] = useState(false);
   const [bankErr,     setBankErr]     = useState("");
+  const [bankRetry,   setBankRetry]   = useState(0); // increment to retry
 
   useEffect(() => {
-    fetch(`${API}/api/auth/me`, { headers: hdrs }).then(r => r.json())
+    fetch(`${API}/api/auth/me`, { headers: hdrs })
+      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
       .then((d: UserProfile) => { setBuyerName(d.name); setBuyerEmail(d.email); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setProfileLoaded(true));
     fetch(`${API}/api/jpyc/info`).then(r => r.json())
       .then((d: JpycInfo) => setJpycRate(d.jpycRate ?? 150))
       .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // fetch bank details when tab=bank or currency changes
+  function friendlyBankError(msg: string): string {
+    if (/401|unauthorized|認証/i.test(msg))
+      return t("セッションが切れました。再ログインしてください。", "Session expired. Please log in again.");
+    if (/network|fetch|ECONNREFUSED/i.test(msg))
+      return t("ネットワークエラーが発生しました。接続を確認して再試行してください。", "Network error. Please check your connection and retry.");
+    if (/500|internal/i.test(msg))
+      return t("サーバーエラーが発生しました。しばらくしてから再試行してください。", "Server error. Please try again later.");
+    if (/stripe/i.test(msg))
+      return t("Stripe との通信でエラーが発生しました。しばらくしてから再試行してください。", "Error communicating with Stripe. Please try again later.");
+    return msg || t("予期しないエラーが発生しました。", "An unexpected error occurred.");
+  }
+
+  // fetch bank details when tab=bank, currency changes, or retry triggered
   useEffect(() => {
-    if (tab !== "bank" || !buyerEmail) return;
-    if (bankDetailsMap[currency] !== undefined) return; // already fetched
+    if (tab !== "bank") return;
+    if (!profileLoaded) return;
+    if (!buyerEmail) {
+      setBankErr(t("アカウント情報を取得できませんでした。再ログインしてください。", "Could not load account info. Please log in again."));
+      return;
+    }
+    if (bankDetailsMap[currency] !== undefined && bankRetry === 0) return; // already fetched
     setBankLoading(true); setBankErr("");
     fetch(`${API}/api/stripe/bank-transfer`, {
       method: "POST", headers: hdrs,
       body: JSON.stringify({ email: buyerEmail, name: buyerName, currency }),
-    }).then(r => r.json())
-      .then((d: { bankDetails?: BankDetails; error?: string }) => {
+    })
+      .then(async r => {
+        const d = await r.json() as { bankDetails?: BankDetails; error?: string };
+        if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`);
         if (d.error) throw new Error(d.error);
         setBankDetailsMap(prev => ({ ...prev, [currency]: d.bankDetails ?? null }));
       })
-      .catch((e: Error) => setBankErr(e.message))
+      .catch((e: Error) => setBankErr(friendlyBankError(e.message)))
       .finally(() => setBankLoading(false));
-  }, [tab, currency, buyerEmail]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, currency, profileLoaded, buyerEmail, bankRetry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCardCheckout(e: React.FormEvent) {
     e.preventDefault();
@@ -1660,12 +1683,49 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
           <p className="text-xs text-gray-500 mb-5">
             {t("下記の口座に振込すると、Stripe が自動検知して USDC 残高に反映します。", "Transfer to the account below. Stripe detects it automatically and credits your USDC balance.")}
           </p>
-          {bankLoading && <p className="text-sm text-gray-400 text-center py-4">{t("口座情報を取得中…", "Fetching account info…")}</p>}
-          {bankErr     && <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{bankErr}</div>}
+          {bankLoading && (
+            <div className="flex items-center gap-2 text-sm text-gray-400 py-6 justify-center">
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+              {t("口座情報を取得中…", "Fetching account info…")}
+            </div>
+          )}
+          {bankErr && (
+            <div className="flex flex-col gap-3 items-start bg-red-50 border border-red-200 rounded-xl px-4 py-4">
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-red-500 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd"/>
+                </svg>
+                <p className="text-sm text-red-700">{bankErr}</p>
+              </div>
+              <button
+                onClick={() => { setBankErr(""); setBankDetailsMap(prev => { const n = { ...prev }; delete n[currency]; return n; }); setBankRetry(r => r + 1); }}
+                className="text-xs font-medium text-red-600 hover:text-red-800 underline underline-offset-2"
+              >
+                {t("再試行する", "Retry")}
+              </button>
+            </div>
+          )}
           {!bankLoading && !bankErr && (() => {
             const d = bankDetailsMap[currency];
             if (d === undefined) return null;
-            if (d === null) return <p className="text-sm text-gray-400">{t("口座情報を取得できませんでした。", "Could not retrieve account info.")}</p>;
+            if (d === null) return (
+              <div className="flex flex-col gap-3 items-start bg-amber-50 border border-amber-200 rounded-xl px-4 py-4">
+                <div className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/>
+                  </svg>
+                  <p className="text-sm text-amber-700">{t("この通貨の振込口座を取得できませんでした。別の通貨を試すか、カード決済をご利用ください。", "Could not retrieve bank account for this currency. Try another currency or use card payment.")}</p>
+                </div>
+                <button
+                  onClick={() => { setBankDetailsMap(prev => { const n = { ...prev }; delete n[currency]; return n; }); setBankRetry(r => r + 1); }}
+                  className="text-xs font-medium text-amber-600 hover:text-amber-800 underline underline-offset-2"
+                >
+                  {t("再試行する", "Retry")}
+                </button>
+              </div>
+            );
             const rows = renderBankDetails(d);
             return (
               <div className="flex flex-col gap-3">
