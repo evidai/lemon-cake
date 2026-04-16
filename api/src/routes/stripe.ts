@@ -34,12 +34,18 @@ stripeRouter.post(
     const buyerId = (c as never as { get: (k: string) => string }).get("buyerId") as string;
     const { email, name, currency } = c.req.valid("json");
 
-    const result = await createBankTransferAccount(buyerId, email, name, currency as SupportedCurrency);
-    return c.json({
-      message:     "バーチャル口座を発行しました",
-      customerId:  result.customerId,
-      bankDetails: result.bankDetails,
-    }, 201);
+    try {
+      const result = await createBankTransferAccount(buyerId, email, name, currency as SupportedCurrency);
+      return c.json({
+        message:     "バーチャル口座を発行しました",
+        customerId:  result.customerId,
+        bankDetails: result.bankDetails,
+      }, 201);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[stripe/bank-transfer] ERROR:", msg, e);
+      return c.json({ error: msg }, 500);
+    }
   },
 );
 
