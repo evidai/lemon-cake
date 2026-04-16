@@ -198,10 +198,8 @@ function ChartTooltipContent({ active, payload, label }: TooltipProps<number, st
 function IconHome({ cls }: { cls?: string }) {
   return (
     <svg className={cls} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="2" width="7" height="7" rx="1.5"/>
-      <rect x="11" y="2" width="7" height="7" rx="1.5"/>
-      <rect x="2" y="11" width="7" height="7" rx="1.5"/>
-      <rect x="11" y="11" width="7" height="7" rx="1.5"/>
+      <path d="M3 9.5L10 3l7 6.5"/>
+      <path d="M5 8.5V17h4v-4h2v4h4V8.5"/>
     </svg>
   );
 }
