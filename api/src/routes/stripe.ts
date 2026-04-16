@@ -16,6 +16,7 @@ import {
   getStripeCustomerBalance,
 } from "../lib/stripe-bank.js";
 import { requireBuyerAuth } from "../middleware/buyerAuth.js";
+import { prisma } from "../lib/prisma.js";
 
 export const stripeRouter = new Hono();
 
@@ -79,11 +80,12 @@ stripeRouter.get(
   "/balance",
   requireBuyerAuth,
   async (c) => {
-    const buyerCtx = (c as never as { get: (k: string) => { stripeCustomerId?: string } }).get("buyer") as { stripeCustomerId?: string };
-    if (!buyerCtx?.stripeCustomerId) {
+    const buyerId = (c as never as { get: (k: string) => string }).get("buyerId") as string;
+    const buyer   = await prisma.buyer.findUnique({ where: { id: buyerId } });
+    if (!buyer?.stripeCustomerId) {
       return c.json({ error: "バーチャル口座が未発行です" }, 404);
     }
-    const balance = await getStripeCustomerBalance(buyerCtx.stripeCustomerId);
+    const balance = await getStripeCustomerBalance(buyer.stripeCustomerId);
     return c.json(balance);
   },
 );

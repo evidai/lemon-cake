@@ -49,8 +49,9 @@ model Buyer {
   // 一日あたりの利用上限 (USD相当, Decimal)
   dailyLimitUsdc Decimal    @default(10) @db.Decimal(38, 18)
 
-  walletAddress String?     // オンチェーンアドレス（入金受取用）
-  suspended     Boolean     @default(false)
+  walletAddress    String?  // オンチェーンアドレス（入金受取用）
+  stripeCustomerId String?  // Stripe Customer ID（銀行振込・カード決済用）
+  suspended        Boolean  @default(false)
 
   tokens              Token[]
   charges             Charge[]

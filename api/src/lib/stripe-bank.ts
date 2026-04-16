@@ -75,7 +75,7 @@ export async function createBankTransferAccount(
 
   await prisma.buyer.update({
     where: { id: buyerId },
-    data:  { stripeCustomerId: customer.id } as never,
+    data:  { stripeCustomerId: customer.id },
   });
 
   return { customerId: customer.id, virtualAccountNumber, bankName, branchCode };
