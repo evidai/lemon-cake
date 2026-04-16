@@ -21,6 +21,59 @@ import type { BuyerAccountingConnection } from "@prisma/client";
 export type { BuyerAccountingConnection };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// NetSuite accountId validation (SSRF prevention)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NETSUITE_ACCOUNT_ID_RE = /^[A-Za-z0-9_-]{4,50}$/;
+
+export function validateNetSuiteAccountId(accountId: string): void {
+  if (!NETSUITE_ACCOUNT_ID_RE.test(accountId)) {
+    throw new Error(
+      `Invalid NetSuite accountId: must be 4–50 alphanumeric/dash/underscore characters`,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Token encryption/decryption (AES-256-GCM)
+// Storage format: iv:authTag:ciphertext  (all hex)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getEncryptionKey(): Buffer {
+  const secret = process.env.ACCOUNTING_TOKEN_SECRET ?? process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("ACCOUNTING_TOKEN_SECRET (or JWT_SECRET) must be at least 32 chars");
+  }
+  // Derive a 32-byte key from the secret via SHA-256
+  return crypto.createHash("sha256").update(secret).digest();
+}
+
+export function encryptToken(token: string): string {
+  if (!token) return token;
+  const key = getEncryptionKey();
+  const iv  = crypto.randomBytes(12); // 96-bit IV for GCM
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
+  const authTag   = cipher.getAuthTag();
+  return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted.toString("hex")}`;
+}
+
+export function decryptToken(encrypted: string): string {
+  if (!encrypted) return encrypted;
+  // If it doesn't look like our format, treat as plaintext (migration path)
+  const parts = encrypted.split(":");
+  if (parts.length !== 3) return encrypted;
+  const [ivHex, authTagHex, ciphertextHex] = parts;
+  const key        = getEncryptionKey();
+  const iv         = Buffer.from(ivHex, "hex");
+  const authTag    = Buffer.from(authTagHex, "hex");
+  const ciphertext = Buffer.from(ciphertextHex, "hex");
+  const decipher   = crypto.createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(authTag);
+  return decipher.update(ciphertext).toString("utf8") + decipher.final("utf8");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Journal entry data passed to all providers
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -68,8 +121,8 @@ async function refreshOAuth2(
   });
 
   if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    throw new Error(`OAuth2 refresh failed [${res.status}]: ${err}`);
+    // Do NOT include response body — it may contain token values
+    throw new Error(`OAuth2 refresh failed [${res.status}]`);
   }
 
   const d = await res.json() as {
@@ -84,7 +137,7 @@ async function refreshOAuth2(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // refreshConnectionToken — refresh OAuth token for a BuyerAccountingConnection
-// and persist to DB. Returns the new access token.
+// and persist to DB. Returns the new access token (plaintext).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function refreshConnectionToken(
@@ -94,6 +147,9 @@ export async function refreshConnectionToken(
     throw new Error(`No refresh token for connection ${conn.id} (${conn.provider})`);
   }
 
+  // Decrypt stored refresh token before use
+  const plainRefreshToken = decryptToken(conn.refreshToken);
+
   let result: { accessToken: string; refreshToken: string; expiresIn: number };
 
   switch (conn.provider) {
@@ -102,7 +158,7 @@ export async function refreshConnectionToken(
         "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
         process.env.QB_CLIENT_ID ?? "",
         process.env.QB_CLIENT_SECRET ?? "",
-        conn.refreshToken,
+        plainRefreshToken,
       );
       break;
 
@@ -111,7 +167,7 @@ export async function refreshConnectionToken(
         "https://identity.xero.com/connect/token",
         process.env.XERO_CLIENT_ID ?? "",
         process.env.XERO_CLIENT_SECRET ?? "",
-        conn.refreshToken,
+        plainRefreshToken,
         true, // Xero uses HTTP Basic auth
       );
       break;
@@ -122,7 +178,7 @@ export async function refreshConnectionToken(
         `https://accounts.zoho.${region}/oauth/v2/token`,
         process.env.ZOHO_CLIENT_ID ?? "",
         process.env.ZOHO_CLIENT_SECRET ?? "",
-        conn.refreshToken,
+        plainRefreshToken,
       );
       break;
     }
@@ -132,7 +188,7 @@ export async function refreshConnectionToken(
         "https://oauth.accounting.sage.com/token",
         process.env.SAGE_CLIENT_ID ?? "",
         process.env.SAGE_CLIENT_SECRET ?? "",
-        conn.refreshToken,
+        plainRefreshToken,
       );
       break;
 
@@ -141,7 +197,7 @@ export async function refreshConnectionToken(
         "https://accounts.secure.freee.co.jp/public_api/token",
         process.env.FREEE_CLIENT_ID ?? "",
         process.env.FREEE_CLIENT_SECRET ?? "",
-        conn.refreshToken,
+        plainRefreshToken,
       );
       break;
 
@@ -152,17 +208,17 @@ export async function refreshConnectionToken(
       throw new Error(`Unknown provider: ${conn.provider}`);
   }
 
-  // Persist updated tokens to DB
+  // Encrypt before persisting
   await prisma.buyerAccountingConnection.update({
     where: { id: conn.id },
     data:  {
-      accessToken:  result.accessToken,
-      refreshToken: result.refreshToken,
+      accessToken:  encryptToken(result.accessToken),
+      refreshToken: encryptToken(result.refreshToken),
     },
   });
 
-  console.log(`[Accounting] ${conn.provider} token refreshed for buyerId: ${conn.buyerId}`);
-  return result.accessToken;
+  console.log(`[Accounting] ${conn.provider} token refreshed for buyerId: ${conn.buyerId.slice(0, 8)}...`);
+  return result.accessToken; // Return plaintext for immediate use
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,7 +283,8 @@ export async function createQuickBooksJournalEntry(
 
   const url = `https://quickbooks.api.intuit.com/v3/company/${conn.externalId}/journalentry`;
 
-  let accessToken = conn.accessToken;
+  // Decrypt stored access token for use
+  let accessToken = decryptToken(conn.accessToken);
   let res = await fetch(url, {
     method:  "POST",
     headers: {
@@ -238,7 +295,7 @@ export async function createQuickBooksJournalEntry(
     body: JSON.stringify(body),
   });
 
-  // Auto-refresh on 401
+  // Auto-refresh on 401 — use freshly returned plaintext token
   if (res.status === 401) {
     accessToken = await refreshConnectionToken(conn);
     res = await fetch(url, {
@@ -253,8 +310,8 @@ export async function createQuickBooksJournalEntry(
   }
 
   if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    throw new Error(`QuickBooks journal entry failed [${res.status}]: ${err}`);
+    // Sanitize: do not log response body which may contain sensitive data
+    throw new Error(`QuickBooks journal entry failed [${res.status}]`);
   }
 }
 
@@ -288,7 +345,7 @@ export async function createXeroJournalEntry(
 
   const url = "https://api.xero.com/api.xro/2.0/ManualJournals";
 
-  let accessToken = conn.accessToken;
+  let accessToken = decryptToken(conn.accessToken);
   let res = await fetch(url, {
     method:  "POST",
     headers: {
@@ -315,8 +372,7 @@ export async function createXeroJournalEntry(
   }
 
   if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    throw new Error(`Xero journal entry failed [${res.status}]: ${err}`);
+    throw new Error(`Xero journal entry failed [${res.status}]`);
   }
 }
 
@@ -350,7 +406,7 @@ export async function createZohoJournalEntry(
 
   const url = `https://www.zohoapis.com/books/v3/journals?organization_id=${conn.externalId}`;
 
-  let accessToken = conn.accessToken;
+  let accessToken = decryptToken(conn.accessToken);
   let res = await fetch(url, {
     method:  "POST",
     headers: {
@@ -373,8 +429,7 @@ export async function createZohoJournalEntry(
   }
 
   if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    throw new Error(`Zoho journal entry failed [${res.status}]: ${err}`);
+    throw new Error(`Zoho journal entry failed [${res.status}]`);
   }
 }
 
@@ -404,7 +459,7 @@ export async function createSageJournalEntry(
 
   const url = "https://api.accounting.sage.com/v3.1/journal_entries";
 
-  let accessToken = conn.accessToken;
+  let accessToken = decryptToken(conn.accessToken);
   let res = await fetch(url, {
     method:  "POST",
     headers: {
@@ -427,8 +482,7 @@ export async function createSageJournalEntry(
   }
 
   if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    throw new Error(`Sage journal entry failed [${res.status}]: ${err}`);
+    throw new Error(`Sage journal entry failed [${res.status}]`);
   }
 }
 
@@ -492,10 +546,18 @@ export async function createNetSuiteJournalEntry(
     throw new Error("NetSuite TBA credentials are not fully configured for this connection");
   }
 
+  // SSRF prevention: validate accountId format
+  validateNetSuiteAccountId(conn.nsAccountId);
+
   const amount = data.amountUsdc;
-  // NetSuite uses the account number from the external fields
   const accountId = conn.nsAccountId.toUpperCase().replace(/-/g, "_");
   const url = `https://${accountId}.suitetalk.api.netsuite.com/services/rest/record/v1/journalentry`;
+
+  // Decrypt stored credentials
+  const consumerKey    = decryptToken(conn.nsConsumerKey);
+  const consumerSecret = decryptToken(conn.nsConsumerSecret);
+  const tokenId        = decryptToken(conn.nsTokenId);
+  const tokenSecret    = decryptToken(conn.nsTokenSecret);
 
   const body = {
     memo: data.description,
@@ -520,10 +582,10 @@ export async function createNetSuiteJournalEntry(
     "POST",
     url,
     conn.nsAccountId,
-    conn.nsConsumerKey,
-    conn.nsConsumerSecret,
-    conn.nsTokenId,
-    conn.nsTokenSecret,
+    consumerKey,
+    consumerSecret,
+    tokenId,
+    tokenSecret,
   );
 
   const res = await fetch(url, {
@@ -537,8 +599,7 @@ export async function createNetSuiteJournalEntry(
   });
 
   if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    throw new Error(`NetSuite journal entry failed [${res.status}]: ${err}`);
+    throw new Error(`NetSuite journal entry failed [${res.status}]`);
   }
 }
 
@@ -579,7 +640,7 @@ export async function createFreeeJournalEntry(
 
   const url = "https://api.freee.co.jp/api/1/manual_journals";
 
-  let accessToken = conn.accessToken;
+  let accessToken = decryptToken(conn.accessToken);
   let res = await fetch(url, {
     method:  "POST",
     headers: {
@@ -602,8 +663,7 @@ export async function createFreeeJournalEntry(
   }
 
   if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    throw new Error(`freee journal entry failed [${res.status}]: ${err}`);
+    throw new Error(`freee journal entry failed [${res.status}]`);
   }
 }
 
@@ -620,8 +680,7 @@ export async function getXeroTenantId(accessToken: string): Promise<string> {
   });
 
   if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    throw new Error(`Xero GET /connections failed [${res.status}]: ${err}`);
+    throw new Error(`Xero GET /connections failed [${res.status}]`);
   }
 
   const connections = await res.json() as Array<{ tenantId: string; tenantName?: string }>;
@@ -642,8 +701,7 @@ export async function getZohoOrgId(accessToken: string, region = "com"): Promise
   });
 
   if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    throw new Error(`Zoho GET /organizations failed [${res.status}]: ${err}`);
+    throw new Error(`Zoho GET /organizations failed [${res.status}]`);
   }
 
   const d = await res.json() as { organizations?: Array<{ organization_id: string; name?: string }> };

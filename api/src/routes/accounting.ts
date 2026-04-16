@@ -9,17 +9,29 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { SignJWT, jwtVerify } from "jose";
 import { randomUUID } from "crypto";
+import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireBuyerAuth } from "../middleware/buyerAuth.js";
-import { getXeroTenantId, getZohoOrgId } from "../lib/accounting.js";
+import { getXeroTenantId, getZohoOrgId, encryptToken, validateNetSuiteAccountId } from "../lib/accounting.js";
 
 export const accountingRouter = new Hono();
 
 // ─── Helper: get buyerId from context ────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getBuyerId(c: any): string {
-  return (c as never as { get: (k: string) => string }).get("buyerId");
+  const id = (c as never as { get: (k: string) => string }).get("buyerId") as string | undefined;
+  if (!id) throw new HTTPException(401, { message: "Unauthorized" });
+  return id;
 }
+
+// ─── DASHBOARD_URL validation ─────────────────────────────────────────────────
+const DASHBOARD_URL = (() => {
+  const url = process.env.DASHBOARD_URL ?? "https://lemoncake.xyz";
+  if (!url.startsWith("https://")) {
+    throw new Error("DASHBOARD_URL must start with https://");
+  }
+  return url;
+})();
 
 // ─── OAuth provider configs ───────────────────────────────────────────────────
 const OAUTH_CONFIGS = {
@@ -64,14 +76,47 @@ type OAuthProvider = keyof typeof OAUTH_CONFIGS;
 
 const CALLBACK_BASE_URL =
   process.env.CALLBACK_BASE_URL ?? "https://skillful-blessing-production.up.railway.app";
-const DASHBOARD_URL =
-  process.env.DASHBOARD_URL ?? "https://lemoncake.xyz";
 
 function getJwtSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
   if (!secret || secret.length < 32) throw new Error("JWT_SECRET must be set");
   return new TextEncoder().encode(secret);
 }
+
+// ─── Rate limiter for /oauth/start/:provider ────────────────────────────────
+// Max 5 requests per buyerId per 15 minutes
+const oauthStartRateLimit = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX      = 5;
+const RATE_LIMIT_WINDOW   = 15 * 60 * 1000; // 15 minutes in ms
+
+function checkOAuthStartRateLimit(buyerId: string): void {
+  const now    = Date.now();
+  const entry  = oauthStartRateLimit.get(buyerId);
+
+  if (!entry || now >= entry.resetAt) {
+    oauthStartRateLimit.set(buyerId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    throw new HTTPException(429, { message: "Too many OAuth requests. Please try again later." });
+  }
+
+  entry.count += 1;
+}
+
+// ─── NetSuite zod schema ──────────────────────────────────────────────────────
+const netsuiteSchema = z.object({
+  nsAccountId:       z.string().min(4).regex(/^[A-Za-z0-9_-]{4,50}$/, {
+    message: "nsAccountId must be 4–50 alphanumeric/dash/underscore characters",
+  }),
+  nsConsumerKey:    z.string().min(32, { message: "nsConsumerKey must be at least 32 characters" }),
+  nsConsumerSecret: z.string().min(32, { message: "nsConsumerSecret must be at least 32 characters" }),
+  nsTokenId:        z.string().min(32, { message: "nsTokenId must be at least 32 characters" }),
+  nsTokenSecret:    z.string().min(32, { message: "nsTokenSecret must be at least 32 characters" }),
+  expenseAccountRef: z.string().optional(),
+  cashAccountRef:    z.string().optional(),
+});
 
 // ─── GET /connections — list buyer's accounting connections ──────────────────
 accountingRouter.get("/connections", requireBuyerAuth, async (c) => {
@@ -102,8 +147,9 @@ accountingRouter.delete("/connections/:id", requireBuyerAuth, async (c) => {
   const buyerId = getBuyerId(c);
   const id      = c.req.param("id");
 
-  const conn = await prisma.buyerAccountingConnection.findUnique({ where: { id } });
-  if (!conn || conn.buyerId !== buyerId) {
+  // Ownership check: use findFirst with buyerId to prevent IDOR
+  const conn = await prisma.buyerAccountingConnection.findFirst({ where: { id, buyerId } });
+  if (!conn) {
     throw new HTTPException(404, { message: "Connection not found" });
   }
 
@@ -116,8 +162,9 @@ accountingRouter.patch("/connections/:id", requireBuyerAuth, async (c) => {
   const buyerId = getBuyerId(c);
   const id      = c.req.param("id");
 
-  const conn = await prisma.buyerAccountingConnection.findUnique({ where: { id } });
-  if (!conn || conn.buyerId !== buyerId) {
+  // Ownership check: use findFirst with buyerId to prevent IDOR
+  const conn = await prisma.buyerAccountingConnection.findFirst({ where: { id, buyerId } });
+  if (!conn) {
     throw new HTTPException(404, { message: "Connection not found" });
   }
 
@@ -153,20 +200,19 @@ accountingRouter.patch("/connections/:id", requireBuyerAuth, async (c) => {
 accountingRouter.post("/netsuite", requireBuyerAuth, async (c) => {
   const buyerId = getBuyerId(c);
 
-  const body = await c.req.json() as {
-    nsAccountId:      string;
-    nsConsumerKey:    string;
-    nsConsumerSecret: string;
-    nsTokenId:        string;
-    nsTokenSecret:    string;
-    expenseAccountRef?: string;
-    cashAccountRef?:    string;
-  };
-
-  if (!body.nsAccountId || !body.nsConsumerKey || !body.nsConsumerSecret ||
-      !body.nsTokenId   || !body.nsTokenSecret) {
-    throw new HTTPException(400, { message: "All NetSuite TBA fields are required" });
+  let body: z.infer<typeof netsuiteSchema>;
+  try {
+    const raw = await c.req.json();
+    body = netsuiteSchema.parse(raw);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      throw new HTTPException(400, { message: err.errors.map(e => e.message).join("; ") });
+    }
+    throw new HTTPException(400, { message: "Invalid request body" });
   }
+
+  // Extra SSRF check (belt-and-suspenders)
+  validateNetSuiteAccountId(body.nsAccountId);
 
   const connection = await prisma.buyerAccountingConnection.upsert({
     where:  { buyerId_provider: { buyerId, provider: "NETSUITE" } },
@@ -175,19 +221,19 @@ accountingRouter.post("/netsuite", requireBuyerAuth, async (c) => {
       provider:         "NETSUITE",
       accessToken:      "",  // NetSuite TBA has no access token
       nsAccountId:      body.nsAccountId,
-      nsConsumerKey:    body.nsConsumerKey,
-      nsConsumerSecret: body.nsConsumerSecret,
-      nsTokenId:        body.nsTokenId,
-      nsTokenSecret:    body.nsTokenSecret,
+      nsConsumerKey:    encryptToken(body.nsConsumerKey),
+      nsConsumerSecret: encryptToken(body.nsConsumerSecret),
+      nsTokenId:        encryptToken(body.nsTokenId),
+      nsTokenSecret:    encryptToken(body.nsTokenSecret),
       expenseAccountRef: body.expenseAccountRef,
       cashAccountRef:   body.cashAccountRef,
     },
     update: {
       nsAccountId:      body.nsAccountId,
-      nsConsumerKey:    body.nsConsumerKey,
-      nsConsumerSecret: body.nsConsumerSecret,
-      nsTokenId:        body.nsTokenId,
-      nsTokenSecret:    body.nsTokenSecret,
+      nsConsumerKey:    encryptToken(body.nsConsumerKey),
+      nsConsumerSecret: encryptToken(body.nsConsumerSecret),
+      nsTokenId:        encryptToken(body.nsTokenId),
+      nsTokenSecret:    encryptToken(body.nsTokenSecret),
       ...(body.expenseAccountRef !== undefined ? { expenseAccountRef: body.expenseAccountRef } : {}),
       ...(body.cashAccountRef    !== undefined ? { cashAccountRef:    body.cashAccountRef }    : {}),
       active: true,
@@ -208,16 +254,21 @@ accountingRouter.get("/oauth/start/:provider", requireBuyerAuth, async (c) => {
     throw new HTTPException(400, { message: `Unknown accounting provider: ${providerParam}` });
   }
 
-  const clientId = process.env[config.clientIdEnv];
-  if (!clientId) {
-    throw new HTTPException(500, { message: `${config.clientIdEnv} is not configured` });
+  // Guard: check provider env vars are configured before starting OAuth
+  const clientId     = process.env[config.clientIdEnv];
+  const clientSecret = process.env[config.clientSecretEnv];
+  if (!clientId || !clientSecret) {
+    return c.json({ error: "このプロバイダーは現在設定されていません" }, 503);
   }
 
-  // Sign a state JWT containing buyerId + provider + nonce
+  // Rate limit: max 5 OAuth start requests per buyer per 15 minutes
+  checkOAuthStartRateLimit(buyerId);
+
+  // Sign a short-lived state JWT (10 min max) containing buyerId + provider + nonce
   const state = await new SignJWT({ buyerId, provider: providerParam, nonce: randomUUID() })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("15m")
+    .setExpirationTime("10m")
     .sign(getJwtSecret());
 
   const redirectUri = `${CALLBACK_BASE_URL}/api/accounting/oauth/callback/${providerParam}`;
@@ -230,7 +281,6 @@ accountingRouter.get("/oauth/start/:provider", requireBuyerAuth, async (c) => {
     state,
   });
 
-  // QuickBooks requires response_type=code and specific format
   const url = `${config.authUrl}?${params.toString()}`;
 
   return c.json({ url });
@@ -241,6 +291,7 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
   const providerParam = c.req.param("provider").toLowerCase() as OAuthProvider;
   const config = OAUTH_CONFIGS[providerParam];
   if (!config) {
+    // Redirect only to hardcoded DASHBOARD_URL — never to user-supplied URL
     return c.redirect(`${DASHBOARD_URL}/?accounting_error=unknown_provider`);
   }
 
@@ -251,21 +302,27 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
     realmId?: string;
   };
 
-  if (error || !code || !state) {
+  // Reject if state is missing — required for CSRF protection
+  if (!state) {
+    return c.json({ error: "Missing state parameter" }, 400);
+  }
+
+  if (error || !code) {
     return c.redirect(`${DASHBOARD_URL}/?accounting_error=${encodeURIComponent(error ?? "missing_code")}`);
   }
 
-  // Verify state JWT
+  // Verify state JWT (CSRF protection)
   let statePayload: { buyerId: string; provider: string; nonce: string };
   try {
     const { payload } = await jwtVerify(state, getJwtSecret());
     statePayload = payload as typeof statePayload;
   } catch {
-    return c.redirect(`${DASHBOARD_URL}/?accounting_error=invalid_state`);
+    return c.json({ error: "Invalid or expired state parameter" }, 400);
   }
 
+  // Confirm provider in state matches URL param
   if (statePayload.provider !== providerParam) {
-    return c.redirect(`${DASHBOARD_URL}/?accounting_error=state_mismatch`);
+    return c.json({ error: "State provider mismatch" }, 400);
   }
 
   const { buyerId } = statePayload;
@@ -305,8 +362,8 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
     });
 
     if (!tokenRes.ok) {
-      const err = await tokenRes.text().catch(() => "");
-      console.error(`[Accounting] Token exchange failed for ${providerParam}:`, err);
+      // Do NOT log or include token exchange response body — may contain credentials
+      console.error(`[Accounting] Token exchange failed for ${providerParam}: HTTP ${tokenRes.status}`);
       return c.redirect(`${DASHBOARD_URL}/?accounting_error=token_exchange_failed`);
     }
 
@@ -316,7 +373,7 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
     accessToken  = tokenData.access_token;
     refreshToken = tokenData.refresh_token;
   } catch (err) {
-    console.error(`[Accounting] Token exchange error for ${providerParam}:`, err);
+    console.error(`[Accounting] Token exchange error for ${providerParam}:`, err instanceof Error ? err.message : "unknown");
     return c.redirect(`${DASHBOARD_URL}/?accounting_error=token_exchange_error`);
   }
 
@@ -334,7 +391,7 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
       externalId = await getZohoOrgId(accessToken, region);
     }
   } catch (err) {
-    console.error(`[Accounting] Failed to get externalId for ${providerParam}:`, err);
+    console.error(`[Accounting] Failed to get externalId for ${providerParam}:`, err instanceof Error ? err.message : "unknown");
     // Non-fatal: continue saving connection without externalId
   }
 
@@ -342,31 +399,32 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
   const providerEnum = providerParam.toUpperCase() as
     "QUICKBOOKS" | "XERO" | "ZOHO" | "SAGE" | "FREEE";
 
-  // Upsert connection
+  // Upsert connection — encrypt tokens before storing
   try {
     await prisma.buyerAccountingConnection.upsert({
       where:  { buyerId_provider: { buyerId, provider: providerEnum } },
       create: {
         buyerId,
         provider:     providerEnum,
-        accessToken,
-        refreshToken,
+        accessToken:  encryptToken(accessToken),
+        refreshToken: refreshToken ? encryptToken(refreshToken) : undefined,
         externalId,
         externalName,
         active: true,
       },
       update: {
-        accessToken,
-        refreshToken,
+        accessToken:  encryptToken(accessToken),
+        refreshToken: refreshToken ? encryptToken(refreshToken) : undefined,
         externalId,
         externalName,
         active: true,
       },
     });
   } catch (err) {
-    console.error(`[Accounting] DB upsert failed for ${providerParam}:`, err);
+    console.error(`[Accounting] DB upsert failed for ${providerParam}:`, err instanceof Error ? err.message : "unknown");
     return c.redirect(`${DASHBOARD_URL}/?accounting_error=db_error`);
   }
 
+  // Redirect only to hardcoded DASHBOARD_URL — never to any user-supplied URL
   return c.redirect(`${DASHBOARD_URL}/?accounting_connected=true&provider=${providerParam}`);
 });
