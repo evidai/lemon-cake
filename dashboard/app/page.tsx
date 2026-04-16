@@ -61,7 +61,7 @@ const randHash  = () => `sf_${Array.from({ length: 28 }, () => "0123456789abcdef
 type TxStatus = "confirmed" | "failed" | "pending" | "blocked";
 type Tier     = "none" | "kya" | "kyc";
 type Role     = "buyer" | "seller";
-type Page     = "home" | "transactions" | "agents" | "jpyc" | "fraud" | "directory" | "account"
+type Page     = "home" | "transactions" | "agents" | "usdc" | "jpyc" | "fraud" | "directory" | "account"
               | "seller-services" | "seller-directory" | "seller-account" | "seller-stats";
 
 // ── Service (Directory) ───────────────────────────────────────────────────────
@@ -232,6 +232,14 @@ function IconPlayground({ cls }: { cls?: string }) {
     </svg>
   );
 }
+function IconUSDC({ cls }: { cls?: string }) {
+  return (
+    <svg className={cls} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="10" r="8"/>
+      <path d="M10 5v1.5M10 13.5V15M7 7.5c0-1 1.3-1.5 3-1.5s3 .7 3 2c0 2.5-6 1.5-6 4 0 1.4 1.3 2 3 2s3-.5 3-1.5"/>
+    </svg>
+  );
+}
 function IconApiKey({ cls }: { cls?: string }) {
   return (
     <svg className={cls} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -302,6 +310,7 @@ const NAV_BUYER: NavItem[] = [
   { id: "transactions", label: "トークン発行",          Icon: IconToken },
   { id: "agents",       label: "販売者向けAPIキー",     Icon: IconApiKey },
   { id: "fraud",        label: "課金履歴",              Icon: IconClaim },
+  { id: "usdc",         label: "USDCチャージ",          Icon: IconUSDC },
   { id: "jpyc",         label: "JPYCチャージ",          Icon: IconPlayground },
 ];
 
@@ -338,7 +347,8 @@ function Sidebar({
     { id: "transactions", label: t("トークン発行", "Issue Token"),       Icon: IconToken },
     { id: "agents",       label: t("販売者向けAPIキー", "API Keys"),      Icon: IconApiKey },
     { id: "fraud",        label: t("課金履歴", "Charges"),               Icon: IconClaim },
-    { id: "jpyc",         label: t("JPYCチャージ", "JPYC Deposit"),       Icon: IconPlayground },
+    { id: "usdc",         label: t("USDCチャージ", "USDC Deposit"),      Icon: IconUSDC },
+    { id: "jpyc",         label: t("JPYCチャージ", "JPYC Deposit"),      Icon: IconPlayground },
   ];
   const navSeller: NavItem[] = [
     { id: "seller-services",  label: t("マイサービス", "My Services"),   Icon: IconStore },
@@ -1446,6 +1456,54 @@ function FraudPage({ blockedTx, avgRisk }: { blockedTx: number; avgRisk: number 
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── USDC Deposit Page ────────────────────────────────────────────────────────
+
+function USDCDepositPage() {
+  const t = useT();
+  return (
+    <div className="flex flex-col gap-6 max-w-2xl">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">{t("USDCチャージ", "USDC Deposit")}</h2>
+        <p className="text-sm text-gray-500 mt-1">{t("USDCを直接入金してウォレット残高に反映します。", "Deposit USDC directly to add to your wallet balance.")}</p>
+      </div>
+
+      {/* Coming soon */}
+      <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 px-8 py-14 flex flex-col items-center gap-4 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+          <IconUSDC cls="w-6 h-6 text-blue-500" />
+        </div>
+        <div>
+          <p className="font-semibold text-gray-700 mb-1">{t("準備中", "Coming soon")}</p>
+          <p className="text-sm text-gray-400 max-w-xs">
+            {t(
+              "Polygon ネットワーク上の USDC を直接受け取れる入金アドレスを近日公開予定です。",
+              "A deposit address to receive USDC directly on the Polygon network is coming soon."
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* What to expect */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 flex flex-col gap-4">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{t("対応予定の入金方法", "Supported deposit methods")}</p>
+        {[
+          { icon: "🔗", label: t("Polygon ウォレットから直接送金", "Send directly from a Polygon wallet"), status: t("準備中", "Soon") },
+          { icon: "🏦", label: t("銀行振込（Stripe 経由）→ USDC 残高に反映", "Bank transfer via Stripe → credited as USDC"), status: t("準備中", "Soon") },
+          { icon: "💳", label: t("クレジット／デビットカード（Stripe）", "Credit / Debit card via Stripe"), status: t("準備中", "Soon") },
+        ].map(({ icon, label, status }) => (
+          <div key={label} className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-lg">{icon}</span>
+              <span className="text-sm text-gray-700">{label}</span>
+            </div>
+            <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full flex-shrink-0">{status}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -3571,6 +3629,7 @@ export default function Dashboard() {
           {page === "transactions" && <TokensPage buyerToken={buyerToken} onTokenIssued={() => setHomeRefreshKey(k => k + 1)} />}
           {page === "agents"       && <ApiKeysPage keys={apiKeys} onAdd={() => navigateTo("jpyc")} onRevoke={revokeApiKey} />}
           {page === "fraud"        && <ChargesPage buyerToken={buyerToken} />}
+          {page === "usdc"         && <USDCDepositPage />}
           {page === "jpyc"         && <JPYCDepositPage buyerToken={buyerToken} />}
           {page === "directory"    && <DirectoryPage />}
           {page === "account"      && <AccountSettingsPage token={buyerToken} onLogout={handleLogout} />}
