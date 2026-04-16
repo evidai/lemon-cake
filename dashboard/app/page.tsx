@@ -3519,16 +3519,13 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
   const [loading,     setLoading]     = useState(true);
   const [connecting,  setConnecting]  = useState<AccountingProvider | null>(null);
 
+  const t = useT();
+
   // NetSuite form state
   const [nsForm,    setNsForm]    = useState({ accountId: "", consumerKey: "", consumerSecret: "", tokenId: "", tokenSecret: "" });
   const [nsLoading, setNsLoading] = useState(false);
   const [nsErr,     setNsErr]     = useState("");
   const [showNsForm, setShowNsForm] = useState(false);
-
-  function t(ja: string, en: string) {
-    if (typeof window !== "undefined" && document.documentElement.lang === "en") return en;
-    return ja;
-  }
 
   const fetchConnections = () => {
     setLoading(true);
