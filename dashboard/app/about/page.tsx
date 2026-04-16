@@ -271,22 +271,6 @@ export default function AboutPage() {
         </section>
       </div>
 
-      {/* ── Stack / Developer ── */}
-      <section id="stack" className="max-w-4xl mx-auto px-6 py-28">
-        <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-4">For Developers</p>
-        <h2 className="text-center text-3xl md:text-4xl font-black text-white mb-12 leading-tight">
-          信頼できる技術スタック
-        </h2>
-        <div className="divide-y divide-white/8 border border-white/8 rounded-2xl overflow-hidden">
-          {stack.map(({ label, value }) => (
-            <div key={label} className="flex items-center gap-6 px-6 py-4 bg-white/2 hover:bg-white/4 transition-colors">
-              <span className="text-[11px] font-semibold text-white/30 uppercase tracking-widest w-24 flex-shrink-0">{label}</span>
-              <span className="text-[14px] text-white/70">{value}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* ── Philosophy ── */}
       <section className="relative overflow-hidden px-6 pt-28 pb-40 text-center">
         {/* Video background */}
