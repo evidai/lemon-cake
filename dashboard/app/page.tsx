@@ -3662,12 +3662,12 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
                       {connecting === p.id ? t("接続中…", "Connecting…") : t("接続する", "Connect")}
                     </button>
                   ) : (
-                    <button
-                      onClick={() => setShowNsForm(v => !v)}
-                      className="text-xs font-medium text-white bg-[#C74634] rounded-lg px-3 py-1.5"
+                    <a
+                      href="mailto:contact@aievid.com?subject=NetSuite連携のお問い合わせ"
+                      className="text-xs font-medium text-[#C74634] border border-[#C74634] rounded-lg px-3 py-1.5 hover:bg-[#C74634] hover:text-white transition-colors"
                     >
-                      {t("認証設定", "Configure")}
-                    </button>
+                      {t("お問い合わせ", "Contact Us")}
+                    </a>
                   )}
                 </div>
               </div>
@@ -3676,45 +3676,7 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
         </div>
       )}
 
-      {/* NetSuite TBA form */}
-      {showNsForm && (
-        <form onSubmit={handleNetSuiteSubmit} className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col gap-4">
-          <p className="font-semibold text-gray-900 text-sm">{t("NetSuite TBA 認証情報", "NetSuite TBA Credentials")}</p>
-          <p className="text-xs text-gray-500">
-            {t("NetSuite管理画面 → Setup → Integration → Manage Integrations でToken-Based Authenticationを有効化し、Access Tokenを発行してください。", "Enable Token-Based Authentication in NetSuite Admin → Setup → Integration → Manage Integrations, then generate an Access Token.")}
-          </p>
-          {[
-            { key: "accountId",      label: "Account ID",       placeholder: "TSTDRV123456" },
-            { key: "consumerKey",    label: "Consumer Key",      placeholder: "xxxxxxxxxxxxxxxx" },
-            { key: "consumerSecret", label: "Consumer Secret",   placeholder: "xxxxxxxxxxxxxxxx" },
-            { key: "tokenId",        label: "Token ID",          placeholder: "xxxxxxxxxxxxxxxx" },
-            { key: "tokenSecret",    label: "Token Secret",      placeholder: "xxxxxxxxxxxxxxxx" },
-          ].map(f => (
-            <div key={f.key}>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}</label>
-              <input
-                type={f.key.includes("Secret") || f.key.includes("Key") ? "password" : "text"}
-                value={nsForm[f.key as keyof typeof nsForm]}
-                onChange={e => setNsForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                placeholder={f.placeholder}
-                required
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 font-mono"
-              />
-            </div>
-          ))}
-          {nsErr && <p className="text-xs text-red-600">{nsErr}</p>}
-          <div className="flex gap-2">
-            <button type="submit" disabled={nsLoading}
-              className="flex-1 py-2 text-sm font-medium text-white bg-[#C74634] rounded-xl disabled:opacity-60">
-              {nsLoading ? t("保存中…", "Saving…") : t("保存する", "Save")}
-            </button>
-            <button type="button" onClick={() => setShowNsForm(false)}
-              className="px-4 py-2 text-sm text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50">
-              {t("キャンセル", "Cancel")}
-            </button>
-          </div>
-        </form>
-      )}
+      {/* NetSuite TBA form — 非表示（エンタープライズ向けお問い合わせ対応） */}
 
       <p className="text-xs text-gray-400 text-center">
         {t(
