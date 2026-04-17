@@ -115,6 +115,7 @@ const integrations = [
     code: `npx lemon-cake-mcp`,
     tools: ["list_services", "call_service", "get_balance", "setup"],
     href: "https://www.npmjs.com/package/lemon-cake-mcp",
+    published: true,
   },
   {
     icon: <IconPackage />,
@@ -125,6 +126,7 @@ const integrations = [
     code: `npm install eliza-plugin-lemoncake`,
     tools: ["EXECUTE_LEMONCAKE_PAYMENT", "PAY_WITH_LEMONCAKE", "M2M_PAYMENT"],
     href: "https://www.npmjs.com/package/eliza-plugin-lemoncake",
+    published: true,
   },
 ];
 
@@ -295,7 +297,7 @@ export default function AboutPage() {
           Claude・Cursor・Eliza など主要なフレームワークに対応した公式パッケージを提供しています。
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {integrations.map(({ icon, badge, title, subtitle, body, code, tools, href }) => (
+          {integrations.map(({ icon, badge, title, subtitle, body, code, tools, href, published }) => (
             <div key={title} className="rounded-3xl bg-white/4 border border-white/8 p-8 flex flex-col gap-6">
               {/* Header */}
               <div>
@@ -304,6 +306,9 @@ export default function AboutPage() {
                     {icon}
                   </div>
                   <span className="text-[11px] font-mono text-white/30 bg-white/5 px-2 py-0.5 rounded">{badge}</span>
+                  {published && (
+                    <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full">✓ published</span>
+                  )}
                 </div>
                 <h3 className="text-xl font-black text-white mb-0.5">{title}</h3>
                 <p className="text-[12px] text-white/40">{subtitle}</p>

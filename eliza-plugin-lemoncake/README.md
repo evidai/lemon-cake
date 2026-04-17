@@ -1,5 +1,10 @@
 # 🍋 eliza-plugin-lemoncake
 
+[![npm version](https://img.shields.io/npm/v/eliza-plugin-lemoncake)](https://www.npmjs.com/package/eliza-plugin-lemoncake)
+[![npm downloads](https://img.shields.io/npm/dm/eliza-plugin-lemoncake)](https://www.npmjs.com/package/eliza-plugin-lemoncake)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+[![ElizaOS v2](https://img.shields.io/badge/%40elizaos%2Fcore-%3E%3D2.0.0--alpha.1-blue)](https://elizaos.ai)
+
 **Eliza エージェントに、3分で自律決済（JPYC/USDC）機能を追加しましょう。**
 
 [LemonCake](https://lemoncake.xyz) の JWT Pay Token を使い、AI エージェントが人間の介在なしに M2M（マシン間）API 課金を実行できるようになります。
