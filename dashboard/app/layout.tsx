@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LEMON cake",
+  title: "LemonCake",
   description: "AI Agent M2M Payment Infrastructure Dashboard",
   icons: { icon: "/logo.png", apple: "/logo.png" },
 };

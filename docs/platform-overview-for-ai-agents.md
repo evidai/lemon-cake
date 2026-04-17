@@ -1,4 +1,4 @@
-# LEMON cake Platform — AI Agent 向け機能概要
+# LemonCake Platform — AI Agent 向け機能概要
 
 **Production Base URL:** `https://skillful-blessing-production.up.railway.app`
 
@@ -6,7 +6,7 @@
 
 ## プラットフォームとは
 
-LEMON cake は **AI エージェント向け M2M（Machine-to-Machine）決済プラットフォーム**です。
+LemonCake は **AI エージェント向け M2M（Machine-to-Machine）決済プラットフォーム**です。
 エージェントは Pay Token を使って外部 API を呼び出すたびに自動課金され、プロキシ経由で実際の上流サービスに転送されます。
 
 - **Buyer（エージェント）** — USDC 残高をチャージして API を利用

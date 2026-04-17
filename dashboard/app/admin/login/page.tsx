@@ -42,9 +42,9 @@ export default function AdminLoginPage() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-sm p-8">
         {/* ロゴ */}
         <div className="flex items-center gap-2.5 mb-8">
-          <img src="/logo.png" alt="LEMON cake" className="w-8 h-8 rounded-lg object-cover" />
+          <img src="/logo.png" alt="LemonCake" className="w-8 h-8 rounded-lg object-cover" />
           <div>
-            <div className="text-sm font-bold text-gray-900">LEMON cake</div>
+            <div className="text-sm font-bold text-gray-900">LemonCake</div>
             <div className="text-[10px] text-gray-400">Admin Console</div>
           </div>
         </div>

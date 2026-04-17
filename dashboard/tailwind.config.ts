@@ -6,7 +6,7 @@ const config: Config = {
     extend: {
       colors: {
         // ══════════════════════════════════════════════════════
-        // Lemon Cake Design System
+        // LemonCake Design System
         // ══════════════════════════════════════════════════════
 
         // ── Backgrounds ──────────────────────────────────────

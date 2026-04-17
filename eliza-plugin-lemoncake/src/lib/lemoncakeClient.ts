@@ -1,5 +1,5 @@
 /**
- * LEMONCake API クライアント
+ * LemonCake API クライアント
  *
  * - Pay Token 発行（POST /api/tokens）
  * - プロキシ経由のサービス呼び出し（ANY /api/proxy/:serviceId/:path）
@@ -97,7 +97,7 @@ export class LemoncakeClient {
   async resolvePayToken(req: IssueTokenRequest): Promise<string> {
     // ── パターン1: 事前発行済みトークン ──────────────────────────────
     if (this.payToken) {
-      elizaLogger.debug("[LEMONCake] Using pre-issued Pay Token");
+      elizaLogger.debug("[LemonCake] Using pre-issued Pay Token");
       return this.payToken;
     }
 
@@ -110,7 +110,7 @@ export class LemoncakeClient {
       );
     }
 
-    elizaLogger.debug({ serviceId: req.serviceId, limitUsdc: req.limitUsdc }, "[LEMONCake] Issuing Pay Token on-demand");
+    elizaLogger.debug({ serviceId: req.serviceId, limitUsdc: req.limitUsdc }, "[LemonCake] Issuing Pay Token on-demand");
 
     const issued = await fetchJson<IssueTokenResponse>(
       `${this.apiUrl}/api/tokens`,
@@ -130,7 +130,7 @@ export class LemoncakeClient {
       serviceId: issued.serviceId,
       limitUsdc: issued.limitUsdc,
       expiresAt: issued.expiresAt,
-    }, "[LEMONCake] Pay Token issued");
+    }, "[LemonCake] Pay Token issued");
 
     return issued.jwt;
   }
@@ -145,7 +145,7 @@ export class LemoncakeClient {
     const url     = `${this.apiUrl}/api/proxy/${encodeURIComponent(req.serviceId)}${subPath}`;
     const method  = req.method ?? "POST";
 
-    elizaLogger.debug({ serviceId: req.serviceId, path: subPath, method }, "[LEMONCake] Calling service");
+    elizaLogger.debug({ serviceId: req.serviceId, path: subPath, method }, "[LemonCake] Calling service");
 
     const headers: Record<string, string> = {
       "Content-Type":  "application/json",
@@ -202,7 +202,7 @@ export class LemoncakeClient {
       serviceId: req.serviceId,
       chargeId,
       amountUsdc,
-    }, "[LEMONCake] Service call success");
+    }, "[LemonCake] Service call success");
 
     return { status: res.status, chargeId, amountUsdc, response: responseBody };
   }

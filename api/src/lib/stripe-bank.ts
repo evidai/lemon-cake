@@ -288,7 +288,7 @@ export async function createCardCheckoutSession(
         currency,
         unit_amount:  toStripeAmount(amount, currency),
         product_data: {
-          name:        "LEMON cake USDC残高チャージ",
+          name:        "LemonCake USDC残高チャージ",
           description: `${amount} ${currencyLabels[currency]} → USDCに換算して残高に追加`,
         },
       },

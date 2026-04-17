@@ -131,7 +131,7 @@ export async function syncRollup(rollupId: string): Promise<{
   const descLines = Object.values(breakdown)
     .map(v => `${v.name}: ${v.count}calls / $${v.usdc}`)
     .join(", ");
-  const description = `LEMONCake M2M API費用 ${issueDate} (${rollup.chargeCount}件) [${descLines}]`;
+  const description = `LemonCake M2M API費用 ${issueDate} (${rollup.chargeCount}件) [${descLines}]`;
 
   try {
     let externalDealId: string | undefined;
@@ -143,7 +143,7 @@ export async function syncRollup(rollupId: string): Promise<{
           description,
           amountUsdc:        rollup.totalUsdc.toFixed(6),
           amountJpy:         rollup.totalJpy,
-          providerName:      "LEMONCake Platform",
+          providerName:      "LemonCake Platform",
           invoiceRegistered: true,  // プラットフォームは適格事業者
         });
         externalDealId = String(result.dealId);
@@ -259,7 +259,7 @@ async function syncToQuickBooks(
       JournalEntryLineDetail: {
         PostingType:  "Debit",
         AccountRef:   { name: "Software and Technology" },
-        Entity:       { Name: "LEMONCake Platform" },
+        Entity:       { Name: "LemonCake Platform" },
       },
       Description: description,
     }, {
@@ -304,7 +304,7 @@ async function syncToXero(
 
   const body = {
     Type:       "SPEND",
-    Contact:    { Name: "LEMONCake Platform" },
+    Contact:    { Name: "LemonCake Platform" },
     Date:       date,
     LineAmountTypes: "Exclusive",
     LineItems:  [{

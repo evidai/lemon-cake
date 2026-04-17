@@ -2,7 +2,7 @@ import Link from "next/link";
 import ContactButton from "../ContactButton";
 
 export const metadata = {
-  title: "LEMON cake — E2E AAE Infrastructure",
+  title: "LemonCake — E2E AAE Infrastructure",
   description: "End-to-end AAE infrastructure for AI agents to complete real-world business. Tax, compliance, M2M payments, and accounting — fully automated. Code pays code.",
 };
 
@@ -43,7 +43,7 @@ const whyItems = [
   {
     eyebrow: "Global Compliance",
     title: "Navigate every regulation\nwith code",
-    body: "Qualified invoicing, corporate due diligence, tax risk assessment — work that normally takes specialists days is processed by agents in real time. Whatever country's rules apply, Lemon Cake absorbs them.",
+    body: "Qualified invoicing, corporate due diligence, tax risk assessment — work that normally takes specialists days is processed by agents in real time. Whatever country's rules apply, LemonCake absorbs them.",
     stats: [
       { num: "Auto", label: "Tax & billing" },
       { num: "KYB", label: "Corp. verification" },
@@ -100,8 +100,8 @@ export default function AboutPageEn() {
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2.5">
-              <img src="/logo.png" alt="LEMON cake" className="w-7 h-7 rounded-lg object-cover" />
-              <span className="font-bold text-[15px] text-white">LEMON cake</span>
+              <img src="/logo.png" alt="LemonCake" className="w-7 h-7 rounded-lg object-cover" />
+              <span className="font-bold text-[15px] text-white">LemonCake</span>
             </div>
             <div className="hidden md:flex items-center gap-6">
               {[
@@ -162,7 +162,7 @@ export default function AboutPageEn() {
           From thought to real-world payment,<br />seamlessly connected.
         </h2>
         <p className="text-base md:text-lg text-white/45 max-w-2xl mx-auto leading-relaxed">
-          For AI agents to "complete real-world business," massive barriers exist — complex tax systems in every country, counterparty due diligence, currency fluctuations, audit-ready accounting — all bound by local rules. Lemon Cake is the E2E AAE infrastructure that lets agents clear every one of these walls through a single endpoint.
+          For AI agents to "complete real-world business," massive barriers exist — complex tax systems in every country, counterparty due diligence, currency fluctuations, audit-ready accounting — all bound by local rules. LemonCake is the E2E AAE infrastructure that lets agents clear every one of these walls through a single endpoint.
         </p>
       </section>
 
@@ -216,7 +216,7 @@ export default function AboutPageEn() {
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">Focus solely on sharpening your AI's intelligence.</h3>
               <p className="text-[13px] text-gray-500 leading-relaxed mb-6">
-                Just hand a Pay Token to your agent. Tax, compliance, payments, accounting — all the messy operational work of business is handled by Lemon Cake. You focus on building smarter AI.
+                Just hand a Pay Token to your agent. Tax, compliance, payments, accounting — all the messy operational work of business is handled by LemonCake. You focus on building smarter AI.
               </p>
               <ul className="flex flex-col gap-3">
                 {buyerFeatures.map(f => (
@@ -237,7 +237,7 @@ export default function AboutPageEn() {
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">Sell to AI. Open a new revenue stream.</h3>
               <p className="text-[13px] text-gray-500 leading-relaxed mb-6">
-                Register your existing API on LEMON cake and AI agents around the world become your new customers. While humans miss late-night and holiday hours, agents never stop consuming your service.
+                Register your existing API on LemonCake and AI agents around the world become your new customers. While humans miss late-night and holiday hours, agents never stop consuming your service.
               </p>
               <ul className="flex flex-col gap-3">
                 {sellerFeatures.map(f => (
@@ -295,7 +295,7 @@ export default function AboutPageEn() {
               Focus solely on sharpening<br />your AI's intelligence.
             </h2>
             <p className="text-[14px] text-gray-500 mb-8 max-w-md mx-auto leading-relaxed">
-              All the messy operational work of business is handled by Lemon Cake.<br />Reach out for onboarding support, technical consultation, or a demo.
+              All the messy operational work of business is handled by LemonCake.<br />Reach out for onboarding support, technical consultation, or a demo.
             </p>
             <div className="flex items-center justify-center gap-3 flex-wrap">
               <ContactButton className="inline-flex items-center gap-2 px-7 py-3 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-700 transition-colors text-sm">
@@ -319,8 +319,8 @@ export default function AboutPageEn() {
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-3">
-                <img src="/logo.png" alt="LEMON cake" className="w-6 h-6 rounded-md object-cover" />
-                <span className="font-bold text-[13px] text-white">LEMON cake</span>
+                <img src="/logo.png" alt="LemonCake" className="w-6 h-6 rounded-md object-cover" />
+                <span className="font-bold text-[13px] text-white">LemonCake</span>
               </div>
               <p className="text-[12px] text-white/30 leading-relaxed">AAE Autonomous Agent Economy<br />Payment Infrastructure</p>
             </div>
@@ -353,7 +353,7 @@ export default function AboutPageEn() {
             </div>
           </div>
           <div className="border-t border-white/8 pt-6 flex flex-col md:flex-row items-center justify-between gap-2">
-            <p className="text-[11px] text-white/20">© 2026 LEMON cake. All rights reserved.</p>
+            <p className="text-[11px] text-white/20">© 2026 LemonCake. All rights reserved.</p>
             <p className="text-[11px] text-white/20">KYA/KYC Tier Auth · JWT Pay Token · Polygon · USDC · E2E AAE</p>
           </div>
         </div>

@@ -389,7 +389,7 @@ function Sidebar({
     <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-gray-200">
       {/* ── Header: ロゴ + 言語切り替え ── */}
       <div className="px-4 pt-4 pb-3 flex items-center justify-between gap-2">
-        <img src="/logo.png" alt="LEMON cake" className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
+        <img src="/logo.png" alt="LemonCake" className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
         {/* 言語切り替えボタン */}
         <div className="flex rounded-md border border-gray-200 overflow-hidden text-[10px] font-semibold">
           <button
@@ -587,7 +587,7 @@ function OnboardingChecklist({ onDismiss }: { onDismiss: () => void }) {
       <div className="flex items-start justify-between mb-5">
         <div>
           <h2 className="text-base font-bold text-gray-900">{t("購入者オンボーディングチェックリスト", "Buyer Onboarding Checklist")}</h2>
-          <p className="text-xs text-gray-500 mt-0.5">{t("LEMON cakeをバイヤーとして利用開始するには、以下の手順を完了してください。", "Complete the steps below to get started as a buyer on LEMON cake.")}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{t("LemonCakeをバイヤーとして利用開始するには、以下の手順を完了してください。", "Complete the steps below to get started as a buyer on LemonCake.")}</p>
         </div>
         <div className="flex items-center gap-3 ml-4 flex-shrink-0">
           <span className="text-sm font-medium text-gray-400">{done} / {ONBOARDING_ITEMS.length}</span>
@@ -2103,7 +2103,7 @@ function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreate
             <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="text-gray-500 mt-0.5 flex-shrink-0">
               <circle cx="10" cy="10" r="8"/><line x1="10" y1="9" x2="10" y2="14"/><circle cx="10" cy="6.5" r="0.5" fill="currentColor"/>
             </svg>
-            <h2 className="text-lg font-bold text-gray-900">LEMON cakeトークンとは何ですか？</h2>
+            <h2 className="text-lg font-bold text-gray-900">LemonCakeトークンとは何ですか？</h2>
           </div>
           <p className="text-sm text-gray-600 leading-relaxed mb-8">
             トークンとは、購入者が作成する、本人確認情報と紐づいた決済トークンです。トークンには金銭残高と本人確認情報が含まれており、購入者と販売者の間でデジタルリソースへのアクセスを目的とした、自動化された安全な取引を可能にします。販売者はこれらのトークンを検証し、プログラムによって決済を請求できます。

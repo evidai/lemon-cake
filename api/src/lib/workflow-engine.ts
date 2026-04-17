@@ -19,7 +19,7 @@ export interface WorkflowContext {
   orderDetails: {
     serviceType:   "PRINT" | "MATERIALS" | "CLOUD" | "FREELANCE";
     description:   string;
-    serviceId?:    string;  // Raksul等のLemon cake Service ID
+    serviceId?:    string;  // Raksul等のLemonCake Service ID
   };
   amountUsdc:  string;  // e.g. "100.000000"
   amountJpy:   number;

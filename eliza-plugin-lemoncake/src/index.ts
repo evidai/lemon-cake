@@ -1,7 +1,7 @@
 /**
  * eliza-plugin-lemoncake
  *
- * LEMONCake M2M Payment Plugin for Eliza v2 (@elizaos/core)
+ * LemonCake M2M Payment Plugin for Eliza v2 (@elizaos/core)
  *
  * Exports:
  *   - lemoncakePlugin  — Plugin オブジェクト（character.plugins に追加）
@@ -19,7 +19,7 @@ import { payAction } from "./actions/payAction.js";
 export const lemoncakePlugin: Plugin = {
   name: "eliza-plugin-lemoncake",
   description:
-    "LEMONCake M2M Payment plugin — enables autonomous USDC payments via JWT Pay Token " +
+    "LemonCake M2M Payment plugin — enables autonomous USDC payments via JWT Pay Token " +
     "for Eliza AI agents. Supports pre-issued Pay Token (Quick Start) and on-demand " +
     "issuance via Buyer JWT (Production).",
   actions: [payAction],

@@ -1407,9 +1407,9 @@ function AdminSidebar({nav, setNav, openFlags, pendingSvc}: {nav:NavSection; set
       {/* Logo */}
       <div className="px-5 py-5 border-b border-gray-100">
         <div className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="LEMON cake" className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
+          <img src="/logo.png" alt="LemonCake" className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
           <div>
-            <p className="text-gray-900 text-[13px] font-bold leading-tight">LEMON cake</p>
+            <p className="text-gray-900 text-[13px] font-bold leading-tight">LemonCake</p>
             <p className="text-gray-400 text-[10px]">Admin Console</p>
           </div>
         </div>

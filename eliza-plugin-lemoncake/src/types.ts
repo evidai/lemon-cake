@@ -1,11 +1,11 @@
 /**
- * LEMONCake Eliza Plugin — 型定義
+ * LemonCake Eliza Plugin — 型定義
  */
 
 // ─── 設定 ──────────────────────────────────────────────────────────────────
 
 export interface LemoncakeConfig {
-  /** LEMONCake API ベースURL */
+  /** LemonCake API ベースURL */
   apiUrl: string;
   /**
    * 事前発行済み Pay Token JWT。
@@ -59,7 +59,7 @@ export interface CallServiceResponse {
 // ─── アクションの実行パラメータ ───────────────────────────────────────────
 
 export interface PaymentParams {
-  /** 呼び出すサービスID（LEMONCake マーケットプレイスの serviceId） */
+  /** 呼び出すサービスID（LemonCake マーケットプレイスの serviceId） */
   serviceId: string;
   /** Pay Token の上限額（USDC）例: "1.00" */
   limitUsdc: string;

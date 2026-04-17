@@ -2,7 +2,7 @@ import Link from "next/link";
 import ContactButton from "./ContactButton";
 
 export const metadata = {
-  title: "LEMONCake — M2M Payment Infrastructure for AI Agents",
+  title: "LemonCake — M2M Payment Infrastructure for AI Agents",
   description: "AIエージェントが自律的にAPIを呼び出し、USDC で支払いを完結させるための M2M 決済インフラ。JWT Pay Token で予算を制御し、エージェントに安全な支払い能力を付与。",
 };
 
@@ -58,7 +58,7 @@ const whyItems = [
   {
     eyebrow: "Marketplace",
     title: "AIエージェントが\n選んで、払う",
-    body: "LEMONCake マーケットプレイスに登録された API は、エージェントが自律的に選択・呼び出し・支払いまで完結します。人間の承認を必要としない M2M トランザクションを、単一のプロキシエンドポイントで実現します。",
+    body: "LemonCake マーケットプレイスに登録された API は、エージェントが自律的に選択・呼び出し・支払いまで完結します。人間の承認を必要としない M2M トランザクションを、単一のプロキシエンドポイントで実現します。",
     stats: [
       { num: "M2M", label: "自律トランザクション" },
       { num: "1本", label: "プロキシ API" },
@@ -111,7 +111,7 @@ const integrations = [
     badge: "npm · lemon-cake-mcp",
     title: "MCP サーバー",
     subtitle: "Claude / Cursor に即接続",
-    body: "npx lemon-cake-mcp で起動するだけ。claude_desktop_config.json に追記すれば、Claude Desktop・Cursor がすぐに LEMONCake の全機能を使えます。",
+    body: "npx lemon-cake-mcp で起動するだけ。claude_desktop_config.json に追記すれば、Claude Desktop・Cursor がすぐに LemonCake の全機能を使えます。",
     code: `npx lemon-cake-mcp`,
     tools: ["list_services", "call_service", "get_balance", "setup"],
     href: "https://www.npmjs.com/package/lemon-cake-mcp",
@@ -149,8 +149,8 @@ export default function AboutPage() {
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2.5">
-              <img src="/logo.png" alt="LEMONCake" className="w-7 h-7 rounded-lg object-cover" />
-              <span className="font-bold text-[15px] text-white">LEMONCake</span>
+              <img src="/logo.png" alt="LemonCake" className="w-7 h-7 rounded-lg object-cover" />
+              <span className="font-bold text-[15px] text-white">LemonCake</span>
             </div>
             <div className="hidden md:flex items-center gap-6">
               {[
@@ -210,7 +210,7 @@ export default function AboutPage() {
         </h2>
         <p className="text-base md:text-lg text-white/45 max-w-2xl mx-auto leading-relaxed">
           AIエージェントが外部 API を呼び出すたびに、課金・認証・冪等性・残高管理が必要になります。
-          LEMONCake は JWT Pay Token という仕組みで、エージェントに「予算上限付きのお財布」を渡します。
+          LemonCake は JWT Pay Token という仕組みで、エージェントに「予算上限付きのお財布」を渡します。
           上限を超えれば自動停止。エージェントは支払い能力を持ちながら、暴走しません。
         </p>
       </section>
@@ -265,7 +265,7 @@ export default function AboutPage() {
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">AIの知能を磨くことだけに集中する</h3>
               <p className="text-[13px] text-gray-500 leading-relaxed mb-6">
-                Pay Token をエージェントに渡すだけ。決済・残高管理・冪等性はすべて LEMONCake が処理します。あなたはエージェントのロジックだけに集中してください。
+                Pay Token をエージェントに渡すだけ。決済・残高管理・冪等性はすべて LemonCake が処理します。あなたはエージェントのロジックだけに集中してください。
               </p>
               <ul className="flex flex-col gap-3">
                 {buyerFeatures.map(f => (
@@ -286,7 +286,7 @@ export default function AboutPage() {
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">AIに売り、新しい収益源を開く</h3>
               <p className="text-[13px] text-gray-500 leading-relaxed mb-6">
-                既存の API を LEMONCake に登録するだけで、世界中の AI エージェントが新しい顧客になります。人間が見落とす深夜・休日も、エージェントは止まらずサービスを使い続けます。
+                既存の API を LemonCake に登録するだけで、世界中の AI エージェントが新しい顧客になります。人間が見落とす深夜・休日も、エージェントは止まらずサービスを使い続けます。
               </p>
               <ul className="flex flex-col gap-3">
                 {sellerFeatures.map(f => (
@@ -406,7 +406,7 @@ export default function AboutPage() {
               AIの知能を磨くことだけに<br />集中してください。
             </h2>
             <p className="text-[14px] text-gray-500 mb-8 max-w-md mx-auto leading-relaxed">
-              決済・残高管理・冪等性はすべて LEMONCake が処理します。<br />導入支援・技術相談・デモのリクエストはこちら。
+              決済・残高管理・冪等性はすべて LemonCake が処理します。<br />導入支援・技術相談・デモのリクエストはこちら。
             </p>
             <div className="flex items-center justify-center gap-3 flex-wrap">
               <ContactButton className="inline-flex items-center gap-2 px-7 py-3 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-700 transition-colors text-sm">
@@ -430,8 +430,8 @@ export default function AboutPage() {
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-3">
-                <img src="/logo.png" alt="LEMONCake" className="w-6 h-6 rounded-md object-cover" />
-                <span className="font-bold text-[13px] text-white">LEMONCake</span>
+                <img src="/logo.png" alt="LemonCake" className="w-6 h-6 rounded-md object-cover" />
+                <span className="font-bold text-[13px] text-white">LemonCake</span>
               </div>
               <p className="text-[12px] text-white/30 leading-relaxed">M2M Payment Infrastructure<br />for AI Agents</p>
             </div>
@@ -471,7 +471,7 @@ export default function AboutPage() {
             </div>
           </div>
           <div className="border-t border-white/8 pt-6 flex flex-col md:flex-row items-center justify-between gap-2">
-            <p className="text-[11px] text-white/20">© 2026 LEMONCake. All rights reserved.</p>
+            <p className="text-[11px] text-white/20">© 2026 LemonCake. All rights reserved.</p>
             <p className="text-[11px] text-white/20">KYA/KYC ティア認証 · JWT Pay Token · Polygon · USDC · JPYC</p>
           </div>
         </div>

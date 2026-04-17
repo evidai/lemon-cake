@@ -1,7 +1,7 @@
 {
   "name": "your-service-mcp",
   "version": "1.0.0",
-  "description": "Your Service — MCP Server for LEMONCake marketplace",
+  "description": "Your Service — MCP Server for LemonCake marketplace",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

@@ -48,9 +48,9 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex items-center gap-2.5 mb-8 justify-center">
           <Link href="/about">
-            <img src="/logo.png" alt="LEMON cake" className="w-9 h-9 rounded-xl object-cover hover:opacity-80 transition-opacity" />
+            <img src="/logo.png" alt="LemonCake" className="w-9 h-9 rounded-xl object-cover hover:opacity-80 transition-opacity" />
           </Link>
-          <Link href="/about" className="text-lg font-bold text-gray-900 hover:text-gray-600 transition-colors">LEMON cake</Link>
+          <Link href="/about" className="text-lg font-bold text-gray-900 hover:text-gray-600 transition-colors">LemonCake</Link>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">

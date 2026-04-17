@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * LEMONCake MCP Server v0.2.0
+ * LemonCake MCP Server v0.2.0
  *
- * AIエージェントにLEMONCakeの決済インフラを提供するMCPサーバー。
+ * AIエージェントにLemonCakeの決済インフラを提供するMCPサーバー。
  *
  * Tools:
  *  - setup             : 初回セットアップガイド（認証不要）
@@ -36,15 +36,15 @@ const BUYER_JWT = process.env.LEMON_CAKE_BUYER_JWT ?? "";
 const hasPayToken = PAY_TOKEN.length > 0;
 const hasBuyerJwt = BUYER_JWT.length > 0;
 
-console.error("[LEMONCake MCP] Starting...");
-console.error(`[LEMONCake MCP]   API URL     : ${API_URL}`);
-console.error(`[LEMONCake MCP]   PAY_TOKEN   : ${hasPayToken ? "✓ set" : "✗ NOT SET — call_service will be unavailable"}`);
-console.error(`[LEMONCake MCP]   BUYER_JWT   : ${hasBuyerJwt ? "✓ set" : "✗ NOT SET — check_balance will be unavailable"}`);
+console.error("[LemonCake MCP] Starting...");
+console.error(`[LemonCake MCP]   API URL     : ${API_URL}`);
+console.error(`[LemonCake MCP]   PAY_TOKEN   : ${hasPayToken ? "✓ set" : "✗ NOT SET — call_service will be unavailable"}`);
+console.error(`[LemonCake MCP]   BUYER_JWT   : ${hasBuyerJwt ? "✓ set" : "✗ NOT SET — check_balance will be unavailable"}`);
 
 if (!hasPayToken || !hasBuyerJwt) {
-  console.error("[LEMONCake MCP]");
-  console.error("[LEMONCake MCP]   To get credentials, use the `setup` tool or visit:");
-  console.error("[LEMONCake MCP]   https://lemoncake.xyz/dashboard");
+  console.error("[LemonCake MCP]");
+  console.error("[LemonCake MCP]   To get credentials, use the `setup` tool or visit:");
+  console.error("[LemonCake MCP]   https://lemoncake.xyz/dashboard");
 }
 
 // ── ヘルパー ──────────────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "setup",
       description: [
-        "LEMONCake MCPサーバーの初回セットアップガイドを表示します。",
+        "LemonCake MCPサーバーの初回セットアップガイドを表示します。",
         "認証不要。まず最初にこのツールを呼び出してください。",
         "",
         "現在の認証状態と、不足している認証情報の取得手順を返します。",
@@ -133,7 +133,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "list_services",
       description: [
-        "LEMONCakeマーケットプレイスで利用可能なAPIサービス一覧を返します。",
+        "LemonCakeマーケットプレイスで利用可能なAPIサービス一覧を返します。",
         "認証不要で呼び出せます。",
         "",
         "各サービスには id, name, type (API|MCP), pricePerCall (USDC) が含まれます。",
@@ -154,7 +154,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "call_service",
       description: [
-        "LEMONCakeのPay-per-callプロキシ経由でAPIサービスを呼び出します。",
+        "LemonCakeのPay-per-callプロキシ経由でAPIサービスを呼び出します。",
         "呼び出しのたびに設定済みのPay Tokenから自動的に課金されます。",
         "",
         "【必須】LEMON_CAKE_PAY_TOKEN 環境変数の設定が必要です。",
@@ -434,10 +434,10 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("[LEMONCake MCP] Ready.");
+  console.error("[LemonCake MCP] Ready.");
 }
 
 main().catch((err) => {
-  console.error("[LEMONCake MCP] Fatal:", err);
+  console.error("[LemonCake MCP] Fatal:", err);
   process.exit(1);
 });

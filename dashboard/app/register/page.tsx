@@ -45,13 +45,13 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex items-center gap-2.5 mb-8 justify-center">
-          <img src="/logo.png" alt="LEMON cake" className="w-9 h-9 rounded-xl object-cover" />
-          <span className="text-lg font-bold text-gray-900">LEMON cake</span>
+          <img src="/logo.png" alt="LemonCake" className="w-9 h-9 rounded-xl object-cover" />
+          <span className="text-lg font-bold text-gray-900">LemonCake</span>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
           <h1 className="text-xl font-bold text-gray-900 mb-1">アカウント作成</h1>
-          <p className="text-sm text-gray-500 mb-6">LEMON cakeへようこそ。無料で始めましょう。</p>
+          <p className="text-sm text-gray-500 mb-6">LemonCakeへようこそ。無料で始めましょう。</p>
 
           <form onSubmit={handleRegister} className="flex flex-col gap-4">
             <div>
@@ -114,7 +114,7 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-center text-[11px] text-gray-400 mt-4 px-4">
-          登録することで、LEMON cake の利用規約およびプライバシーポリシーに同意したものとみなされます。
+          登録することで、LemonCake の利用規約およびプライバシーポリシーに同意したものとみなされます。
         </p>
       </div>
     </div>

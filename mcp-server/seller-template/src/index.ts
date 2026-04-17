@@ -1,23 +1,23 @@
 #!/usr/bin/env node
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
- * ║         LEMONCake Seller MCP Server Template                    ║
+ * ║         LemonCake Seller MCP Server Template                    ║
  * ║                                                                  ║
  * ║  このテンプレートをコピーして、あなたのAPIをMCPサーバーとして    ║
- * ║  LEMONCakeマーケットプレイスに登録しましょう。                   ║
+ * ║  LemonCakeマーケットプレイスに登録しましょう。                   ║
  * ║                                                                  ║
  * ║  カスタマイズ手順:                                               ║
  * ║    1. SERVICE_NAME / SERVICE_VERSION を変更                      ║
  * ║    2. tools リストにあなたのAPIのツールを定義                    ║
  * ║    3. switch (name) の各ケースに実装を追加                       ║
  * ║    4. npm run build && npm publish                                ║
- * ║    5. LEMONCakeダッシュボードでサービスを登録                    ║
+ * ║    5. LemonCakeダッシュボードでサービスを登録                    ║
  * ╚══════════════════════════════════════════════════════════════════╝
  *
  * 環境変数:
  *   YOUR_API_KEY       : あなたのAPIの認証キー
  *   YOUR_API_BASE_URL  : APIのベースURL（デフォルト: https://api.your-service.com）
- *   LEMONCAKE_SECRET   : LEMONCakeが発行するWebhook検証シークレット（任意）
+ *   LEMONCAKE_SECRET   : LemonCakeが発行するWebhook検証シークレット（任意）
  *   PORT               : HTTPモード時のポート番号（デフォルト: 3100）
  */
 

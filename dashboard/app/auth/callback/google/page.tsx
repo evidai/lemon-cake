@@ -49,8 +49,8 @@ function GoogleCallbackContent() {
     <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center p-4">
       <div className="w-full max-w-sm text-center">
         <div className="flex items-center gap-2.5 mb-8 justify-center">
-          <img src="/logo.png" alt="LEMON cake" className="w-9 h-9 rounded-xl object-cover" />
-          <span className="text-lg font-bold text-gray-900">LEMON cake</span>
+          <img src="/logo.png" alt="LemonCake" className="w-9 h-9 rounded-xl object-cover" />
+          <span className="text-lg font-bold text-gray-900">LemonCake</span>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">

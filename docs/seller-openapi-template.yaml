@@ -1,7 +1,7 @@
 openapi: 3.1.0
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LEMONCake Seller OpenAPI 3.1 テンプレート
+# LemonCake Seller OpenAPI 3.1 テンプレート
 #
 # このファイルをベースに、あなたのAPIをAIエージェント向けに最適化してください。
 #
@@ -32,9 +32,9 @@ info:
     - 1コールあたり: $0.001 USDC（約0.15円）
     - 課金タイミング: リクエスト成功時のみ（4xx/5xx は無課金）
 
-    ## LEMONCake 経由での利用
+    ## LemonCake 経由での利用
 
-    このAPIはLEMONCakeのPay-per-call プロキシを通じて利用します。
+    このAPIはLemonCakeのPay-per-call プロキシを通じて利用します。
     Pay Token を Authorization ヘッダーにセットするだけで自動課金されます。
 
     ```
@@ -50,10 +50,10 @@ info:
     name: "Commercial"
     url: "https://your-company.com/terms"
 
-# ─── LEMONCake 拡張フィールド ─────────────────────────────────
-# LEMONCakeのサービス登録に使用する独自拡張
+# ─── LemonCake 拡張フィールド ─────────────────────────────────
+# LemonCakeのサービス登録に使用する独自拡張
 x-lemoncake:
-  serviceId: ""                  # 登録後にLEMONCakeから払い出されるID
+  serviceId: ""                  # 登録後にLemonCakeから払い出されるID
   pricePerCallUsdc: "0.001"      # 1コールあたりの価格（USDC）
   category: "data"               # data / ai / compliance / communication / finance
   tags:
@@ -68,13 +68,13 @@ x-lemoncake:
       〜の場合はこのAPIではなく〜を使ってください。
 
 servers:
-  # LEMONCake プロキシ経由（本番）
+  # LemonCake プロキシ経由（本番）
   - url: "https://api.lemoncake.xyz/proxy/{serviceId}"
-    description: "LEMONCake Pay-per-call Proxy (Production)"
+    description: "LemonCake Pay-per-call Proxy (Production)"
     variables:
       serviceId:
         default: ""
-        description: "LEMONCakeから払い出されたサービスID"
+        description: "LemonCakeから払い出されたサービスID"
   # 直接アクセス（開発・テスト用）
   - url: "https://api.your-company.com/v1"
     description: "Direct API Access (Development)"
@@ -90,7 +90,7 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        LEMONCake Pay Token JWT。
+        LemonCake Pay Token JWT。
         `POST /api/tokens` で発行。エージェントはこのトークンを
         Authorization ヘッダーにセットするだけで自動課金される。
 
@@ -187,7 +187,7 @@ components:
       schema:
         type: integer
     X-Charge-Id:
-      description: "LEMONCakeが付与する課金ID（ログ・監査用）"
+      description: "LemonCakeが付与する課金ID（ログ・監査用）"
       schema:
         type: string
     X-Amount-Usdc:

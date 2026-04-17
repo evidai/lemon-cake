@@ -3,7 +3,7 @@
  *
  * 実行: npx tsx prisma/seed.ts
  *
- * LEMON cake プラットフォームプロバイダーと
+ * LemonCake プラットフォームプロバイダーと
  * 高需要 AI サービス群をデータベースに登録する。
  */
 
@@ -268,9 +268,9 @@ async function main() {
   // ─── プラットフォームプロバイダーの upsert ──────────────────
   const platform = await prisma.provider.upsert({
     where:  { email: "platform@aievid.com" },
-    update: { name: "LEMON cake Platform", walletAddress: PLATFORM_WALLET },
+    update: { name: "LemonCake Platform", walletAddress: PLATFORM_WALLET },
     create: {
-      name:          "LEMON cake Platform",
+      name:          "LemonCake Platform",
       email:         "platform@aievid.com",
       walletAddress: PLATFORM_WALLET,
       active:        true,

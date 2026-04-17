@@ -1,7 +1,7 @@
 /**
  * EXECUTE_LEMONCAKE_PAYMENT アクション
  *
- * Eliza エージェントが LEMONCake を通じて有料 API を自律呼び出しするアクション。
+ * Eliza エージェントが LemonCake を通じて有料 API を自律呼び出しするアクション。
  *
  * フロー:
  *   1. LEMONCAKE_PAY_TOKEN があればそれを使用
@@ -109,7 +109,7 @@ export const payAction: Action = {
   name: "EXECUTE_LEMONCAKE_PAYMENT",
 
   description:
-    "LEMONCake を利用して、指定されたサービス（serviceId）に対し " +
+    "LemonCake を利用して、指定されたサービス（serviceId）に対し " +
     "指定額（USDC）の支払い（JWT Pay Token の発行と API 呼び出し）を実行する。" +
     "Pay Token の予算内でのみ動作し、上限超過時は自律的に停止する。",
 
@@ -127,7 +127,7 @@ export const payAction: Action = {
   parameters: [
     {
       name:        "serviceId",
-      description: "LEMONCake マーケットプレイスのサービスID（list_services で取得）",
+      description: "LemonCake マーケットプレイスのサービスID（list_services で取得）",
       required:    true,
       schema:      { type: "string" },
     },
@@ -171,7 +171,7 @@ export const payAction: Action = {
     const hasCredential = Boolean(payToken || buyerJwt);
     if (!hasCredential) {
       elizaLogger.warn(
-        "[LEMONCake] validate: neither LEMONCAKE_PAY_TOKEN nor LEMONCAKE_BUYER_JWT is set. " +
+        "[LemonCake] validate: neither LEMONCAKE_PAY_TOKEN nor LEMONCAKE_BUYER_JWT is set. " +
         "Action will not be available.",
       );
     }
@@ -186,7 +186,7 @@ export const payAction: Action = {
     options?: HandlerOptions | Record<string, unknown>,
     callback?: HandlerCallback,
   ) => {
-    elizaLogger.info("[LEMONCake] payAction handler triggered");
+    elizaLogger.info("[LemonCake] payAction handler triggered");
 
     // ── 1. パラメータ抽出 ────────────────────────────────────────────
     const paymentParams = extractPaymentParams(message, options);
@@ -197,7 +197,7 @@ export const payAction: Action = {
         "serviceId と limitUsdc（例: '1.00'）を指定してください。\n" +
         "例: 「serviceId: demo_agent_search_api に 0.50 USDC 支払いを実行して」";
 
-      elizaLogger.warn("[LEMONCake] extractPaymentParams: missing required fields");
+      elizaLogger.warn("[LemonCake] extractPaymentParams: missing required fields");
       await callback?.({ text: errText });
       return { success: false, error: "MISSING_PARAMS" };
     }
@@ -209,7 +209,7 @@ export const payAction: Action = {
       limitUsdc:      paymentParams.limitUsdc,
       path:           paymentParams.path,
       idempotencyKey,
-    }, "[LEMONCake] Payment params resolved");
+    }, "[LemonCake] Payment params resolved");
 
     // ── 2. クライアント初期化 ────────────────────────────────────────
     const client = buildClient(runtime);
@@ -241,7 +241,7 @@ export const payAction: Action = {
         : JSON.stringify(result.response, null, 2);
 
       const successText =
-        `✅ LEMONCake 決済成功${chargeInfo}\n\n` +
+        `✅ LemonCake 決済成功${chargeInfo}\n\n` +
         `**サービス**: \`${paymentParams.serviceId}\`\n` +
         `**レスポンス**:\n\`\`\`json\n${responseText}\n\`\`\``;
 
@@ -249,7 +249,7 @@ export const payAction: Action = {
         serviceId:  paymentParams.serviceId,
         chargeId:   result.chargeId,
         amountUsdc: result.amountUsdc,
-      }, "[LEMONCake] Payment completed");
+      }, "[LemonCake] Payment completed");
 
       await callback?.({ text: successText });
       return { success: true, chargeId: result.chargeId, amountUsdc: result.amountUsdc };
@@ -261,7 +261,7 @@ export const payAction: Action = {
           code:      err.code,
           message:   err.message,
           retryable: err.retryable,
-        }, "[LEMONCake] Payment failed");
+        }, "[LemonCake] Payment failed");
 
         const userMessage = buildUserErrorMessage(err);
         await callback?.({ text: userMessage });
@@ -270,7 +270,7 @@ export const payAction: Action = {
 
       // 予期しないエラー
       const msg = err instanceof Error ? err.message : String(err);
-      elizaLogger.error({ message: msg }, "[LEMONCake] Unexpected error");
+      elizaLogger.error({ message: msg }, "[LemonCake] Unexpected error");
       await callback?.({ text: `❌ 予期しないエラーが発生しました: ${msg}` });
       return { success: false, error: "UNKNOWN" };
     }
@@ -281,12 +281,12 @@ export const payAction: Action = {
     [
       {
         name: "User",
-        content: { text: "LEMONCake の demo_agent_search_api を 0.50 USDC で呼び出して" },
+        content: { text: "LemonCake の demo_agent_search_api を 0.50 USDC で呼び出して" },
       },
       {
         name: "Agent",
         content: {
-          text: "LEMONCake 経由で demo_agent_search_api を呼び出します。",
+          text: "LemonCake 経由で demo_agent_search_api を呼び出します。",
           action: "EXECUTE_LEMONCAKE_PAYMENT",
         },
       },
@@ -312,7 +312,7 @@ export const payAction: Action = {
       {
         name: "Agent",
         content: {
-          text: "LEMONCake Pay Token を使って検索 API を呼び出します。",
+          text: "LemonCake Pay Token を使って検索 API を呼び出します。",
           action: "EXECUTE_LEMONCAKE_PAYMENT",
         },
       },
@@ -326,7 +326,7 @@ function buildUserErrorMessage(err: LemoncakeError): string {
   switch (err.code) {
     case "CREDENTIAL_MISSING":
       return (
-        "❌ LEMONCake の認証情報が設定されていません。\n\n" +
+        "❌ LemonCake の認証情報が設定されていません。\n\n" +
         ".env または character の settings に以下を設定してください:\n" +
         "```\n" +
         "LEMONCAKE_PAY_TOKEN=<ダッシュボードで発行した Pay Token>\n" +
@@ -344,12 +344,12 @@ function buildUserErrorMessage(err: LemoncakeError): string {
     case "SERVICE_NOT_FOUND":
       return `❌ サービスが見つかりません。serviceId が正しいか確認してください。`;
     case "SERVICE_NOT_APPROVED":
-      return "❌ このサービスはまだ承認されていません。LEMONCake の審査をお待ちください。";
+      return "❌ このサービスはまだ承認されていません。LemonCake の審査をお待ちください。";
     case "RATE_LIMITED":
       return `❌ レート制限に達しました。${err.retryAfterSec ? `${err.retryAfterSec}秒後` : "しばらく"}に再試行してください。`;
     case "NETWORK_ERROR":
-      return "❌ LEMONCake API への接続に失敗しました。ネットワークを確認して再試行してください。";
+      return "❌ LemonCake API への接続に失敗しました。ネットワークを確認して再試行してください。";
     default:
-      return `❌ LEMONCake エラー: ${err.message}`;
+      return `❌ LemonCake エラー: ${err.message}`;
   }
 }
