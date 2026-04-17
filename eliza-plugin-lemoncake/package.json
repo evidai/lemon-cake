@@ -1,0 +1,33 @@
+{
+  "name": "eliza-plugin-lemoncake",
+  "version": "0.1.0",
+  "description": "LEMONCake payment plugin for Eliza AI agents — autonomous M2M payments via JWT Pay Token",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "keywords": ["eliza", "elizaos", "ai-agent", "plugin", "payment", "usdc", "m2m", "lemoncake", "web3"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/evidai/lemon-cake.git",
+    "directory": "eliza-plugin-lemoncake"
+  },
+  "homepage": "https://lemoncake.xyz",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "@elizaos/core": ">=2.0.0-alpha.1"
+  },
+  "devDependencies": {
+    "@elizaos/core": "^2.0.0-alpha.77",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=23.0.0"
+  }
+}
