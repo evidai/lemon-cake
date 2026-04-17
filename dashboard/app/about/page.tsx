@@ -128,17 +128,6 @@ const integrations = [
   },
 ];
 
-const stack = [
-  { label: "Frontend",  value: "Next.js 14 (App Router) + Tailwind CSS" },
-  { label: "API",       value: "Hono + OpenAPI / Zod" },
-  { label: "Database",  value: "PostgreSQL (Supabase) + Prisma ORM" },
-  { label: "Auth",      value: "Jose JWT — Buyer / Admin" },
-  { label: "Queue",     value: "BullMQ + Redis" },
-  { label: "Chain",     value: "Polygon — USDC / JPYC ERC-20" },
-  { label: "Protocol",  value: "KYA/KYC ティア認証 + JWT Pay Token" },
-  { label: "Hosting",   value: "Railway (API) + Vercel (Dashboard)" },
-];
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function AboutPage() {
   return (
@@ -157,7 +146,6 @@ export default function AboutPage() {
                 { label: "仕組み",       href: "#infrastructure" },
                 { label: "ユースケース", href: "#use-cases" },
                 { label: "インテグレーション", href: "#integrations" },
-                { label: "開発者向け",   href: "#stack" },
               ].map(({ label, href }) => (
                 <a key={label} href={href} className="text-[13px] text-white/50 hover:text-white/90 transition-colors">{label}</a>
               ))}
@@ -378,23 +366,6 @@ export default function AboutPage() {
             </p>
           </div>
         </div>
-      </section>
-
-      {/* ── Stack ── */}
-      <section id="stack" className="max-w-6xl mx-auto px-6 py-28">
-        <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-4">Tech Stack</p>
-        <h2 className="text-center text-2xl md:text-3xl font-black text-white mb-12">開発者向け：技術スタック</h2>
-        <div className="max-w-2xl mx-auto rounded-3xl bg-white/4 border border-white/8 overflow-hidden divide-y divide-white/6">
-          {stack.map(({ label, value }) => (
-            <div key={label} className="flex items-center gap-6 px-6 py-4">
-              <span className="w-28 flex-shrink-0 text-[11px] font-semibold text-white/30 uppercase tracking-widest">{label}</span>
-              <span className="text-[13px] text-white/70 font-mono">{value}</span>
-            </div>
-          ))}
-        </div>
-        <p className="text-center text-[12px] text-white/25 mt-8">
-          API ドキュメント・OpenAPI スペック・SDK は近日公開予定です。
-        </p>
       </section>
 
       {/* ── CTA ── */}
