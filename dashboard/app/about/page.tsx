@@ -165,10 +165,6 @@ export default function AboutPage() {
       {/* ── Hero ── */}
       <div className="bg-[#fffd43] w-full">
         <section className="max-w-6xl mx-auto px-6 pt-24 pb-20 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/8 border border-black/12 text-[#1a0f00]/70 text-[11px] font-semibold mb-8 tracking-wide">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#1a0f00]/50 animate-pulse flex-shrink-0" />
-            M2M Payment Infrastructure for AI Agents
-          </div>
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-[#1a0f00] mb-6 leading-[1.08]">
             Code pays code.<br />
             <span className="text-black">
