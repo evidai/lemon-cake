@@ -1,18 +1,21 @@
 #!/usr/bin/env node
 /**
- * LEMONCake MCP Server
+ * LEMONCake MCP Server v0.2.0
  *
- * Gives AI agents access to the Lemon Cake payment infrastructure:
- *  - list_services      : Browse approved APIs on the marketplace
- *  - call_service       : Pay-per-call proxy to any registered service
- *  - check_balance      : Check remaining USDC balance
- *  - check_tax          : Japan tax compliance (invoice + withholding)
- *  - get_service_stats  : Usage & revenue stats per service
+ * AIエージェントにLEMONCakeの決済インフラを提供するMCPサーバー。
  *
- * Environment variables:
- *  LEMON_CAKE_API_URL   : Base URL of the API  (e.g. https://skillful-blessing-production.up.railway.app)
- *  LEMON_CAKE_PAY_TOKEN : Pay Token JWT issued from /api/tokens  (for call_service)
- *  LEMON_CAKE_BUYER_JWT : Buyer JWT from /api/auth/buyer-login    (for check_balance)
+ * Tools:
+ *  - setup             : 初回セットアップガイド（認証不要）
+ *  - list_services     : マーケットプレイスの公開サービス一覧（認証不要）
+ *  - get_service_stats : サービスの利用統計（認証不要）
+ *  - check_tax         : 日本の税務コンプライアンス確認（認証不要）
+ *  - check_balance     : USDC残高確認（LEMON_CAKE_BUYER_JWT 必須）
+ *  - call_service      : Pay-per-call APIプロキシ（LEMON_CAKE_PAY_TOKEN 必須）
+ *
+ * 環境変数:
+ *  LEMON_CAKE_PAY_TOKEN  : Pay Token JWT（ダッシュボードで発行）※ call_service に必須
+ *  LEMON_CAKE_BUYER_JWT  : Buyer JWT（ログイン時に取得）     ※ check_balance に必須
+ *  LEMON_CAKE_API_URL    : APIベースURL（省略可）
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -22,13 +25,29 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-// ── Config ────────────────────────────────────────────────────────────────────
+// ── 設定 ──────────────────────────────────────────────────────────────────────
 
-const API_URL   = (process.env.LEMON_CAKE_API_URL   ?? "https://skillful-blessing-production.up.railway.app").replace(/\/$/, "");
-const PAY_TOKEN = process.env.LEMON_CAKE_PAY_TOKEN  ?? "";
-const BUYER_JWT = process.env.LEMON_CAKE_BUYER_JWT  ?? "";
+const API_URL   = (process.env.LEMON_CAKE_API_URL  ?? "https://api.lemoncake.xyz").replace(/\/$/, "");
+const PAY_TOKEN = process.env.LEMON_CAKE_PAY_TOKEN ?? "";
+const BUYER_JWT = process.env.LEMON_CAKE_BUYER_JWT ?? "";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── 起動時: 認証状態を stderr に出力（MCP クライアントのログに残る）───────────
+
+const hasPayToken = PAY_TOKEN.length > 0;
+const hasBuyerJwt = BUYER_JWT.length > 0;
+
+console.error("[LEMONCake MCP] Starting...");
+console.error(`[LEMONCake MCP]   API URL     : ${API_URL}`);
+console.error(`[LEMONCake MCP]   PAY_TOKEN   : ${hasPayToken ? "✓ set" : "✗ NOT SET — call_service will be unavailable"}`);
+console.error(`[LEMONCake MCP]   BUYER_JWT   : ${hasBuyerJwt ? "✓ set" : "✗ NOT SET — check_balance will be unavailable"}`);
+
+if (!hasPayToken || !hasBuyerJwt) {
+  console.error("[LEMONCake MCP]");
+  console.error("[LEMONCake MCP]   To get credentials, use the `setup` tool or visit:");
+  console.error("[LEMONCake MCP]   https://lemoncake.xyz/dashboard");
+}
+
+// ── ヘルパー ──────────────────────────────────────────────────────────────────
 
 async function apiGet(path: string, auth?: string) {
   const res = await fetch(`${API_URL}${path}`, {
@@ -57,147 +76,286 @@ async function apiPost(path: string, data: unknown, auth?: string, extraHeaders?
   return body;
 }
 
-function ok(text: string) {
-  return { content: [{ type: "text" as const, text }] };
-}
-
 function json(data: unknown) {
-  return ok(JSON.stringify(data, null, 2));
+  return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
 }
 
-// ── Server ────────────────────────────────────────────────────────────────────
+/** 未設定の認証情報に対して、取得方法を含む分かりやすいエラーを返す */
+function credentialError(envVar: string, toolName: string) {
+  return {
+    content: [{
+      type: "text" as const,
+      text: JSON.stringify({
+        error: `${envVar} is not configured.`,
+        code:  "CREDENTIAL_MISSING",
+        howToFix: [
+          `1. Sign up or log in at https://lemoncake.xyz`,
+          envVar === "LEMON_CAKE_PAY_TOKEN"
+            ? "2. Go to Dashboard → Tokens → Issue Pay Token (set your spending limit)"
+            : "2. Go to Dashboard → Settings → Copy your Buyer JWT",
+          `3. Add to your MCP client config:`,
+          `   "env": { "${envVar}": "<paste token here>" }`,
+          `4. Restart your MCP client`,
+        ],
+        tip: `You can also call the 'setup' tool to see full setup instructions.`,
+      }, null, 2),
+    }],
+    isError: true,
+  };
+}
+
+// ── サーバー初期化 ────────────────────────────────────────────────────────────
 
 const server = new Server(
-  { name: "lemon-cake", version: "0.1.0" },
+  { name: "lemon-cake-mcp", version: "0.2.0" },
   { capabilities: { tools: {} } },
 );
 
-// ── Tool definitions ──────────────────────────────────────────────────────────
+// ── ツール定義 ────────────────────────────────────────────────────────────────
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
+
+    // ─── setup（認証不要） ────────────────────────────────────────────────
+    {
+      name: "setup",
+      description: [
+        "LEMONCake MCPサーバーの初回セットアップガイドを表示します。",
+        "認証不要。まず最初にこのツールを呼び出してください。",
+        "",
+        "現在の認証状態と、不足している認証情報の取得手順を返します。",
+        "Pay Token（call_service用）と Buyer JWT（check_balance用）が必要です。",
+      ].join("\n"),
+      inputSchema: { type: "object", properties: {} },
+    },
+
+    // ─── list_services（認証不要） ───────────────────────────────────────
     {
       name: "list_services",
-      description:
-        "List approved services available on the Lemon Cake marketplace. Each service has an id, name, type (API|MCP), and price per call in USDC.",
+      description: [
+        "LEMONCakeマーケットプレイスで利用可能なAPIサービス一覧を返します。",
+        "認証不要で呼び出せます。",
+        "",
+        "各サービスには id, name, type (API|MCP), pricePerCall (USDC) が含まれます。",
+        "call_service で使う serviceId もここで取得します。",
+      ].join("\n"),
       inputSchema: {
         type: "object",
         properties: {
           limit: {
             type: "number",
-            description: "Max number of services to return (default 50, max 100)",
+            description: "返す件数の上限（デフォルト 50、最大 100）",
           },
         },
       },
     },
+
+    // ─── call_service（PAY_TOKEN 必須） ──────────────────────────────────
     {
       name: "call_service",
-      description:
-        "Call a registered service through the Lemon Cake pay-per-call proxy. Automatically charges the configured Pay Token for each call. Returns the upstream API response plus charge metadata (chargeId, amountUsdc).",
+      description: [
+        "LEMONCakeのPay-per-callプロキシ経由でAPIサービスを呼び出します。",
+        "呼び出しのたびに設定済みのPay Tokenから自動的に課金されます。",
+        "",
+        "【必須】LEMON_CAKE_PAY_TOKEN 環境変数の設定が必要です。",
+        "未設定の場合はエラーと取得手順を返します。",
+        "",
+        "Pay Tokenには上限額（limitUsdc）が設定されており、",
+        "上限に達すると 402 Payment Required が返り、自動的に停止します。",
+        "",
+        "serviceId は list_services で取得してください。",
+      ].join("\n"),
       inputSchema: {
         type: "object",
+        required: ["serviceId"],
         properties: {
           serviceId: {
             type: "string",
-            description: "ID of the service to call (from list_services)",
+            description: "呼び出すサービスのID（list_servicesで取得）",
           },
           path: {
             type: "string",
-            description: "Sub-path to append after the service base URL, e.g. \"/search\" or \"/v1/completions\"",
+            description: "サービスのサブパス（例: \"/search\", \"/v1/completions\"）。デフォルトは \"/\"",
             default: "/",
           },
           method: {
             type: "string",
             enum: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-            description: "HTTP method (default GET)",
+            description: "HTTPメソッド（デフォルト: GET）",
             default: "GET",
           },
           body: {
             type: "object",
-            description: "Request body (for POST/PUT/PATCH)",
+            description: "リクエストボディ（POST/PUT/PATCH時）",
           },
           idempotencyKey: {
             type: "string",
-            description: "Optional idempotency key to prevent duplicate charges. Use a unique UUID per logical operation.",
+            description: "冪等キー（任意）。同じキーで2回呼び出した場合、2回目は課金されません。UUIDを推奨。",
           },
         },
-        required: ["serviceId"],
       },
     },
+
+    // ─── check_balance（BUYER_JWT 必須） ─────────────────────────────────
     {
       name: "check_balance",
-      description:
-        "Check the current USDC balance and KYC tier of the configured buyer account. Requires LEMON_CAKE_BUYER_JWT to be set.",
-      inputSchema: {
-        type: "object",
-        properties: {},
-      },
+      description: [
+        "設定済みバイヤーアカウントのUSDC残高とKYCティアを確認します。",
+        "",
+        "【必須】LEMON_CAKE_BUYER_JWT 環境変数の設定が必要です。",
+        "未設定の場合はエラーと取得手順を返します。",
+        "",
+        "call_serviceを実行する前に残高を確認したいときに使います。",
+      ].join("\n"),
+      inputSchema: { type: "object", properties: {} },
     },
+
+    // ─── check_tax（認証不要） ───────────────────────────────────────────
     {
       name: "check_tax",
-      description:
-        "Japan tax compliance check. Validates an invoice registration number (適格請求書) and determines withholding tax requirements for a transaction. Returns verdict on invoice validity and whether withholding tax applies.",
+      description: [
+        "日本の税務コンプライアンスチェックを行います。認証不要。",
+        "",
+        "・適格請求書番号（T番号）の有効性を国税庁APIで照合",
+        "・取引に源泉徴収が必要かどうかを判定",
+        "・源泉税額の計算",
+        "",
+        "日本の法人がAI APIサービスの支払いを処理する際に使います。",
+      ].join("\n"),
       inputSchema: {
         type: "object",
+        required: ["registrationNumber", "serviceDescription", "grossAmountJpy"],
         properties: {
           registrationNumber: {
             type: "string",
-            description: "Qualified invoice registration number (e.g. T1234567890123)",
+            description: "適格請求書登録番号（例: T1234567890123）",
           },
           serviceDescription: {
             type: "string",
-            description: "Description of the service/work for withholding tax determination",
+            description: "取引内容の説明（源泉徴収判定に使用）",
           },
           grossAmountJpy: {
             type: "number",
-            description: "Gross transaction amount in JPY",
+            description: "取引金額（税込、円）",
           },
         },
-        required: ["registrationNumber", "serviceDescription", "grossAmountJpy"],
       },
     },
+
+    // ─── get_service_stats（認証不要） ───────────────────────────────────
     {
       name: "get_service_stats",
-      description:
-        "Get public usage statistics for all services: charge count, total revenue (USDC), and last charge timestamp. Useful for evaluating service popularity before choosing which to call.",
-      inputSchema: {
-        type: "object",
-        properties: {},
-      },
+      description: [
+        "全サービスの公開利用統計を返します。認証不要。",
+        "",
+        "各サービスの呼び出し回数・総売上（USDC）・最終呼び出し日時が含まれます。",
+        "call_serviceで呼ぶサービスを選ぶ前に人気・実績を確認するために使います。",
+      ].join("\n"),
+      inputSchema: { type: "object", properties: {} },
     },
+
   ],
 }));
 
-// ── Tool handlers ─────────────────────────────────────────────────────────────
+// ── ツール実装 ────────────────────────────────────────────────────────────────
 
 server.setRequestHandler(CallToolRequestSchema, async (req) => {
   const { name, arguments: args = {} } = req.params;
 
   try {
     switch (name) {
-      // ── list_services ──────────────────────────────────────────────────────
-      case "list_services": {
-        const limit = (args.limit as number | undefined) ?? 50;
-        const services = await apiGet(`/api/services?reviewStatus=APPROVED&limit=${limit}`);
-        const summary = (services as any[]).map((s: any) => ({
-          id:               s.id,
-          name:             s.name,
-          provider:         s.providerName,
-          type:             s.type,
-          pricePerCall:     `${s.pricePerCallUsdc} USDC`,
-          endpoint:         s.endpoint ?? "(no public endpoint)",
-        }));
-        return json(summary);
+
+      // ─── setup ──────────────────────────────────────────────────────────
+      case "setup": {
+        const status = {
+          payToken:  hasPayToken ? "✓ 設定済み" : "✗ 未設定（call_service が使えません）",
+          buyerJwt:  hasBuyerJwt ? "✓ 設定済み" : "✗ 未設定（check_balance が使えません）",
+        };
+
+        const steps: string[] = [];
+
+        if (!hasPayToken || !hasBuyerJwt) {
+          steps.push("=== セットアップ手順 ===");
+          steps.push("");
+          steps.push("1. アカウント作成");
+          steps.push("   https://lemoncake.xyz にアクセスしてサインアップ");
+          steps.push("");
+          steps.push("2. USDC残高をチャージ");
+          steps.push("   Dashboard → Deposit → JPYCをPolygonウォレットから送金");
+          steps.push("");
+        }
+
+        if (!hasPayToken) {
+          steps.push("3. Pay Tokenを発行（call_service に必要）");
+          steps.push("   Dashboard → Tokens → 「Pay Tokenを発行」");
+          steps.push("   ・serviceId: 使いたいサービスのIDを選択");
+          steps.push("   ・limitUsdc: このトークンで使える上限額（例: 5.00）");
+          steps.push("   → 発行されたJWTをコピー");
+          steps.push("");
+          steps.push("4. MCP設定ファイルに追加:");
+          steps.push('   "LEMON_CAKE_PAY_TOKEN": "<コピーしたJWT>"');
+          steps.push("");
+        }
+
+        if (!hasBuyerJwt) {
+          steps.push(!hasPayToken ? "5." : "3." + " Buyer JWTを取得（check_balance に必要）");
+          steps.push("   Dashboard → Settings → 「Buyer JWTをコピー」");
+          steps.push('   "LEMON_CAKE_BUYER_JWT": "<コピーしたJWT>"');
+          steps.push("");
+        }
+
+        steps.push("=== MCP設定ファイルのサンプル ===");
+        steps.push("");
+        steps.push(JSON.stringify({
+          mcpServers: {
+            "lemon-cake": {
+              command: "npx",
+              args:    ["-y", "lemon-cake-mcp"],
+              env: {
+                LEMON_CAKE_PAY_TOKEN:  hasPayToken ? "(設定済み)" : "<ダッシュボードで発行したPay Token JWT>",
+                LEMON_CAKE_BUYER_JWT:  hasBuyerJwt ? "(設定済み)" : "<ダッシュボードのSettingsからコピーしたJWT>",
+              },
+            },
+          },
+        }, null, 2));
+
+        return json({
+          version:       "0.2.0",
+          apiUrl:        API_URL,
+          credentials:   status,
+          availableTools: {
+            noAuth:       ["setup", "list_services", "get_service_stats", "check_tax"],
+            needPayToken: ["call_service"],
+            needBuyerJwt: ["check_balance"],
+          },
+          setupSteps: steps.length > 0 ? steps.join("\n") : "✅ 全ての認証情報が設定されています。",
+          dashboard:  "https://lemoncake.xyz/dashboard",
+          docs:       "https://github.com/evidai/lemon-cake",
+        });
       }
 
-      // ── call_service ───────────────────────────────────────────────────────
-      case "call_service": {
-        if (!PAY_TOKEN) throw new Error("LEMON_CAKE_PAY_TOKEN is not set");
+      // ─── list_services ───────────────────────────────────────────────────
+      case "list_services": {
+        const limit = (args.limit as number | undefined) ?? 50;
+        const services = await apiGet(`/api/services?reviewStatus=APPROVED&limit=${limit}`) as any[];
+        return json(services.map((s: any) => ({
+          id:           s.id,
+          name:         s.name,
+          provider:     s.providerName,
+          type:         s.type,
+          pricePerCall: `${s.pricePerCallUsdc} USDC`,
+          endpoint:     s.endpoint ?? "(proxied)",
+        })));
+      }
 
-        const serviceId     = args.serviceId as string;
-        const subPath       = (args.path as string | undefined) ?? "/";
-        const method        = (args.method as string | undefined) ?? "GET";
-        const body          = args.body as Record<string, unknown> | undefined;
+      // ─── call_service ────────────────────────────────────────────────────
+      case "call_service": {
+        if (!PAY_TOKEN) return credentialError("LEMON_CAKE_PAY_TOKEN", "call_service");
+
+        const serviceId      = args.serviceId as string;
+        const subPath        = (args.path as string | undefined) ?? "/";
+        const method         = (args.method as string | undefined) ?? "GET";
+        const body           = args.body as Record<string, unknown> | undefined;
         const idempotencyKey = args.idempotencyKey as string | undefined;
 
         const normalizedPath = subPath.startsWith("/") ? subPath : `/${subPath}`;
@@ -215,29 +373,25 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         }
 
         const res = await fetch(url, fetchOptions);
-        const chargeId    = res.headers.get("X-Charge-Id");
-        const amountUsdc  = res.headers.get("X-Amount-Usdc");
+        const chargeId   = res.headers.get("X-Charge-Id");
+        const amountUsdc = res.headers.get("X-Amount-Usdc");
 
         let responseBody: unknown;
-        const contentType = res.headers.get("content-type") ?? "";
-        if (contentType.includes("application/json")) {
+        if ((res.headers.get("content-type") ?? "").includes("application/json")) {
           responseBody = await res.json();
         } else {
           responseBody = await res.text();
         }
 
-        return json({
-          status:       res.status,
-          chargeId,
-          amountUsdc,
-          response:     responseBody,
-        });
+        // 402 の場合もエラーではなく構造化レスポンスとして返す
+        // （エージェントが自律的に停止判断できるように）
+        return json({ status: res.status, chargeId, amountUsdc, response: responseBody });
       }
 
-      // ── check_balance ──────────────────────────────────────────────────────
+      // ─── check_balance ───────────────────────────────────────────────────
       case "check_balance": {
-        if (!BUYER_JWT) throw new Error("LEMON_CAKE_BUYER_JWT is not set");
-        const me = await apiGet("/api/auth/me", BUYER_JWT);
+        if (!BUYER_JWT) return credentialError("LEMON_CAKE_BUYER_JWT", "check_balance");
+        const me = await apiGet("/api/auth/me", BUYER_JWT) as any;
         return json({
           balanceUsdc: me.buyer?.balanceUsdc ?? me.balanceUsdc,
           kycTier:     me.buyer?.kycTier     ?? me.kycTier,
@@ -246,7 +400,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         });
       }
 
-      // ── check_tax ─────────────────────────────────────────────────────────
+      // ─── check_tax ───────────────────────────────────────────────────────
       case "check_tax": {
         const result = await apiPost("/api/tax/full-check", {
           registrationNumber: args.registrationNumber,
@@ -256,7 +410,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         return json(result);
       }
 
-      // ── get_service_stats ─────────────────────────────────────────────────
+      // ─── get_service_stats ───────────────────────────────────────────────
       case "get_service_stats": {
         const stats = await apiGet("/api/services/stats");
         return json(stats);
@@ -265,23 +419,25 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
-  } catch (err: any) {
+
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
     return {
-      content: [{ type: "text" as const, text: `Error: ${err.message}` }],
+      content: [{ type: "text" as const, text: `Error: ${msg}` }],
       isError: true,
     };
   }
 });
 
-// ── Start ─────────────────────────────────────────────────────────────────────
+// ── 起動 ──────────────────────────────────────────────────────────────────────
 
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Lemon Cake MCP server running on stdio");
+  console.error("[LEMONCake MCP] Ready.");
 }
 
 main().catch((err) => {
-  console.error("Fatal:", err);
+  console.error("[LEMONCake MCP] Fatal:", err);
   process.exit(1);
 });
