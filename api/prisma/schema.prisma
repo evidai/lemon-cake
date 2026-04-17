@@ -60,6 +60,7 @@ model Buyer {
   heldUsdc              Decimal     @default(0) @db.Decimal(38, 18)
   workflows             Workflow[]
   accountingConnections BuyerAccountingConnection[]
+  chargeRollups         ChargeRollup[]
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -350,4 +351,44 @@ enum AccountingProvider {
   SAGE
   NETSUITE
   FREEE
+}
+
+// ─── ChargeRollup: M2M決済の日次/月次集計ロールアップ ────────
+// 数万件のChargeを1本の仕訳にまとめ、会計ソフトへ自動連携する
+model ChargeRollup {
+  id              String             @id @default(cuid())
+
+  buyerId         String
+  buyer           Buyer              @relation(fields: [buyerId], references: [id])
+
+  // 集計対象期間
+  periodStart     DateTime
+  periodEnd       DateTime
+  granularity     RollupGranularity  @default(DAILY)
+
+  // 集計結果
+  chargeCount     Int
+  totalUsdc       Decimal            @db.Decimal(38, 18)
+  totalJpy        Int                // 円換算合計（整数・切り捨て）
+  jpyRate         Decimal            @db.Decimal(10, 4)  // 1 USDC = X JPY
+
+  // 会計連携
+  accountingProvider AccountingProvider?
+  externalDealId     String?          // freee deal ID / QB invoice ID 等
+  syncedAt           DateTime?
+  syncError          String?
+
+  // 明細サマリ（JSON: serviceId→{count, usdc}）
+  serviceBreakdown   Json?
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([buyerId, periodStart])
+  @@map("charge_rollups")
+}
+
+enum RollupGranularity {
+  DAILY
+  MONTHLY
 }

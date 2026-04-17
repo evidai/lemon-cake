@@ -1,13 +1,41 @@
 {
   "name": "lemon-cake-mcp",
-  "version": "0.1.0",
-  "description": "MCP server for Lemon Cake — AI agent payment infrastructure",
+  "version": "0.2.0",
+  "description": "LEMONCake MCP Server — Give your AI agent a wallet. Pay-per-call M2M payment infrastructure.",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "lemon-cake-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "mcp",
+    "ai-agent",
+    "payment",
+    "usdc",
+    "m2m",
+    "llm",
+    "langchain",
+    "autogen",
+    "claude",
+    "model-context-protocol"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/evidai/lemon-cake.git"
+  },
+  "homepage": "https://lemoncake.xyz",
+  "license": "UNLICENSED",
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2"

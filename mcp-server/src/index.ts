@@ -1,5 +1,6 @@
+#!/usr/bin/env node
 /**
- * Lemon Cake MCP Server
+ * LEMONCake MCP Server
  *
  * Gives AI agents access to the Lemon Cake payment infrastructure:
  *  - list_services      : Browse approved APIs on the marketplace

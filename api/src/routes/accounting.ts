@@ -428,3 +428,146 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
   // Redirect only to hardcoded DASHBOARD_URL — never to any user-supplied URL
   return c.redirect(`${DASHBOARD_URL}/?accounting_connected=true&provider=${providerParam}`);
 });
+
+// ═══════════════════════════════════════════════════════════════
+// M2M決済 自動会計ロールアップ API
+// ═══════════════════════════════════════════════════════════════
+
+import { buildRollup, syncRollup, runDailyRollup } from "../lib/accounting-rollup.js";
+
+// ─── POST /api/accounting/rollup — 手動ロールアップ作成 ───────
+// body: { periodStart, periodEnd, granularity?, autoSync? }
+accountingRouter.post("/rollup", requireBuyerAuth, async (c) => {
+  const buyerId = getBuyerId(c);
+
+  let body: { periodStart?: string; periodEnd?: string; granularity?: string; autoSync?: boolean };
+  try { body = await c.req.json(); } catch { body = {}; }
+
+  // デフォルト: 昨日1日分
+  const now         = new Date();
+  const yesterday   = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const periodStart = body.periodStart
+    ? new Date(body.periodStart)
+    : new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0);
+  const periodEnd = body.periodEnd
+    ? new Date(body.periodEnd)
+    : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+
+  if (isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) {
+    return c.json({ error: "Invalid date format. Use ISO8601." }, 400);
+  }
+  if (periodStart >= periodEnd) {
+    return c.json({ error: "periodStart must be before periodEnd" }, 400);
+  }
+  // 最大31日間に制限
+  const diffDays = (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24);
+  if (diffDays > 31) {
+    return c.json({ error: "Period cannot exceed 31 days. Use MONTHLY granularity for longer periods." }, 400);
+  }
+
+  const granularity = (body.granularity === "MONTHLY" ? "MONTHLY" : "DAILY") as "DAILY" | "MONTHLY";
+
+  const built = await buildRollup(buyerId, periodStart, periodEnd, granularity);
+  if (!built) {
+    return c.json({ message: "No completed charges found in this period.", rollup: null }, 200);
+  }
+
+  let syncResult = null;
+  if (body.autoSync !== false) {
+    syncResult = await syncRollup(built.rollupId);
+  }
+
+  const rollup = await prisma.chargeRollup.findUnique({ where: { id: built.rollupId } });
+
+  return c.json({
+    rollup: serializeRollup(rollup!),
+    sync:   syncResult,
+  }, 201);
+});
+
+// ─── GET /api/accounting/rollup — ロールアップ一覧 ───────────
+accountingRouter.get("/rollup", requireBuyerAuth, async (c) => {
+  const buyerId = getBuyerId(c);
+  const page  = Math.max(1, parseInt(c.req.query("page")  ?? "1"));
+  const limit = Math.min(50, Math.max(1, parseInt(c.req.query("limit") ?? "20")));
+  const skip  = (page - 1) * limit;
+
+  const [rollups, total] = await Promise.all([
+    prisma.chargeRollup.findMany({
+      where:   { buyerId },
+      orderBy: { periodStart: "desc" },
+      skip,
+      take:    limit,
+    }),
+    prisma.chargeRollup.count({ where: { buyerId } }),
+  ]);
+
+  return c.json({ data: rollups.map(serializeRollup), total, page });
+});
+
+// ─── POST /api/accounting/rollup/:id/sync — 再同期 ───────────
+accountingRouter.post("/rollup/:id/sync", requireBuyerAuth, async (c) => {
+  const buyerId   = getBuyerId(c);
+  const rollupId  = c.req.param("id");
+
+  const rollup = await prisma.chargeRollup.findUnique({ where: { id: rollupId } });
+  if (!rollup || rollup.buyerId !== buyerId) {
+    return c.json({ error: "Rollup not found" }, 404);
+  }
+
+  // 再同期: syncedAt をリセット
+  await prisma.chargeRollup.update({
+    where: { id: rollupId },
+    data:  { syncedAt: null, syncError: null, externalDealId: null },
+  });
+
+  const result = await syncRollup(rollupId);
+  const updated = await prisma.chargeRollup.findUnique({ where: { id: rollupId } });
+
+  return c.json({ rollup: serializeRollup(updated!), sync: result });
+});
+
+// ─── POST /api/accounting/rollup/run-daily — 管理者: 日次バッチ実行 ─
+accountingRouter.post("/rollup/run-daily", async (c) => {
+  const auth = c.req.header("Authorization");
+  if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401);
+  try {
+    const { verifyAdminToken } = await import("../lib/jwt.js");
+    if (!(await verifyAdminToken(auth.slice(7)))) return c.json({ error: "Forbidden" }, 403);
+  } catch {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+
+  const result = await runDailyRollup();
+  return c.json(result);
+});
+
+// ─── シリアライザ ────────────────────────────────────────────
+function serializeRollup(r: {
+  id: string; buyerId: string; periodStart: Date; periodEnd: Date;
+  granularity: string; chargeCount: number; totalUsdc: { toString(): string };
+  totalJpy: number; jpyRate: { toString(): string };
+  accountingProvider: string | null; externalDealId: string | null;
+  syncedAt: Date | null; syncError: string | null;
+  serviceBreakdown: unknown; createdAt: Date;
+}) {
+  return {
+    id:                r.id,
+    buyerId:           r.buyerId,
+    periodStart:       r.periodStart.toISOString(),
+    periodEnd:         r.periodEnd.toISOString(),
+    granularity:       r.granularity,
+    chargeCount:       r.chargeCount,
+    totalUsdc:         r.totalUsdc.toString(),
+    totalJpy:          r.totalJpy,
+    jpyRate:           r.jpyRate.toString(),
+    accountingProvider: r.accountingProvider,
+    externalDealId:    r.externalDealId,
+    syncedAt:          r.syncedAt?.toISOString() ?? null,
+    syncError:         r.syncError,
+    serviceBreakdown:  r.serviceBreakdown,
+    createdAt:         r.createdAt.toISOString(),
+  };
+}
