@@ -55,8 +55,8 @@ npx lemon-cake-mcp
       "command": "npx",
       "args": ["-y", "lemon-cake-mcp"],
       "env": {
-        "LEMONCAKE_PAY_TOKEN": "<Pay Token JWT>",
-        "LEMONCAKE_BUYER_JWT": "<Buyer JWT>"
+        "LEMON_CAKE_PAY_TOKEN": "<Pay Token JWT>",
+        "LEMON_CAKE_BUYER_JWT": "<Buyer JWT>"
       }
     }
   }
@@ -68,7 +68,7 @@ npx lemon-cake-mcp
 | `setup` | 認証状態の確認と設定手順のガイド（認証不要）|
 | `list_services` | マーケットプレイスの承認済み API 一覧を取得 |
 | `call_service` | Pay Token で課金 API をプロキシ呼び出し |
-| `get_balance` | USDC 残高・KYC ティアを確認 |
+| `check_balance` | USDC 残高・KYC ティアを確認 |
 
 ---
 

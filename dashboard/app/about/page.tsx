@@ -113,7 +113,7 @@ const integrations = [
     subtitle: "Claude / Cursor に即接続",
     body: "npx lemon-cake-mcp で起動するだけ。claude_desktop_config.json に追記すれば、Claude Desktop・Cursor がすぐに LemonCake の全機能を使えます。",
     code: `npx lemon-cake-mcp`,
-    tools: ["list_services", "call_service", "get_balance", "setup"],
+    tools: ["list_services", "call_service", "check_balance", "setup"],
     href: "https://www.npmjs.com/package/lemon-cake-mcp",
     published: true,
   },
