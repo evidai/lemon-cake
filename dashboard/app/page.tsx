@@ -3877,7 +3877,7 @@ export default function Dashboard() {
     setMyServices(load("seller_services", []));
     const t = setTimeout(() => { canSave.current = true; }, 0);
     return () => clearTimeout(t);
-  }, []);
+  }, [authReady]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (canSave.current) localStorage.setItem("buyer_page",           JSON.stringify(page)); }, [page]);
   useEffect(() => { if (canSave.current) localStorage.setItem("buyer_apiKeys",        JSON.stringify(apiKeys)); }, [apiKeys]);
   useEffect(() => { if (canSave.current) localStorage.setItem("buyer_showOnboarding", JSON.stringify(showOnboarding)); }, [showOnboarding]);
