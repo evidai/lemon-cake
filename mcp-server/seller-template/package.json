@@ -1,0 +1,33 @@
+{
+  "name": "your-service-mcp",
+  "version": "1.0.0",
+  "description": "Your Service — MCP Server for LEMONCake marketplace",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "your-service-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "mcp",
+    "lemoncake",
+    "ai-agent",
+    "model-context-protocol"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

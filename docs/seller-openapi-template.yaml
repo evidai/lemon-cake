@@ -1,0 +1,508 @@
+openapi: 3.1.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LEMONCake Seller OpenAPI 3.1 テンプレート
+#
+# このファイルをベースに、あなたのAPIをAIエージェント向けに最適化してください。
+#
+# ポイント:
+#   1. description は「人間向け」ではなく「LLM向け」に書く
+#      → 何のAPIか / いつ使うべきか / 何が返るかを明確に
+#   2. x-lemoncake-* 拡張フィールドで料金・サービスIDを宣言
+#   3. 全エンドポイントに examples を必ず付ける（エージェントが学習に使う）
+#   4. 402 / 429 のエラーフォーマットを統一する（エージェントが自律回復できる）
+# ─────────────────────────────────────────────────────────────────────────────
+
+info:
+  title: "Your API Name"                # ← 変更してください
+  version: "1.0.0"
+  description: |
+    ## 概要（LLM向けに書く）
+
+    このAPIは[何をするAPIか、1〜2文で]。
+    AIエージェントが[どんなタスクを達成したいとき]に使うべきAPIです。
+
+    ## 利用シナリオ
+
+    - シナリオA: [具体的なユースケース]
+    - シナリオB: [具体的なユースケース]
+
+    ## 料金
+
+    - 1コールあたり: $0.001 USDC（約0.15円）
+    - 課金タイミング: リクエスト成功時のみ（4xx/5xx は無課金）
+
+    ## LEMONCake 経由での利用
+
+    このAPIはLEMONCakeのPay-per-call プロキシを通じて利用します。
+    Pay Token を Authorization ヘッダーにセットするだけで自動課金されます。
+
+    ```
+    POST https://api.lemoncake.xyz/proxy/{serviceId}/your-endpoint
+    Authorization: Bearer <pay_token>
+    ```
+
+  contact:
+    name: "Your Company Name"
+    url: "https://your-company.com"
+    email: "api@your-company.com"
+  license:
+    name: "Commercial"
+    url: "https://your-company.com/terms"
+
+# ─── LEMONCake 拡張フィールド ─────────────────────────────────
+# LEMONCakeのサービス登録に使用する独自拡張
+x-lemoncake:
+  serviceId: ""                  # 登録後にLEMONCakeから払い出されるID
+  pricePerCallUsdc: "0.001"      # 1コールあたりの価格（USDC）
+  category: "data"               # data / ai / compliance / communication / finance
+  tags:
+    - "search"
+    - "japan"
+  agentHints:
+    # LLMがこのAPIをいつ使うべきか、自然言語で説明
+    whenToUse: |
+      ユーザーが〜を必要としているとき、または〜のタスクを達成する必要があるとき。
+      特に〜のような状況で有効です。
+    whenNotToUse: |
+      〜の場合はこのAPIではなく〜を使ってください。
+
+servers:
+  # LEMONCake プロキシ経由（本番）
+  - url: "https://api.lemoncake.xyz/proxy/{serviceId}"
+    description: "LEMONCake Pay-per-call Proxy (Production)"
+    variables:
+      serviceId:
+        default: ""
+        description: "LEMONCakeから払い出されたサービスID"
+  # 直接アクセス（開発・テスト用）
+  - url: "https://api.your-company.com/v1"
+    description: "Direct API Access (Development)"
+
+# ─── 認証 ────────────────────────────────────────────────────
+security:
+  - PayToken: []
+
+components:
+  securitySchemes:
+    PayToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        LEMONCake Pay Token JWT。
+        `POST /api/tokens` で発行。エージェントはこのトークンを
+        Authorization ヘッダーにセットするだけで自動課金される。
+
+        トークンには以下が含まれる:
+        - `limitUsdc`: このトークンで使える上限額
+        - `serviceId`: 利用可能なサービスを制限
+        - `exp`: 有効期限
+
+  # ─── 共通レスポンス型 ────────────────────────────────────
+  schemas:
+
+    # 成功レスポンスのラッパー（推奨フォーマット）
+    SuccessResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          description: "レスポンスデータ本体"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+
+    ResponseMeta:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: "リクエスト追跡ID（サポート問い合わせ時に使用）"
+          example: "req_01HX3K9V2P..."
+        processingMs:
+          type: integer
+          description: "処理時間（ミリ秒）"
+          example: 42
+
+    # ─── エラーレスポンス（統一フォーマット） ──────────────
+    # エージェントが自律的にエラーを判断・回復できるよう
+    # machine-readable な code を必ず含める
+    ErrorResponse:
+      type: object
+      required: [error, code]
+      properties:
+        error:
+          type: string
+          description: "人間可読なエラーメッセージ"
+          example: "Invalid parameter: query must not be empty"
+        code:
+          type: string
+          description: "エージェントが処理可能なエラーコード"
+          enum:
+            - INVALID_PARAMETER     # 400: パラメータ不正
+            - UNAUTHORIZED          # 401: 認証失敗
+            - TOKEN_EXPIRED         # 401: Pay Token期限切れ
+            - TOKEN_LIMIT_EXCEEDED  # 402: 予算上限
+            - INSUFFICIENT_BALANCE  # 402: 残高不足
+            - NOT_FOUND             # 404: リソースなし
+            - RATE_LIMITED          # 429: レート制限
+            - UPSTREAM_ERROR        # 502: 上流APIエラー
+            - SERVICE_UNAVAILABLE   # 503: メンテナンス中
+          example: "INVALID_PARAMETER"
+        retryAfter:
+          type: integer
+          description: "RATE_LIMITED時: 何秒後に再試行可能か"
+          example: 60
+        details:
+          type: object
+          description: "追加情報（任意）"
+
+    # ─── ページネーション ────────────────────────────────
+    PaginatedMeta:
+      allOf:
+        - $ref: "#/components/schemas/ResponseMeta"
+        - type: object
+          properties:
+            total:
+              type: integer
+              description: "総件数"
+            page:
+              type: integer
+              description: "現在ページ（1始まり）"
+            limit:
+              type: integer
+              description: "1ページあたりの件数"
+            hasMore:
+              type: boolean
+              description: "次ページが存在するか"
+
+  # ─── 共通ヘッダー ─────────────────────────────────────
+  headers:
+    X-Request-Id:
+      description: "リクエスト追跡ID"
+      schema:
+        type: string
+    X-RateLimit-Remaining:
+      description: "残りリクエスト数（現在ウィンドウ）"
+      schema:
+        type: integer
+    X-Charge-Id:
+      description: "LEMONCakeが付与する課金ID（ログ・監査用）"
+      schema:
+        type: string
+    X-Amount-Usdc:
+      description: "今回の課金額（USDC）"
+      schema:
+        type: string
+
+  # ─── 共通レスポンス ──────────────────────────────────
+  responses:
+    Unauthorized:
+      description: "認証失敗 または Pay Token期限切れ"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            tokenExpired:
+              summary: "Pay Token期限切れ"
+              value:
+                error: "Pay Token has expired"
+                code: "TOKEN_EXPIRED"
+            unauthorized:
+              summary: "認証ヘッダーなし"
+              value:
+                error: "Authorization header is required"
+                code: "UNAUTHORIZED"
+
+    PaymentRequired:
+      description: "Pay Token の予算上限超過 — エージェントはここで処理を停止すること"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "Token spending limit exceeded"
+            code: "TOKEN_LIMIT_EXCEEDED"
+            details:
+              used: "0.998"
+              limit: "1.000"
+              currency: "USDC"
+
+    RateLimited:
+      description: "レート制限超過"
+      headers:
+        Retry-After:
+          description: "秒数"
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "Rate limit exceeded. Please retry after 60 seconds."
+            code: "RATE_LIMITED"
+            retryAfter: 60
+
+# ═══════════════════════════════════════════════════════════════
+# ここからエンドポイントを定義する
+# 以下は「検索API」を例としたサンプル実装
+# ═══════════════════════════════════════════════════════════════
+
+paths:
+
+  # ─── ヘルスチェック（課金なし） ──────────────────────────
+  /health:
+    get:
+      operationId: healthCheck
+      summary: "APIの疎通確認"
+      description: |
+        APIが正常稼働しているか確認します。
+        このエンドポイントは課金対象外です。
+        エージェントが最初に呼ぶべきエンドポイントです。
+      security: []          # ← 認証不要
+      tags: [Health]
+      responses:
+        "200":
+          description: "正常稼働中"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  version:
+                    type: string
+              example:
+                status: ok
+                version: "1.0.0"
+
+  # ─── メインエンドポイント例: 検索 ───────────────────────
+  /search:
+    post:
+      operationId: search
+      summary: "[あなたのAPI名] 検索"
+      description: |
+        ## このエンドポイントでできること
+
+        [詳細な説明。LLMが理解できるレベルで書く]
+
+        ## いつ使うか
+
+        - [ユースケース1]
+        - [ユースケース2]
+
+        ## 返り値の使い方
+
+        レスポンスの `data.results` に結果リストが入ります。
+        `data.results[].score` が高いほど関連性が高い結果です。
+
+        ## 料金
+
+        1リクエスト = $0.001 USDC。結果が0件でも課金されます。
+
+        ## 注意事項
+
+        - `query` は日本語・英語どちらも対応
+        - 最大100件まで取得可能（デフォルト10件）
+      tags: [Search]
+      # x-lemoncake-price: このエンドポイント固有の料金（サービス全体と異なる場合）
+      x-lemoncake-price-per-call: "0.001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  description: |
+                    検索クエリ文字列。
+                    自然言語での質問でも、キーワードでも可。
+                    例: "東京都内のAI関連スタートアップ" / "machine learning framework"
+                  minLength: 1
+                  maxLength: 500
+                  example: "AIエージェント 決済 日本"
+                limit:
+                  type: integer
+                  description: "返す件数（デフォルト10、最大100）"
+                  default: 10
+                  minimum: 1
+                  maximum: 100
+                  example: 10
+                filters:
+                  type: object
+                  description: "絞り込み条件（任意）"
+                  properties:
+                    language:
+                      type: string
+                      enum: [ja, en, any]
+                      default: any
+                      description: "言語フィルタ"
+                    dateFrom:
+                      type: string
+                      format: date
+                      description: "この日付以降のコンテンツのみ (YYYY-MM-DD)"
+                      example: "2025-01-01"
+            examples:
+              simple:
+                summary: "シンプルな検索"
+                value:
+                  query: "AIエージェント 決済"
+                  limit: 5
+              withFilters:
+                summary: "フィルタ付き検索"
+                value:
+                  query: "machine learning"
+                  limit: 20
+                  filters:
+                    language: en
+                    dateFrom: "2025-01-01"
+
+      responses:
+        "200":
+          description: "検索成功"
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Charge-Id:
+              $ref: "#/components/headers/X-Charge-Id"
+            X-Amount-Usdc:
+              $ref: "#/components/headers/X-Amount-Usdc"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            title:
+                              type: string
+                            snippet:
+                              type: string
+                              description: "内容の抜粋。エージェントへの提示に使用"
+                            url:
+                              type: string
+                              format: uri
+                            score:
+                              type: number
+                              description: "関連性スコア (0.0〜1.0)"
+                            publishedAt:
+                              type: string
+                              format: date-time
+                      totalCount:
+                        type: integer
+                        description: "マッチした総件数（ページネーション用）"
+                  meta:
+                    $ref: "#/components/schemas/PaginatedMeta"
+              example:
+                data:
+                  results:
+                    - id: "doc_abc123"
+                      title: "AIエージェントのM2M決済設計"
+                      snippet: "JWT Pay Tokenを使ったエージェント間決済の実装パターン..."
+                      url: "https://example.com/article/abc123"
+                      score: 0.97
+                      publishedAt: "2026-03-15T10:00:00Z"
+                  totalCount: 142
+                meta:
+                  requestId: "req_01HX3K9V2P"
+                  processingMs: 38
+                  total: 142
+                  page: 1
+                  limit: 10
+                  hasMore: true
+
+        "400":
+          description: "パラメータ不正"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "query must not be empty"
+                code: "INVALID_PARAMETER"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          $ref: "#/components/responses/PaymentRequired"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  # ─── リソース取得例 ──────────────────────────────────────
+  /items/{id}:
+    get:
+      operationId: getItem
+      summary: "IDでアイテムを取得"
+      description: |
+        特定のアイテムを ID で取得します。
+        search エンドポイントで見つけた `id` を渡して詳細を取得するときに使います。
+      tags: [Items]
+      x-lemoncake-price-per-call: "0.0005"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "アイテムID（search レスポンスの `data.results[].id`）"
+          schema:
+            type: string
+          example: "doc_abc123"
+      responses:
+        "200":
+          description: "取得成功"
+          headers:
+            X-Charge-Id:
+              $ref: "#/components/headers/X-Charge-Id"
+            X-Amount-Usdc:
+              $ref: "#/components/headers/X-Amount-Usdc"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    description: "アイテム詳細"
+              example:
+                data:
+                  id: "doc_abc123"
+                  title: "AIエージェントのM2M決済設計"
+                  content: "本文全文..."
+                  metadata:
+                    author: "Taro Yamada"
+                    tags: ["AI", "決済", "JWT"]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          $ref: "#/components/responses/PaymentRequired"
+        "404":
+          description: "アイテムが見つからない"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Item not found"
+                code: "NOT_FOUND"
+
+# ─── タグ定義（エージェントが理解しやすいよう説明を入れる）──
+tags:
+  - name: Health
+    description: "疎通確認・ヘルスチェック（課金なし）"
+  - name: Search
+    description: "検索系エンドポイント。クエリに対して関連するコンテンツを返す"
+  - name: Items
+    description: "アイテムの取得・操作。searchで見つけたリソースの詳細取得に使用"
