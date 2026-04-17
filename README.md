@@ -1,4 +1,4 @@
-# 🍋 LEMON cake
+# 🍋 LEMONCake
 
 **Give your AI agent a wallet.**
 
@@ -11,11 +11,11 @@
 
 ---
 
-## What is LEMON cake?
+## What is LEMONCake?
 
 LLM agents are getting powerful — but they still can't *pay for things* autonomously.
 
-LEMON cake solves this with **Pay Tokens**: short-lived JWTs that give an agent a scoped spending limit. The agent calls paid APIs through our proxy, gets charged per call in USDC, and stops automatically when the budget runs out.
+LEMONCake solves this with **Pay Tokens**: short-lived JWTs that give an agent a scoped spending limit. The agent calls paid APIs through our proxy, gets charged per call in USDC, and stops automatically when the budget runs out.
 
 ```
 You                    Agent                   Paid API
@@ -38,7 +38,7 @@ You                    Agent                   Paid API
 
 ## ⚡ Quickstart — Claude Desktop (MCP)
 
-Add LEMON cake as an MCP server and your Claude agent can browse services, check its balance, and call paid APIs — all in natural language.
+Add LEMONCake as an MCP server and your Claude agent can browse services, check its balance, and call paid APIs — all in natural language.
 
 **Step 1: Get credentials**
 
@@ -67,7 +67,7 @@ Add LEMON cake as an MCP server and your Claude agent can browse services, check
 **Step 3: Ask Claude anything**
 
 ```
-"What paid APIs are available on LEMON cake?"
+"What paid APIs are available on LEMONCake?"
 "Check my USDC balance"
 "Search for 会社名 using the gBizINFO corporate lookup"
 "Validate invoice number T1234567890123"
@@ -277,7 +277,7 @@ node api/seed_demo.js
 
 ## 📄 License
 
-Proprietary — All rights reserved © 2026 LEMON cake  
+Proprietary — All rights reserved © 2026 LEMONCake  
 MCP server source is available for review. Core API and payment engine are closed source.
 
 ---
