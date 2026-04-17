@@ -6,8 +6,8 @@
 
 [![License: Proprietary](https://img.shields.io/badge/license-proprietary-red.svg)](https://lemoncake.xyz)
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Built with Hono](https://img.shields.io/badge/API-Hono-orange.svg)](https://hono.dev)
-[![Deployed on Railway](https://img.shields.io/badge/deployed-Railway-blueviolet.svg)](https://railway.app)
+[![npm: lemon-cake-mcp](https://img.shields.io/npm/v/lemon-cake-mcp?label=lemon-cake-mcp)](https://www.npmjs.com/package/lemon-cake-mcp)
+[![npm: eliza-plugin-lemoncake](https://img.shields.io/npm/v/eliza-plugin-lemoncake?label=eliza-plugin-lemoncake)](https://www.npmjs.com/package/eliza-plugin-lemoncake)
 
 ---
 
@@ -36,18 +36,17 @@ You                    Agent                   Paid API
 
 ---
 
-## ⚡ Quickstart — Claude Desktop (MCP)
+## 🔌 Integrations
 
-Add LemonCake as an MCP server and your Claude agent can browse services, check its balance, and call paid APIs — all in natural language.
+### MCP サーバー — `lemon-cake-mcp`
 
-**Step 1: Get credentials**
+Claude Desktop・Cursor に **`npx` 一発**で接続できる公式 MCP サーバー。
 
-1. Sign up at [lemoncake.xyz](https://lemoncake.xyz)
-2. Add USDC balance via JPYC deposit
-3. Issue a Pay Token from the dashboard (set a spending limit)
-4. Copy your Buyer JWT from Settings
+```bash
+npx lemon-cake-mcp
+```
 
-**Step 2: Add to `claude_desktop_config.json`**
+**`claude_desktop_config.json` に追記するだけ：**
 
 ```json
 {
@@ -56,44 +55,58 @@ Add LemonCake as an MCP server and your Claude agent can browse services, check 
       "command": "npx",
       "args": ["-y", "lemon-cake-mcp"],
       "env": {
-        "LEMON_CAKE_PAY_TOKEN": "<your Pay Token JWT>",
-        "LEMON_CAKE_BUYER_JWT": "<your Buyer JWT>"
+        "LEMONCAKE_PAY_TOKEN": "<Pay Token JWT>",
+        "LEMONCAKE_BUYER_JWT": "<Buyer JWT>"
       }
     }
   }
 }
 ```
 
-**Step 3: Ask Claude anything**
-
-```
-"What paid APIs are available on LemonCake?"
-"Check my USDC balance"
-"Search for 会社名 using the gBizINFO corporate lookup"
-"Validate invoice number T1234567890123"
-```
-
-That's it. No code required.
+| ツール | 説明 |
+|---|---|
+| `setup` | 認証状態の確認と設定手順のガイド（認証不要）|
+| `list_services` | マーケットプレイスの承認済み API 一覧を取得 |
+| `call_service` | Pay Token で課金 API をプロキシ呼び出し |
+| `get_balance` | USDC 残高・KYC ティアを確認 |
 
 ---
 
-## 🛠 MCP Tools
+### Eliza v2 プラグイン — `eliza-plugin-lemoncake`
 
-| Tool | Description |
-|------|-------------|
-| `list_services` | Browse all approved APIs on the marketplace |
-| `call_service` | Pay-per-call proxy to any registered service |
-| `check_balance` | Check remaining USDC balance and KYC tier |
-| `check_tax` | Japan tax compliance — invoice validation + withholding check |
-| `get_service_stats` | Usage & revenue stats across all services |
+`@elizaos/core` v2 対応の公式プラグイン。**`character.plugins` に追加するだけ**で Eliza エージェントが自律決済を実行できます。
 
-### Example: call a service
-
-```
-list_services → find a service you want → call_service with its ID
+```bash
+npm install eliza-plugin-lemoncake
 ```
 
-The agent handles the Pay Token automatically. Each call deducts from the configured limit. At $0.00 remaining, the agent receives a `402` and stops — no runaway billing.
+```typescript
+import { lemonCakePlugin } from "eliza-plugin-lemoncake";
+
+const character = {
+  name: "MyAgent",
+  plugins: [lemonCakePlugin],
+};
+```
+
+```env
+# どちらか一方を設定
+LEMONCAKE_PAY_TOKEN=eyJhbGci...   # クイックスタート（事前発行トークン）
+LEMONCAKE_BUYER_JWT=eyJhbGci...   # 本番運用（呼び出しごとに都度発行）
+```
+
+**自然言語でそのまま動く：**
+```
+"LemonCake の demo_search_api を 0.50 USDC で呼び出して"
+"serviceId: svc_invoice に 0.10 USDC 支払いを実行して"
+```
+
+| アクション | 説明 |
+|---|---|
+| `EXECUTE_LEMONCAKE_PAYMENT` | メインアクション。serviceId + limitUsdc を指定して M2M 決済を実行 |
+| `PAY_WITH_LEMONCAKE` / `M2M_PAYMENT` など | 自然言語トリガー用エイリアス（similes）|
+
+→ 詳細: [`eliza-plugin-lemoncake/README.md`](./eliza-plugin-lemoncake/README.md)
 
 ---
 
@@ -102,18 +115,16 @@ The agent handles the Pay Token automatically. Each call deducts from the config
 ### For AI Agents (Buyers)
 - **Pay Token (JWT)** — Scoped, expiring spend authorization. One token per task or session.
 - **402-first design** — Agents receive structured `402 Payment Required` errors with machine-readable codes when budget runs out.
-- **Idempotency keys** — Prevent double charges on retries with `Idempotency-Key` header.
+- **Idempotency keys** — Prevent double charges on retries with `Idempotency-Key` header (auto-assigned by plugins).
 - **Real-time balance** — Check remaining USDC before committing to expensive calls.
 
 ### For API Providers (Sellers)
-- **Service registry** — Register any REST API or MCP server. Set price-per-call in USDC.
+- **Service registry** — Register any REST API. Set price-per-call in USDC.
 - **Instant revenue** — Get paid per call with no invoicing, no net-30, no chargebacks.
 - **Usage analytics** — See call counts, revenue, and error rates per service.
 
-### For Compliance (Japan)
+### Infrastructure
 - **JPYC on-chain deposit** — Charge balance with JPYC (Polygon ERC-20). Auto-verified via TX hash.
-- **Invoice validation** — Integrates with 国税庁 Web-API to verify qualified invoice numbers.
-- **Withholding tax** — Automatic determination of 源泉徴収 requirements per transaction.
 - **Accounting sync** — Auto-post journal entries to freee, QuickBooks, Xero, or Zoho.
 
 ---
@@ -136,8 +147,8 @@ The agent handles the Pay Token automatically. Each call deducts from the config
 └──────────────────────────────────────────────────────────┘
         ▲                              ▲
         │                              │
-   MCP Clients                   Upstream APIs
-   (Claude, Cursor, etc.)        (freee, NTA, gBizINFO...)
+   MCP / Eliza                   Upstream APIs
+   (Claude, Cursor, Eliza...)    (registered services)
 ```
 
 **Key design decisions:**
@@ -162,11 +173,6 @@ POST /api/auth/register
 POST /api/auth/buyer-login
 { "email": "string", "password": "string" }
 → { "token": "<buyer_jwt>" }
-
-GET /api/auth/google          # Redirect to Google OAuth
-POST /api/auth/google/callback
-{ "code": "string", "state": "string" }
-→ { "token": "<buyer_jwt>" }
 ```
 
 ### Tokens (Pay Token)
@@ -177,8 +183,8 @@ Authorization: Bearer <buyer_jwt>
 {
   "serviceId": "<id>",
   "limitUsdc": "5.00",
-  "buyerTag": "my-agent-session-42",   // optional, for audit logs
-  "expiresAt": "2026-05-01T00:00:00Z"  // optional, default 30 days
+  "buyerTag": "my-agent-session-42",
+  "expiresAt": "2026-05-01T00:00:00Z"
 }
 → { "tokenId": "...", "jwt": "<pay_token>", "limitUsdc": "5.000000", "expiresAt": "..." }
 ```
@@ -188,7 +194,7 @@ Authorization: Bearer <buyer_jwt>
 ```http
 ANY /api/proxy/<serviceId>/<upstream-path>
 Authorization: Bearer <pay_token>
-Idempotency-Key: <uuid>   // optional
+Idempotency-Key: <uuid>
 
 → upstream response
   + X-Charge-Id: ch_...
@@ -197,24 +203,16 @@ Idempotency-Key: <uuid>   // optional
 
 Error responses:
 ```json
-// 402 – budget exhausted
-{ "error": "Token limit exceeded", "used": "4.999", "limit": "5.000" }
-
-// 402 – insufficient balance at token issuance
-{ "error": "Insufficient balance: 1.23 USDC available" }
-
-// 401 – token expired or revoked
-{ "error": "Token expired" }
+{ "error": "Token limit exceeded", "used": "4.999", "limit": "5.000" }   // 402
+{ "error": "Insufficient balance: 1.23 USDC available" }                 // 402
+{ "error": "Token expired" }                                              // 401
 ```
 
 ### Services
 
 ```http
 GET /api/services?reviewStatus=APPROVED&limit=50
-→ [{ "id": "...", "name": "...", "type": "API|MCP", "pricePerCallUsdc": "0.001", ... }]
-
-GET /api/services/stats
-→ [{ "serviceId": "...", "chargeCount": 1234, "totalUsdc": "1.234", "lastChargeAt": "..." }]
+→ [{ "id": "...", "name": "...", "pricePerCallUsdc": "0.001", ... }]
 ```
 
 ---
@@ -228,21 +226,22 @@ cd lemon-cake
 
 # 2. API server
 cd api
-cp .env.example .env          # Fill in DATABASE_URL, JWT secrets, etc.
-npm install
-npx prisma migrate dev
+cp .env.example .env
+npm install && npx prisma migrate dev
 npm run dev                    # http://localhost:3000
 
 # 3. Dashboard
 cd ../dashboard
 cp .env.example .env.local    # NEXT_PUBLIC_API_URL=http://localhost:3000
-npm install
-npm run dev                    # http://localhost:3001
+npm install && npm run dev     # http://localhost:3001
 
-# 4. MCP server (optional)
+# 4. MCP server
 cd ../mcp-server
 npm install && npm run build
-# Point LEMON_CAKE_API_URL=http://localhost:3000 in your MCP client config
+
+# 5. Eliza plugin
+cd ../eliza-plugin-lemoncake
+npm install && npm run build
 ```
 
 ### Seed demo data
@@ -271,14 +270,13 @@ node api/seed_demo.js
 - [ ] Streaming / token-count billing for LLM APIs
 - [ ] Multi-chain support (Ethereum, Solana, Base)
 - [ ] Agent-to-agent sub-token delegation UI
-- [ ] `npx lemon-cake-mcp` zero-install MCP launcher
 
 ---
 
 ## 📄 License
 
 Proprietary — All rights reserved © 2026 LemonCake  
-MCP server source is available for review. Core API and payment engine are closed source.
+MCP server and Eliza plugin source are available for review. Core API and payment engine are closed source.
 
 ---
 
