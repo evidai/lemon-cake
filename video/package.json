@@ -1,0 +1,26 @@
+{
+  "name": "lemoncake-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Programmatic video generator for LemonCake marketing",
+  "scripts": {
+    "dev": "remotion studio",
+    "render": "remotion render src/index.tsx LaunchVideo out/launch.mp4",
+    "render:shorts": "remotion render src/index.tsx LaunchShorts out/launch-shorts.mp4",
+    "render:gif": "remotion render src/index.tsx LaunchVideo out/launch.gif --codec=gif",
+    "render:all": "npm run render && npm run render:shorts && npm run render:gif",
+    "build": "remotion bundle"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0.205",
+    "@remotion/cli": "^4.0.205",
+    "@remotion/renderer": "^4.0.205",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.205"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "typescript": "^5.5.3"
+  }
+}
