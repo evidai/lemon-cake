@@ -4,7 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "LemonCake",
   description: "AI Agent M2M Payment Infrastructure Dashboard",
-  icons: { icon: "/logo.png", apple: "/logo.png" },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
