@@ -205,7 +205,20 @@ export default function AboutPageEn() {
       </div>
 
       {/* ── Integrations ── */}
-      <section id="integrations" className="max-w-6xl mx-auto px-6 py-28">
+      <section id="integrations" className="relative overflow-hidden py-28">
+        {/* Video background */}
+        <video
+          className="absolute inset-0 w-full h-full object-cover opacity-40"
+          src="/dvd_screensaver.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-[#06060a]/40" />
+        {/* Content */}
+        <div className="relative z-10 max-w-6xl mx-auto px-6">
         <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-4">Integrations</p>
         <h2 className="text-center text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
           Connect your agent<br />in 3 minutes
@@ -249,6 +262,7 @@ export default function AboutPageEn() {
               </a>
             </div>
           ))}
+        </div>
         </div>
       </section>
 
@@ -513,20 +527,8 @@ export default function AboutPageEn() {
       </section>
 
       {/* ── Philosophy ── */}
-      <section className="relative overflow-hidden px-6 pt-28 pb-40 text-center">
-        {/* Video background */}
-        <video
-          className="absolute inset-0 w-full h-full object-cover opacity-40"
-          src="/dvd_screensaver.mp4"
-          autoPlay
-          loop
-          muted
-          playsInline
-        />
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-[#06060a]/40" />
-        {/* Content */}
-        <div className="relative z-10 max-w-4xl mx-auto">
+      <section className="px-6 pt-28 pb-40 text-center">
+        <div className="max-w-4xl mx-auto">
           <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-6">Our Philosophy</p>
           <h2 className="text-3xl md:text-4xl font-black text-white leading-tight mb-8">
             Raw steel, transformed into<br />
