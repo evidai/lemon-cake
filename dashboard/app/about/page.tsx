@@ -164,6 +164,7 @@ export default function AboutPage() {
               {[
                 { label: "インテグレーション", href: "#integrations" },
                 { label: "機能",             href: "#features" },
+                { label: "5分で試す",        href: "#quickstart" },
                 { label: "仕組み",           href: "#infrastructure" },
                 { label: "ユースケース",     href: "#use-cases" },
               ].map(({ label, href }) => (
@@ -321,6 +322,99 @@ export default function AboutPage() {
               <div className="flex items-center gap-2"><span className="text-purple-400"><IconCheck /></span>行に TEST バッジ表示</div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── Quickstart ── */}
+      <section id="quickstart" className="max-w-5xl mx-auto px-6 py-28">
+        <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-4">Quickstart</p>
+        <h2 className="text-center text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
+          <span className="text-[#fffd43]">5 分</span>で動かす
+        </h2>
+        <p className="text-center text-[14px] text-white/40 mb-16 max-w-xl mx-auto">
+          登録して、Pay Token を発行して、エージェントに渡す。以上。
+        </p>
+
+        <ol className="flex flex-col gap-5">
+          {/* Step 1 */}
+          <li className="rounded-3xl bg-white/4 border border-white/8 p-7 flex gap-6">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#fffd43] text-[#1a0f00] font-black text-lg flex items-center justify-center">1</div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-black text-white mb-1.5">アカウント作成・USDC 入金</h3>
+              <p className="text-[13px] text-white/45 leading-relaxed mb-3">
+                メールアドレスで即登録。テスト用に Sandbox トークンを使えば実 USDC なしでも最後まで試せます。
+              </p>
+              <Link href="/register" className="inline-flex items-center gap-1.5 text-[13px] text-[#fffd43]/80 hover:text-[#fffd43]">
+                登録する <IconArrowRight />
+              </Link>
+            </div>
+          </li>
+
+          {/* Step 2 */}
+          <li className="rounded-3xl bg-white/4 border border-white/8 p-7 flex gap-6">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#fffd43] text-[#1a0f00] font-black text-lg flex items-center justify-center">2</div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-black text-white mb-1.5">Pay Token を発行</h3>
+              <p className="text-[13px] text-white/45 leading-relaxed mb-3">
+                ダッシュボードの Pay Tokens タブで、対象サービス・上限 USDC・有効期限を指定して発行。Sandbox モードなら実残高は動きません。
+              </p>
+              <div className="rounded-xl bg-black/40 border border-white/8 px-4 py-3 font-mono text-[12px] text-[#fffd43] leading-relaxed overflow-x-auto">
+                <div className="text-white/40">$ # or via REST:</div>
+                <div>curl -X POST https://lemoncake.xyz/api/tokens \</div>
+                <div className="pl-4">-H &quot;Authorization: Bearer $BUYER_JWT&quot; \</div>
+                <div className="pl-4">-d &apos;{'{'}&quot;serviceId&quot;:&quot;svc_xxx&quot;,&quot;limitUsdc&quot;:&quot;2.00&quot;,&quot;sandbox&quot;:true{'}'}&apos;</div>
+              </div>
+            </div>
+          </li>
+
+          {/* Step 3 */}
+          <li className="rounded-3xl bg-white/4 border border-white/8 p-7 flex gap-6">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#fffd43] text-[#1a0f00] font-black text-lg flex items-center justify-center">3</div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-black text-white mb-1.5">エージェントに渡す</h3>
+              <p className="text-[13px] text-white/45 leading-relaxed mb-4">
+                お使いのフレームワークに合わせて 1 行。あとはエージェントが自律的に API を選び、支払い、完結します。
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="rounded-xl bg-black/40 border border-white/8 px-3.5 py-3">
+                  <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1.5">Claude / Cursor</p>
+                  <code className="text-[12px] font-mono text-[#fffd43] break-all">npx lemon-cake-mcp</code>
+                </div>
+                <div className="rounded-xl bg-black/40 border border-white/8 px-3.5 py-3">
+                  <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1.5">Eliza v2</p>
+                  <code className="text-[12px] font-mono text-[#fffd43] break-all">plugins: [lemonCakePlugin]</code>
+                </div>
+                <div className="rounded-xl bg-black/40 border border-white/8 px-3.5 py-3">
+                  <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1.5">Any framework</p>
+                  <code className="text-[12px] font-mono text-[#fffd43] break-all">POST /api/proxy/:id/*</code>
+                </div>
+              </div>
+            </div>
+          </li>
+
+          {/* Step 4 */}
+          <li className="rounded-3xl bg-gradient-to-br from-[#fffd43]/10 to-transparent border border-[#fffd43]/20 p-7 flex gap-6">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#fffd43] text-[#1a0f00] font-black text-lg flex items-center justify-center">✓</div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-black text-white mb-1.5">完成 — あとは見守るだけ</h3>
+              <p className="text-[13px] text-white/55 leading-relaxed">
+                課金履歴・残高・トークン使用量がダッシュボードにリアルタイム反映。<br />
+                エージェントが暴走したら Kill Switch で 1 クリック停止。
+              </p>
+            </div>
+          </li>
+        </ol>
+
+        <div className="mt-10 text-center">
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-2 px-7 py-3 bg-[#fffd43] text-[#1a0f00] font-semibold rounded-xl hover:bg-[#fffd43]/90 transition-colors text-sm"
+          >
+            無料で始める <IconArrowRight />
+          </Link>
+          <p className="mt-3 text-[12px] text-white/30">
+            クレジットカード不要。Sandbox モードなら USDC も不要。
+          </p>
         </div>
       </section>
 

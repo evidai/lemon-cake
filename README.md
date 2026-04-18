@@ -1,13 +1,54 @@
+<div align="center">
+
 # 🍋 LemonCake
 
-**Give your AI agent a wallet.**
+**Give your AI agent a wallet — with a kill switch.**
 
-> JWT-based Pay Tokens + USDC balance management for autonomous Machine-to-Machine payments.
+> JWT-based Pay Tokens + USDC balance management for autonomous
+> Machine-to-Machine payments.
 
 [![License: Proprietary](https://img.shields.io/badge/license-proprietary-red.svg)](https://lemoncake.xyz)
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-blue.svg)](https://modelcontextprotocol.io)
 [![npm: lemon-cake-mcp](https://img.shields.io/npm/v/lemon-cake-mcp?label=lemon-cake-mcp)](https://www.npmjs.com/package/lemon-cake-mcp)
 [![npm: eliza-plugin-lemoncake](https://img.shields.io/npm/v/eliza-plugin-lemoncake?label=eliza-plugin-lemoncake)](https://www.npmjs.com/package/eliza-plugin-lemoncake)
+[![Live Demo](https://img.shields.io/badge/live%20demo-lemoncake.xyz-fffd43)](https://lemoncake.xyz)
+
+**[🎬 Demo](https://lemoncake.xyz) · [📚 Docs](https://lemoncake.xyz/docs) · [🚀 Quickstart](https://lemoncake.xyz/about#quickstart) · [💬 Discord](https://lemoncake.xyz) · [🐦 Twitter](https://lemoncake.xyz)**
+
+<br />
+
+![LemonCake demo — AI agent spending down a Pay Token](./demos/demo.gif)
+
+<sub>↑ An agent calling a paid API via a Pay Token. Balance drops in real time. Kill Switch stops it in one click.</sub>
+
+</div>
+
+---
+
+## ⚡️ 60-second quickstart
+
+```bash
+# 1. Register at https://lemoncake.xyz, grab a BUYER_JWT
+
+# 2. Issue a Pay Token (scoped, expiring, revocable)
+curl -X POST https://lemoncake.xyz/api/tokens \
+  -H "Authorization: Bearer $BUYER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"serviceId":"svc_xxx","limitUsdc":"2.00","sandbox":true}'
+# → { "jwt": "<pay_token>", ... }
+
+# 3. Hand it to your agent. Done.
+#    Claude / Cursor:
+npx lemon-cake-mcp
+#    Eliza v2:
+npm install eliza-plugin-lemoncake
+#    Anything else:
+curl -X POST https://lemoncake.xyz/api/proxy/svc_xxx/your/endpoint \
+  -H "Authorization: Bearer <pay_token>" \
+  -H "Idempotency-Key: $(uuidgen)"
+```
+
+Budget exhausted? `402`. Token revoked? `422`. No runaway agents. No stolen keys.
 
 ---
 
@@ -265,11 +306,20 @@ node api/seed_demo.js
 
 ## 🗺 Roadmap
 
-- [ ] KYC tier-based spending limits (Tier 0 → 3)
+**Shipped:**
+- [x] **Kill Switch** — atomic one-click token revocation (race-condition-free)
+- [x] **KYA (Know Your Agent)** — tiered spending limits: 10 → 1,000 → 50,000 USDC/day
+- [x] **Sandbox mode** — full-flow dry-run without moving real USDC
+- [x] MCP server + Eliza v2 plugin published to npm
+- [x] JPYC on-chain deposit with Polygon event-log verification
+
+**Next:**
+- [ ] Panic button — revoke all active tokens for a buyer in one click
 - [ ] Smart contract escrow for trustless settlement
 - [ ] Streaming / token-count billing for LLM APIs
 - [ ] Multi-chain support (Ethereum, Solana, Base)
-- [ ] Agent-to-agent sub-token delegation UI
+- [ ] Agent-to-agent sub-token delegation (parent caps child)
+- [ ] Self-hostable edition
 
 ---
 
