@@ -1249,35 +1249,35 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
               ))}
             </div>
             <div className="divide-y divide-gray-100">
-              {tokens.map((t) => {
-                const status = getStatus(t);
+              {tokens.map((tok) => {
+                const status = getStatus(tok);
                 const cfg    = statusCfg[status];
-                const limit  = parseFloat(t.limitUsdc);
-                const used   = parseFloat(t.usedUsdc);
+                const limit  = parseFloat(tok.limitUsdc);
+                const used   = parseFloat(tok.usedUsdc);
                 const pct    = limit > 0 ? (used / limit) * 100 : 0;
                 return (
-                  <div key={t.id} className="px-6 py-3.5 grid grid-cols-12 gap-2 items-center hover:bg-gray-50 text-xs">
-                    <span className="col-span-1 font-mono text-gray-500 text-[10px] truncate">{t.id.slice(0,10)}…</span>
+                  <div key={tok.id} className="px-6 py-3.5 grid grid-cols-12 gap-2 items-center hover:bg-gray-50 text-xs">
+                    <span className="col-span-1 font-mono text-gray-500 text-[10px] truncate">{tok.id.slice(0,10)}…</span>
                     <div className="col-span-3 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{svcName(t.serviceId)}</p>
-                      <p className="text-[10px] text-gray-400 font-mono truncate">{t.serviceId}</p>
+                      <p className="font-medium text-gray-900 truncate">{svcName(tok.serviceId)}</p>
+                      <p className="text-[10px] text-gray-400 font-mono truncate">{tok.serviceId}</p>
                     </div>
-                    <span className="col-span-1 font-mono text-gray-700">{parseFloat(t.limitUsdc).toFixed(4)}</span>
+                    <span className="col-span-1 font-mono text-gray-700">{parseFloat(tok.limitUsdc).toFixed(4)}</span>
                     <div className="col-span-1">
-                      <p className="font-mono text-gray-700">{parseFloat(t.usedUsdc).toFixed(4)}</p>
+                      <p className="font-mono text-gray-700">{parseFloat(tok.usedUsdc).toFixed(4)}</p>
                       <div className="w-full h-1 bg-gray-100 rounded-full mt-1">
                         <div className={`h-1 rounded-full ${pct > 80 ? "bg-red-400" : "bg-blue-400"}`} style={{ width: `${Math.min(pct,100)}%` }}/>
                       </div>
                     </div>
-                    <span className="col-span-2 text-gray-400 font-mono text-[10px]">{t.buyerTag ?? "—"}</span>
-                    <span className="col-span-2 text-gray-400 font-mono text-[10px]">{t.expiresAt.slice(0,10)}</span>
+                    <span className="col-span-2 text-gray-400 font-mono text-[10px]">{tok.buyerTag ?? "—"}</span>
+                    <span className="col-span-2 text-gray-400 font-mono text-[10px]">{tok.expiresAt.slice(0,10)}</span>
                     <span className="col-span-1">
                       <span className={`px-1.5 py-0.5 rounded border text-[9px] font-bold ${cfg.cls}`}>{cfg.label}</span>
                     </span>
                     <span className="col-span-1">
                       {status === "active" && (
                         <button
-                          onClick={() => handleRevoke(t.id)}
+                          onClick={() => handleRevoke(tok.id)}
                           className="px-1.5 py-0.5 rounded border text-[9px] font-bold bg-red-50 text-red-500 border-red-200 hover:bg-red-100 transition-colors"
                         >
                           {t("停止", "Revoke")}
@@ -3721,18 +3721,28 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
 // ── AccountSettingsPage ───────────────────────────────────────────────────────
 interface UserProfile {
   id: string; name: string; email: string; buyerId: string | null;
-  buyer: { id: string; balanceUsdc: string; kycTier: string; walletAddress: string | null; suspended: boolean } | null;
+  buyer: {
+    id: string; balanceUsdc: string; kycTier: string; dailyLimitUsdc: string;
+    walletAddress: string | null; suspended: boolean;
+    agentName: string | null; agentDescription: string | null; kyaAppliedAt: string | null;
+  } | null;
 }
 
 function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () => void }) {
   const t = useT();
-  const [profile,  setProfile]  = useState<UserProfile | null>(null);
-  const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState(false);
-  const [name,     setName]     = useState("");
-  const [wallet,   setWallet]   = useState("");
-  const [saved,    setSaved]    = useState(false);
-  const [error,    setError]    = useState("");
+  const [profile,      setProfile]      = useState<UserProfile | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [saving,       setSaving]       = useState(false);
+  const [name,         setName]         = useState("");
+  const [wallet,       setWallet]       = useState("");
+  const [saved,        setSaved]        = useState(false);
+  const [error,        setError]        = useState("");
+  // KYA フォーム用 state
+  const [kyaName,      setKyaName]      = useState("");
+  const [kyaDesc,      setKyaDesc]      = useState("");
+  const [kyaSubmitting,setKyaSubmitting]= useState(false);
+  const [kyaError,     setKyaError]     = useState("");
+  const [kyaOpen,      setKyaOpen]      = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
@@ -3741,6 +3751,39 @@ function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () 
       .catch(() => setError(t("プロフィールの取得に失敗しました","Failed to load profile")))
       .finally(() => setLoading(false));
   }, [token]);
+
+  async function handleKyaSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setKyaSubmitting(true); setKyaError("");
+    try {
+      const res = await fetch(`${API_URL}/api/buyers/kya`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ agentName: kyaName, agentDescription: kyaDesc }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error ?? "Failed");
+      }
+      const updated = await res.json() as { kycTier: string; dailyLimitUsdc: string; agentName: string; agentDescription: string; kyaAppliedAt: string };
+      setProfile(prev => prev ? {
+        ...prev,
+        buyer: prev.buyer ? {
+          ...prev.buyer,
+          kycTier:         updated.kycTier,
+          dailyLimitUsdc:  updated.dailyLimitUsdc,
+          agentName:       updated.agentName,
+          agentDescription:updated.agentDescription,
+          kyaAppliedAt:    updated.kyaAppliedAt,
+        } : null,
+      } : null);
+      setKyaOpen(false);
+    } catch (e: unknown) {
+      setKyaError(e instanceof Error ? e.message : t("申請に失敗しました","Failed to apply"));
+    } finally {
+      setKyaSubmitting(false);
+    }
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -3791,6 +3834,102 @@ function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () 
           ))}
         </div>
       )}
+
+      {/* ── KYA ステータス ─────────────────────────────────── */}
+      {profile?.buyer && (() => {
+        const tier = profile.buyer!.kycTier;
+        const limit = parseFloat(profile.buyer!.dailyLimitUsdc ?? "10");
+        const tierCfg: Record<string, { label: string; labelEn: string; cls: string; dot: string }> = {
+          NONE: { label: "未認証",      labelEn: "Unverified", cls: "bg-gray-100 text-gray-500 border-gray-200",   dot: "bg-gray-400" },
+          KYA:  { label: "KYA 認証済み", labelEn: "KYA Verified", cls: "bg-green-50 text-green-700 border-green-200", dot: "bg-green-500" },
+          KYC:  { label: "KYC 認証済み", labelEn: "KYC Verified", cls: "bg-blue-50 text-blue-700 border-blue-200",   dot: "bg-blue-500"  },
+        };
+        const cfg = tierCfg[tier] ?? tierCfg["NONE"];
+        return (
+          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-gray-900">{t("KYAステータス","KYA Status")}</h2>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${cfg.cls}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`}/>
+                {t(cfg.label, cfg.labelEn)}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-[10px] text-gray-400 mb-1">{t("デイリー上限","Daily Limit")}</p>
+                <p className="text-base font-bold font-mono text-gray-900">{limit.toLocaleString()} <span className="text-xs font-normal text-gray-400">USDC</span></p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-[10px] text-gray-400 mb-1">{t("認証レベル","Auth Level")}</p>
+                <p className="text-base font-bold text-gray-900">{tier}</p>
+              </div>
+            </div>
+
+            {tier === "NONE" && !kyaOpen && (
+              <button onClick={() => setKyaOpen(true)}
+                className="w-full py-2.5 bg-lemon hover:bg-lemon-hover text-text-primary text-sm font-semibold rounded-xl transition-colors">
+                {t("KYA を申請する（上限: 1,000 USDC/日）","Apply for KYA (limit: 1,000 USDC/day)")}
+              </button>
+            )}
+
+            {tier === "NONE" && kyaOpen && (
+              <form onSubmit={handleKyaSubmit} className="flex flex-col gap-3 mt-2">
+                <p className="text-xs text-gray-500">
+                  {t("エージェントの情報を登録すると、デイリー上限が 10 → 1,000 USDC に引き上げられます。",
+                     "Register your agent info to raise your daily limit from 10 → 1,000 USDC.")}
+                </p>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("エージェント名","Agent Name")} <span className="text-red-400">*</span></label>
+                  <input type="text" value={kyaName} onChange={e => setKyaName(e.target.value)} required maxLength={100}
+                    placeholder={t("例: my-procurement-agent","e.g. my-procurement-agent")}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:border-gray-400 bg-white transition-all" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("エージェントの用途","Agent Description")} <span className="text-red-400">*</span></label>
+                  <textarea value={kyaDesc} onChange={e => setKyaDesc(e.target.value)} required maxLength={500} rows={3}
+                    placeholder={t("例: 仕入れ先の検索・発注・請求書処理を自動化するエージェントです。","e.g. An agent that automates supplier search, ordering, and invoice processing.")}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:border-gray-400 bg-white transition-all resize-none" />
+                </div>
+                {kyaError && <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{kyaError}</div>}
+                <div className="flex gap-3 justify-end">
+                  <button type="button" onClick={() => setKyaOpen(false)}
+                    className="px-4 py-2 border border-gray-200 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition-colors">
+                    {t("キャンセル","Cancel")}
+                  </button>
+                  <button type="submit" disabled={kyaSubmitting}
+                    className="px-5 py-2 bg-lemon hover:bg-lemon-hover text-text-primary text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">
+                    {kyaSubmitting ? t("申請中…","Submitting…") : t("申請して上限を引き上げる","Submit & Upgrade")}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {tier !== "NONE" && (
+              <div className="mt-2 flex flex-col gap-1.5">
+                {profile.buyer!.agentName && (
+                  <div className="flex items-start gap-2 text-xs text-gray-600">
+                    <span className="text-gray-400 shrink-0">{t("エージェント名","Agent")}</span>
+                    <span className="font-mono font-medium">{profile.buyer!.agentName}</span>
+                  </div>
+                )}
+                {profile.buyer!.agentDescription && (
+                  <div className="flex items-start gap-2 text-xs text-gray-500">
+                    <span className="text-gray-400 shrink-0">{t("用途","Use case")}</span>
+                    <span>{profile.buyer!.agentDescription}</span>
+                  </div>
+                )}
+                {profile.buyer!.kyaAppliedAt && (
+                  <div className="flex items-start gap-2 text-xs text-gray-400">
+                    <span className="shrink-0">{t("認証日","Verified")}</span>
+                    <span className="font-mono">{new Date(profile.buyer!.kyaAppliedAt).toLocaleDateString("ja-JP")}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* プロフィール編集 */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6">

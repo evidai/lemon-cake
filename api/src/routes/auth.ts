@@ -164,11 +164,15 @@ authRouter.get("/me", async (c) => {
       email:   user.email,
       buyerId: user.buyerId,
       buyer: user.buyer ? {
-        id:            user.buyer.id,
-        balanceUsdc:   user.buyer.balanceUsdc.toString(),
-        kycTier:       user.buyer.kycTier,
-        walletAddress: user.buyer.walletAddress,
-        suspended:     user.buyer.suspended,
+        id:              user.buyer.id,
+        balanceUsdc:     user.buyer.balanceUsdc.toString(),
+        kycTier:         user.buyer.kycTier,
+        dailyLimitUsdc:  user.buyer.dailyLimitUsdc.toString(),
+        walletAddress:   user.buyer.walletAddress,
+        suspended:       user.buyer.suspended,
+        agentName:       user.buyer.agentName ?? null,
+        agentDescription:user.buyer.agentDescription ?? null,
+        kyaAppliedAt:    user.buyer.kyaAppliedAt?.toISOString() ?? null,
       } : null,
     });
   } catch {

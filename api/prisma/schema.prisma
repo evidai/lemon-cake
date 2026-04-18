@@ -53,6 +53,11 @@ model Buyer {
   stripeCustomerId String?  // Stripe Customer ID（銀行振込・カード決済用）
   suspended        Boolean  @default(false)
 
+  // KYAフロー: エージェント身元情報
+  agentName        String?  // エージェントの名称（例: "my-procurement-agent"）
+  agentDescription String?  // エージェントの用途説明
+  kyaAppliedAt     DateTime? // KYA申請日時（昇格時に記録）
+
   tokens              Token[]
   charges             Charge[]
   user                User?

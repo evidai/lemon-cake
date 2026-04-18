@@ -7,7 +7,7 @@
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "../lib/prisma.js";
-import { verifyAdminToken } from "../lib/jwt.js";
+import { verifyAdminToken, verifyBuyerToken } from "../lib/jwt.js";
 
 /** Admin JWT を検証するヘルパー */
 async function requireAdmin(authHeader: string | undefined): Promise<string | null> {
@@ -22,16 +22,19 @@ export const buyersRouter = new OpenAPIHono();
 
 const BuyerSchema = z
   .object({
-    id:             z.string(),
-    name:           z.string(),
-    email:          z.string().email(),
-    balanceUsdc:    z.string().describe("Decimal文字列 (例: '0.000000000000000000')"),
-    kycTier:        z.enum(["NONE", "KYA", "KYC"]),
-    dailyLimitUsdc: z.string(),
-    walletAddress:  z.string().nullable(),
-    suspended:      z.boolean(),
-    createdAt:      z.string().datetime(),
-    updatedAt:      z.string().datetime(),
+    id:              z.string(),
+    name:            z.string(),
+    email:           z.string().email(),
+    balanceUsdc:     z.string().describe("Decimal文字列 (例: '0.000000000000000000')"),
+    kycTier:         z.enum(["NONE", "KYA", "KYC"]),
+    dailyLimitUsdc:  z.string(),
+    walletAddress:   z.string().nullable(),
+    suspended:       z.boolean(),
+    agentName:       z.string().nullable(),
+    agentDescription:z.string().nullable(),
+    kyaAppliedAt:    z.string().nullable(),
+    createdAt:       z.string().datetime(),
+    updatedAt:       z.string().datetime(),
   })
   .openapi("Buyer");
 
@@ -63,19 +66,25 @@ function serializeBuyer(b: {
   dailyLimitUsdc: { toString(): string };
   walletAddress: string | null;
   suspended: boolean;
+  agentName?: string | null;
+  agentDescription?: string | null;
+  kyaAppliedAt?: Date | null;
   createdAt: Date; updatedAt: Date;
 }) {
   return {
-    id:             b.id,
-    name:           b.name,
-    email:          b.email,
-    balanceUsdc:    b.balanceUsdc.toString(),
-    kycTier:        b.kycTier,
-    dailyLimitUsdc: b.dailyLimitUsdc.toString(),
-    walletAddress:  b.walletAddress,
-    suspended:      b.suspended,
-    createdAt:      b.createdAt.toISOString(),
-    updatedAt:      b.updatedAt.toISOString(),
+    id:              b.id,
+    name:            b.name,
+    email:           b.email,
+    balanceUsdc:     b.balanceUsdc.toString(),
+    kycTier:         b.kycTier,
+    dailyLimitUsdc:  b.dailyLimitUsdc.toString(),
+    walletAddress:   b.walletAddress,
+    suspended:       b.suspended,
+    agentName:       b.agentName ?? null,
+    agentDescription:b.agentDescription ?? null,
+    kyaAppliedAt:    b.kyaAppliedAt?.toISOString() ?? null,
+    createdAt:       b.createdAt.toISOString(),
+    updatedAt:       b.updatedAt.toISOString(),
   };
 }
 
@@ -288,3 +297,49 @@ buyersRouter.openapi(
     return c.json(serializeBuyer(updated));
   },
 );
+
+// ─── POST /api/buyers/kya ─────────────────────────────────────
+// バイヤー自身がエージェント情報を登録し、KYAティアに昇格する（即時承認）
+
+const KyaBody = z.object({
+  agentName:        z.string().min(1).max(100),
+  agentDescription: z.string().min(1).max(500),
+});
+
+buyersRouter.post("/kya", async (c) => {
+  // ── Buyer JWT 認証 ─────────────────────────────────────────
+  const auth = c.req.header("Authorization");
+  if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401);
+  let buyerPayload: Awaited<ReturnType<typeof verifyBuyerToken>>;
+  try {
+    buyerPayload = await verifyBuyerToken(auth.slice(7));
+  } catch {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+
+  const result = KyaBody.safeParse(await c.req.json());
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0]?.message ?? "Invalid input" }, 400);
+  }
+  const { agentName, agentDescription } = result.data;
+  const buyerId = buyerPayload.buyerId;
+
+  const buyer = await prisma.buyer.findUnique({ where: { id: buyerId } });
+  if (!buyer) return c.json({ error: "Buyer not found" }, 404);
+  if (buyer.kycTier !== "NONE") {
+    return c.json({ error: `Already at tier: ${buyer.kycTier}` }, 409);
+  }
+
+  const updated = await prisma.buyer.update({
+    where: { id: buyerId },
+    data: {
+      kycTier:         "KYA",
+      dailyLimitUsdc:  1000,
+      agentName,
+      agentDescription,
+      kyaAppliedAt:    new Date(),
+    },
+  });
+
+  return c.json(serializeBuyer(updated), 200);
+});
