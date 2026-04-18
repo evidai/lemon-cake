@@ -145,9 +145,9 @@ export default function AboutPage() {
             </div>
             <div className="hidden md:flex items-center gap-6">
               {[
-                { label: "仕組み",       href: "#infrastructure" },
-                { label: "ユースケース", href: "#use-cases" },
                 { label: "インテグレーション", href: "#integrations" },
+                { label: "仕組み",           href: "#infrastructure" },
+                { label: "ユースケース",     href: "#use-cases" },
               ].map(({ label, href }) => (
                 <a key={label} href={href} className="text-[13px] text-white/50 hover:text-white/90 transition-colors">{label}</a>
               ))}
@@ -188,6 +188,54 @@ export default function AboutPage() {
         </section>
       </div>
 
+      {/* ── Integrations ── */}
+      <section id="integrations" className="max-w-6xl mx-auto px-6 py-28">
+        <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-4">Integrations</p>
+        <h2 className="text-center text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
+          あなたのエージェントに<br />3 分で接続する
+        </h2>
+        <p className="text-center text-[14px] text-white/40 mb-16 max-w-xl mx-auto">
+          Claude・Cursor・Eliza など主要なフレームワークに対応した公式パッケージを提供しています。
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {integrations.map(({ icon, badge, title, subtitle, body, code, tools, href, published }) => (
+            <div key={title} className="rounded-3xl bg-white/4 border border-white/8 p-8 flex flex-col gap-6">
+              {/* Header */}
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#fffd43]/10 border border-[#fffd43]/20 flex items-center justify-center text-[#fffd43]">
+                    {icon}
+                  </div>
+                  <span className="text-[11px] font-mono text-white/30 bg-white/5 px-2 py-0.5 rounded">{badge}</span>
+                  {published && (
+                    <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full">✓ published</span>
+                  )}
+                </div>
+                <h3 className="text-xl font-black text-white mb-0.5">{title}</h3>
+                <p className="text-[12px] text-white/40">{subtitle}</p>
+              </div>
+              {/* Body */}
+              <p className="text-[13px] text-white/50 leading-relaxed">{body}</p>
+              {/* Code block */}
+              <div className="rounded-xl bg-black/40 border border-white/8 px-4 py-3 font-mono text-[13px] text-[#fffd43]">
+                $ {code}
+              </div>
+              {/* Tools */}
+              <div className="flex flex-wrap gap-2">
+                {tools.map(t => (
+                  <span key={t} className="text-[11px] font-mono text-white/40 bg-white/5 border border-white/8 px-2 py-0.5 rounded-md">{t}</span>
+                ))}
+              </div>
+              {/* Link */}
+              <a href={href} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[13px] text-[#fffd43]/70 hover:text-[#fffd43] transition-colors mt-auto">
+                npm で見る <IconArrowRight />
+              </a>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ── Mission ── */}
       <section className="max-w-4xl mx-auto px-6 py-28 text-center">
         <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-6">ミッション</p>
@@ -199,37 +247,6 @@ export default function AboutPage() {
           LemonCake は JWT Pay Token という仕組みで、エージェントに「予算上限付きのお財布」を渡します。
           上限を超えれば自動停止。エージェントは支払い能力を持ちながら、暴走しません。
         </p>
-      </section>
-
-      {/* ── The Infrastructure ── */}
-      <section id="infrastructure" className="max-w-6xl mx-auto px-6 pb-8">
-        <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-20">How It Works</p>
-        <div className="flex flex-col gap-28">
-          {whyItems.map(({ eyebrow, title, body, stats, flipped }) => (
-            <div
-              key={eyebrow}
-              className={`flex flex-col md:flex-row items-center gap-12 ${flipped ? "md:flex-row-reverse" : ""}`}
-            >
-              {/* Text side */}
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-semibold text-[#fffd43]/80 uppercase tracking-widest mb-3">{eyebrow}</p>
-                <h3 className="text-2xl md:text-3xl font-black text-white mb-4 leading-tight whitespace-pre-line">{title}</h3>
-                <p className="text-[14px] text-white/45 leading-relaxed max-w-md">{body}</p>
-              </div>
-              {/* Stats side */}
-              <div className="flex-shrink-0 w-full md:w-72">
-                <div className="rounded-3xl bg-white/4 border border-white/8 p-8 flex gap-8 justify-center md:justify-start">
-                  {stats.map(({ num, label }) => (
-                    <div key={label}>
-                      <p className="text-3xl font-black text-white mb-1">{num}</p>
-                      <p className="text-[11px] text-white/40 leading-tight">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
       </section>
 
       {/* ── Buyer / Seller 2-column ── */}
@@ -287,49 +304,32 @@ export default function AboutPage() {
         </section>
       </div>
 
-      {/* ── Integrations ── */}
-      <section id="integrations" className="max-w-6xl mx-auto px-6 py-28">
-        <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-4">Integrations</p>
-        <h2 className="text-center text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
-          あなたのエージェントに<br />3 分で接続する
-        </h2>
-        <p className="text-center text-[14px] text-white/40 mb-16 max-w-xl mx-auto">
-          Claude・Cursor・Eliza など主要なフレームワークに対応した公式パッケージを提供しています。
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {integrations.map(({ icon, badge, title, subtitle, body, code, tools, href, published }) => (
-            <div key={title} className="rounded-3xl bg-white/4 border border-white/8 p-8 flex flex-col gap-6">
-              {/* Header */}
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#fffd43]/10 border border-[#fffd43]/20 flex items-center justify-center text-[#fffd43]">
-                    {icon}
-                  </div>
-                  <span className="text-[11px] font-mono text-white/30 bg-white/5 px-2 py-0.5 rounded">{badge}</span>
-                  {published && (
-                    <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full">✓ published</span>
-                  )}
+      {/* ── The Infrastructure ── */}
+      <section id="infrastructure" className="max-w-6xl mx-auto px-6 py-28">
+        <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-20">How It Works</p>
+        <div className="flex flex-col gap-28">
+          {whyItems.map(({ eyebrow, title, body, stats, flipped }) => (
+            <div
+              key={eyebrow}
+              className={`flex flex-col md:flex-row items-center gap-12 ${flipped ? "md:flex-row-reverse" : ""}`}
+            >
+              {/* Text side */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-semibold text-[#fffd43]/80 uppercase tracking-widest mb-3">{eyebrow}</p>
+                <h3 className="text-2xl md:text-3xl font-black text-white mb-4 leading-tight whitespace-pre-line">{title}</h3>
+                <p className="text-[14px] text-white/45 leading-relaxed max-w-md">{body}</p>
+              </div>
+              {/* Stats side */}
+              <div className="flex-shrink-0 w-full md:w-72">
+                <div className="rounded-3xl bg-white/4 border border-white/8 p-8 flex gap-8 justify-center md:justify-start">
+                  {stats.map(({ num, label }) => (
+                    <div key={label}>
+                      <p className="text-3xl font-black text-white mb-1">{num}</p>
+                      <p className="text-[11px] text-white/40 leading-tight">{label}</p>
+                    </div>
+                  ))}
                 </div>
-                <h3 className="text-xl font-black text-white mb-0.5">{title}</h3>
-                <p className="text-[12px] text-white/40">{subtitle}</p>
               </div>
-              {/* Body */}
-              <p className="text-[13px] text-white/50 leading-relaxed">{body}</p>
-              {/* Code block */}
-              <div className="rounded-xl bg-black/40 border border-white/8 px-4 py-3 font-mono text-[13px] text-[#fffd43]">
-                $ {code}
-              </div>
-              {/* Tools */}
-              <div className="flex flex-wrap gap-2">
-                {tools.map(t => (
-                  <span key={t} className="text-[11px] font-mono text-white/40 bg-white/5 border border-white/8 px-2 py-0.5 rounded-md">{t}</span>
-                ))}
-              </div>
-              {/* Link */}
-              <a href={href} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[13px] text-[#fffd43]/70 hover:text-[#fffd43] transition-colors mt-auto">
-                npm で見る <IconArrowRight />
-              </a>
             </div>
           ))}
         </div>
