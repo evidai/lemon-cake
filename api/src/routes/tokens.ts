@@ -189,6 +189,34 @@ const listRoute = createRoute({
   },
 });
 
+// ─── PATCH /api/tokens/:id/revoke ──────────────────────────
+
+tokensRouter.patch("/:id/revoke", async (c) => {
+  const auth = c.req.header("Authorization");
+  if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401);
+  let buyerPayload: Awaited<ReturnType<typeof verifyBuyerToken>>;
+  try {
+    buyerPayload = await verifyBuyerToken(auth.slice(7));
+  } catch {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+
+  const { id } = c.req.param();
+  const token = await prisma.token.findUnique({ where: { id } });
+  if (!token) return c.json({ error: "Token not found" }, 404);
+  if (token.buyerId !== buyerPayload.buyerId) return c.json({ error: "Forbidden" }, 403);
+  if (token.revoked) return c.json({ error: "Already revoked" }, 409);
+
+  const updated = await prisma.token.update({
+    where: { id },
+    data:  { revoked: true },
+  });
+
+  return c.json({ id: updated.id, revoked: true });
+});
+
+// ─── GET /api/tokens ────────────────────────────────────────
+
 tokensRouter.openapi(listRoute, async (c) => {
   // ── Buyer JWT 認証 ────────────────────────────────────────
   const auth = c.req.header("Authorization");

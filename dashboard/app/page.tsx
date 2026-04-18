@@ -1111,6 +1111,20 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
   const activeCount = tokens.filter((t) => getStatus(t) === "active").length;
   const totalUsed   = tokens.reduce((s, t) => s + parseFloat(t.usedUsdc), 0);
 
+  async function handleRevoke(tokenId: string) {
+    if (!confirm(t("このトークンを無効化しますか？この操作は取り消せません。", "Revoke this token? This cannot be undone."))) return;
+    try {
+      const res = await fetch(`${API_URL}/api/tokens/${tokenId}/revoke`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${buyerToken}` },
+      });
+      if (!res.ok) throw new Error("Failed");
+      setTokens((prev) => prev.map((t) => t.id === tokenId ? { ...t, revoked: true } : t));
+    } catch {
+      alert(t("無効化に失敗しました", "Failed to revoke token"));
+    }
+  }
+
   // Map serviceId → name: DEMO_SERVICES fallback for display
   function svcName(serviceId: string) {
     return DEMO_SERVICES.find((s) => s.id === serviceId)?.name ?? serviceId;
@@ -1230,7 +1244,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
           <>
             {/* Header */}
             <div className="px-6 py-2.5 border-b border-gray-100 grid grid-cols-12 gap-2 bg-gray-50">
-              {[t("トークンID","Token ID"),t("サービス","Service"),t("上限額","Limit"),t("使用済","Used"),"Buyer Tag",t("有効期限","Expires"),t("状態","Status")].map((h,i) => (
+              {[t("トークンID","Token ID"),t("サービス","Service"),t("上限額","Limit"),t("使用済","Used"),"Buyer Tag",t("有効期限","Expires"),t("状態","Status"),""].map((h,i) => (
                 <span key={i} className={`text-[10px] font-semibold uppercase tracking-wider text-gray-400 ${i===1?"col-span-3":i===4?"col-span-2":i===5?"col-span-2":"col-span-1"}`}>{h}</span>
               ))}
             </div>
@@ -1259,6 +1273,16 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
                     <span className="col-span-2 text-gray-400 font-mono text-[10px]">{t.expiresAt.slice(0,10)}</span>
                     <span className="col-span-1">
                       <span className={`px-1.5 py-0.5 rounded border text-[9px] font-bold ${cfg.cls}`}>{cfg.label}</span>
+                    </span>
+                    <span className="col-span-1">
+                      {status === "active" && (
+                        <button
+                          onClick={() => handleRevoke(t.id)}
+                          className="px-1.5 py-0.5 rounded border text-[9px] font-bold bg-red-50 text-red-500 border-red-200 hover:bg-red-100 transition-colors"
+                        >
+                          {t("停止", "Revoke")}
+                        </button>
+                      )}
                     </span>
                   </div>
                 );
