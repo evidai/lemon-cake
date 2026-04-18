@@ -1090,6 +1090,10 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
       setIssued({ jwt: data.jwt, tokenId: data.tokenId });
       loadTokens();
       onTokenIssued?.();
+      // 次回発行に備えてフォーム入力をリセット
+      setLimitAmt("1.00");
+      setBuyerTag("");
+      setSandbox(false);
     } catch (e: unknown) {
       setIssueErr(e instanceof Error ? e.message : "発行に失敗しました");
     } finally {
@@ -1114,15 +1118,21 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
 
   async function handleRevoke(tokenId: string) {
     if (!confirm(t("このトークンを無効化しますか？この操作は取り消せません。", "Revoke this token? This cannot be undone."))) return;
+    // 楽観的に UI を更新
+    setTokens((prev) => prev.map((tk) => tk.id === tokenId ? { ...tk, revoked: true } : tk));
     try {
       const res = await fetch(`${API_URL}/api/tokens/${tokenId}/revoke`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${buyerToken}` },
       });
-      if (!res.ok) throw new Error("Failed");
-      setTokens((prev) => prev.map((t) => t.id === tokenId ? { ...t, revoked: true } : t));
-    } catch {
-      alert(t("無効化に失敗しました", "Failed to revoke token"));
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error ?? "Failed");
+      }
+    } catch (e: unknown) {
+      // 失敗時はサーバー状態に巻き戻すため再取得
+      alert(t("無効化に失敗しました", "Failed to revoke token") + (e instanceof Error ? `: ${e.message}` : ""));
+      loadTokens();
     }
   }
 

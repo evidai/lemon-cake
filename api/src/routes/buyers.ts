@@ -317,29 +317,37 @@ buyersRouter.post("/kya", async (c) => {
     return c.json({ error: "Invalid token" }, 401);
   }
 
-  const result = KyaBody.safeParse(await c.req.json());
+  // ── リクエストボディの安全なパース（空/不正JSON耐性）──────
+  const raw = await c.req.json().catch(() => null);
+  if (!raw) return c.json({ error: "Invalid JSON body" }, 400);
+  const result = KyaBody.safeParse(raw);
   if (!result.success) {
     return c.json({ error: result.error.issues[0]?.message ?? "Invalid input" }, 400);
   }
   const { agentName, agentDescription } = result.data;
   const buyerId = buyerPayload.buyerId;
 
-  const buyer = await prisma.buyer.findUnique({ where: { id: buyerId } });
-  if (!buyer) return c.json({ error: "Buyer not found" }, 404);
-  if (buyer.kycTier !== "NONE") {
-    return c.json({ error: `Already at tier: ${buyer.kycTier}` }, 409);
+  // ── アトミックな昇格: WHERE kycTier='NONE' を条件にすることで
+  // 同時リクエストのレース条件（二重昇格）を防ぐ ───────────
+  try {
+    const updated = await prisma.buyer.update({
+      where: { id: buyerId, kycTier: "NONE" },
+      data: {
+        kycTier:         "KYA",
+        dailyLimitUsdc:  1000,
+        agentName,
+        agentDescription,
+        kyaAppliedAt:    new Date(),
+      },
+    });
+    return c.json(serializeBuyer(updated), 200);
+  } catch (e: unknown) {
+    // P2025: Record not found — 既に NONE 以外のティアにいる or Buyer が存在しない
+    if (typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "P2025") {
+      const buyer = await prisma.buyer.findUnique({ where: { id: buyerId } });
+      if (!buyer) return c.json({ error: "Buyer not found" }, 404);
+      return c.json({ error: `Already at tier: ${buyer.kycTier}` }, 409);
+    }
+    throw e;
   }
-
-  const updated = await prisma.buyer.update({
-    where: { id: buyerId },
-    data: {
-      kycTier:         "KYA",
-      dailyLimitUsdc:  1000,
-      agentName,
-      agentDescription,
-      kyaAppliedAt:    new Date(),
-    },
-  });
-
-  return c.json(serializeBuyer(updated), 200);
 });
