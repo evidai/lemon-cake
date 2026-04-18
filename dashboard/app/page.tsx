@@ -1028,7 +1028,7 @@ interface PayToken {
   id: string; serviceId: string;
   limitUsdc: string; usedUsdc: string;
   buyerTag: string | null; expiresAt: string;
-  revoked: boolean; createdAt: string;
+  revoked: boolean; sandbox?: boolean; createdAt: string;
 }
 interface Charge {
   chargeId: string; status: "PENDING" | "COMPLETED" | "FAILED";
@@ -1050,6 +1050,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
   const [svcId,     setSvcId]     = useState("");
   const [limitAmt,  setLimitAmt]  = useState("1.00");
   const [buyerTag,  setBuyerTag]  = useState("");
+  const [sandbox,   setSandbox]   = useState(false);
   const [issuing,   setIssuing]   = useState(false);
   const [issued,    setIssued]    = useState<{ jwt: string; tokenId: string } | null>(null);
   const [issueErr,  setIssueErr]  = useState("");
@@ -1082,7 +1083,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
       const res = await fetch(`${API_URL}/api/tokens`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${buyerToken}` },
-        body: JSON.stringify({ serviceId: svcId, limitUsdc: limitAmt, buyerTag: buyerTag || undefined }),
+        body: JSON.stringify({ serviceId: svcId, limitUsdc: limitAmt, buyerTag: buyerTag || undefined, sandbox }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "発行に失敗しました");
@@ -1202,6 +1203,23 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
                 </div>
               </div>
+
+              {/* Sandbox toggle */}
+              <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${sandbox ? "bg-purple-50 border-purple-200" : "bg-gray-50 border-gray-200 hover:border-gray-300"}`}>
+                <input type="checkbox" checked={sandbox} onChange={e => setSandbox(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-900">{t("サンドボックスモード","Sandbox Mode")}</span>
+                    {sandbox && <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[9px] font-bold border border-purple-200">TEST</span>}
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    {t("実USDCを動かさずモック課金で動作確認します。残高は消費されません。",
+                       "Mock charges only — no real USDC moves. Balance is not deducted.")}
+                  </p>
+                </div>
+              </label>
+
               {issueErr && <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{issueErr}</div>}
               <div className="flex justify-end">
                 <button type="submit" disabled={issuing || !svcId}
@@ -1256,10 +1274,13 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
                 const used   = parseFloat(tok.usedUsdc);
                 const pct    = limit > 0 ? (used / limit) * 100 : 0;
                 return (
-                  <div key={tok.id} className="px-6 py-3.5 grid grid-cols-12 gap-2 items-center hover:bg-gray-50 text-xs">
+                  <div key={tok.id} className={`px-6 py-3.5 grid grid-cols-12 gap-2 items-center hover:bg-gray-50 text-xs ${tok.sandbox ? "bg-purple-50/40" : ""}`}>
                     <span className="col-span-1 font-mono text-gray-500 text-[10px] truncate">{tok.id.slice(0,10)}…</span>
                     <div className="col-span-3 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{svcName(tok.serviceId)}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-gray-900 truncate">{svcName(tok.serviceId)}</p>
+                        {tok.sandbox && <span className="shrink-0 px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[9px] font-bold border border-purple-200">TEST</span>}
+                      </div>
                       <p className="text-[10px] text-gray-400 font-mono truncate">{tok.serviceId}</p>
                     </div>
                     <span className="col-span-1 font-mono text-gray-700">{parseFloat(tok.limitUsdc).toFixed(4)}</span>

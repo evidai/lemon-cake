@@ -24,6 +24,8 @@ const IssueTokenBody = z.object({
   buyerTag:   z.string().max(64).optional(),
   // 有効期限: ISO8601文字列。未指定なら30日後
   expiresAt:  z.string().datetime().optional(),
+  // サンドボックス: 実USDCを動かさずモック課金（デフォルトfalse）
+  sandbox:    z.boolean().optional().default(false),
 });
 
 const TokenResponse = z.object({
@@ -33,6 +35,7 @@ const TokenResponse = z.object({
   serviceId: z.string(),
   limitUsdc: z.string(),
   expiresAt: z.string(),
+  sandbox:   z.boolean(),
   createdAt: z.string(),
 });
 
@@ -44,6 +47,7 @@ const TokenListItem = z.object({
   buyerTag:  z.string().nullable(),
   expiresAt: z.string(),
   revoked:   z.boolean(),
+  sandbox:   z.boolean(),
   createdAt: z.string(),
 });
 
@@ -108,8 +112,9 @@ tokensRouter.openapi(issueRoute, async (c) => {
   }
 
   // ── 残高確認（上限額がバイヤー残高を超えていないか）────────
+  // サンドボックストークンは実USDCを動かさないため残高チェックをスキップ
   const limitDecimal = new Decimal(body.limitUsdc);
-  if (buyer.balanceUsdc.lessThan(limitDecimal)) {
+  if (!body.sandbox && buyer.balanceUsdc.lessThan(limitDecimal)) {
     throw new HTTPException(402, {
       message: `Insufficient balance: ${buyer.balanceUsdc.toFixed(6)} USDC available`,
     });
@@ -132,6 +137,7 @@ tokensRouter.openapi(issueRoute, async (c) => {
       limitUsdc: limitDecimal,
       buyerTag:  body.buyerTag ?? null,
       expiresAt,
+      sandbox:   body.sandbox,
     },
   });
 
@@ -153,6 +159,7 @@ tokensRouter.openapi(issueRoute, async (c) => {
       serviceId: token.serviceId,
       limitUsdc: token.limitUsdc.toFixed(6),
       expiresAt: token.expiresAt.toISOString(),
+      sandbox:   token.sandbox,
       createdAt: token.createdAt.toISOString(),
     } satisfies z.infer<typeof TokenResponse>,
     201,
@@ -257,6 +264,7 @@ tokensRouter.openapi(listRoute, async (c) => {
       buyerTag:  t.buyerTag,
       expiresAt: t.expiresAt.toISOString(),
       revoked:   t.revoked,
+      sandbox:   t.sandbox,
       createdAt: t.createdAt.toISOString(),
     })),
     total,

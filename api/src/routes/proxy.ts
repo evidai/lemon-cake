@@ -74,11 +74,11 @@ proxyRouter.all("/:serviceId/*", async (c) => {
     });
   }
 
-  // ── 6. バイヤー残高確認 ──────────────────────────────────────
+  // ── 6. バイヤー残高確認（サンドボックストークンはスキップ）───
   const buyer = await prisma.buyer.findUnique({ where: { id: buyerId } });
   if (!buyer) throw new HTTPException(401, { message: "Buyer not found" });
   if (buyer.suspended) throw new HTTPException(403, { message: "Buyer is suspended" });
-  if (buyer.balanceUsdc.lessThan(amountDecimal)) {
+  if (!token.sandbox && buyer.balanceUsdc.lessThan(amountDecimal)) {
     throw new HTTPException(402, {
       message: `Insufficient balance: ${buyer.balanceUsdc.toFixed(6)} USDC available`,
     });
@@ -95,6 +95,8 @@ proxyRouter.all("/:serviceId/*", async (c) => {
     chargeId = existingCharge.id;
   } else {
     // ── 8. トランザクション: Charge 作成 + 残高デクリメント ───
+    // sandbox トークンの場合: 残高減算をスキップ・COMPLETEDで即時確定・送金キュー投入なし
+    const isSandbox = token.sandbox;
     const charge = await prisma.$transaction(async (tx) => {
       const ch = await tx.charge.create({
         data: {
@@ -103,14 +105,17 @@ proxyRouter.all("/:serviceId/*", async (c) => {
           tokenId,
           amountUsdc:     amountDecimal,
           idempotencyKey,
-          status:         "PENDING",
+          status:         isSandbox ? "COMPLETED" : "PENDING",
           riskScore:      0,
+          sandbox:        isSandbox,
         },
       });
-      await tx.buyer.update({
-        where: { id: buyerId },
-        data:  { balanceUsdc: { decrement: amountDecimal } },
-      });
+      if (!isSandbox) {
+        await tx.buyer.update({
+          where: { id: buyerId },
+          data:  { balanceUsdc: { decrement: amountDecimal } },
+        });
+      }
       await tx.token.update({
         where: { id: tokenId },
         data:  { usedUsdc: { increment: amountDecimal } },
@@ -119,8 +124,8 @@ proxyRouter.all("/:serviceId/*", async (c) => {
     });
     chargeId = charge.id;
 
-    // BullMQ キューに投入
-    if (process.env.SKIP_WORKER !== "true") {
+    // BullMQ キューに投入（sandbox トークンは実送金を行わないのでスキップ）
+    if (!isSandbox && process.env.SKIP_WORKER !== "true") {
       try {
         const queue = getUsdcTransferQueue();
         await Promise.race([

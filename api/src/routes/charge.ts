@@ -148,19 +148,20 @@ chargeRouter.openapi(chargeRoute, async (c) => {
     });
   }
 
-  // ── バイヤー残高確認 ──────────────────────────────────────
+  // ── バイヤー残高確認（サンドボックストークンはスキップ）────
   const buyer = await prisma.buyer.findUnique({ where: { id: buyerId } });
   if (!buyer) throw new HTTPException(401, { message: "Buyer not found" });
   if (buyer.suspended) throw new HTTPException(403, { message: "Buyer is suspended" });
-  if (buyer.balanceUsdc.lessThan(amountDecimal)) {
+  if (!token.sandbox && buyer.balanceUsdc.lessThan(amountDecimal)) {
     throw new HTTPException(402, {
       message: `Insufficient balance: ${buyer.balanceUsdc.toFixed(6)} USDC available`,
     });
   }
 
   // ── トランザクション: Charge作成 + 残高デクリメント + Token使用額更新 ──
+  const isSandbox = token.sandbox;
   const charge = await prisma.$transaction(async (tx) => {
-    // Charge レコードを PENDING で作成
+    // Charge レコードを作成（sandboxなら即時COMPLETED、実金は動かさない）
     const charge = await tx.charge.create({
       data: {
         buyerId,
@@ -168,19 +169,23 @@ chargeRouter.openapi(chargeRoute, async (c) => {
         tokenId,
         amountUsdc:     amountDecimal,
         idempotencyKey,
-        status:         "PENDING",
+        status:         isSandbox ? "COMPLETED" : "PENDING",
         // TODO: リスクスコア算出ロジック (Phase 3)
         riskScore:      0,
+        sandbox:        isSandbox,
       },
     });
 
     // バイヤー残高を即時デクリメント（楽観的ロック: 同時リクエストはuniqueキーで防ぐ）
-    await tx.buyer.update({
-      where: { id: buyerId },
-      data:  { balanceUsdc: { decrement: amountDecimal } },
-    });
+    // sandbox トークンは実残高を動かさない
+    if (!isSandbox) {
+      await tx.buyer.update({
+        where: { id: buyerId },
+        data:  { balanceUsdc: { decrement: amountDecimal } },
+      });
+    }
 
-    // Token の使用済み金額を更新
+    // Token の使用済み金額を更新（sandboxでも上限管理は動く）
     await tx.token.update({
       where: { id: tokenId },
       data:  { usedUsdc: { increment: amountDecimal } },
@@ -190,8 +195,8 @@ chargeRouter.openapi(chargeRoute, async (c) => {
   });
 
   // ── Phase 2: BullMQ キューにジョブを投入（USDC非同期送金）──
-  // SKIP_WORKER=true の場合はキューをスキップ（開発・テスト時）
-  if (process.env.SKIP_WORKER !== "true") {
+  // SKIP_WORKER=true または sandbox の場合はキューをスキップ
+  if (!isSandbox && process.env.SKIP_WORKER !== "true") {
     try {
       const queue = getUsdcTransferQueue();
       await Promise.race([

@@ -159,6 +159,9 @@ model Token {
   // 無効化フラグ（revoke API で true にする）
   revoked       Boolean     @default(false)
 
+  // サンドボックスフラグ（true の場合は実USDCを動かさずモック課金のみ行う）
+  sandbox       Boolean     @default(false)
+
   charges       Charge[]
 
   createdAt     DateTime    @default(now())
@@ -201,6 +204,9 @@ model Charge {
 
   // リスクスコア (0–100)
   riskScore        Int           @default(0)
+
+  // サンドボックス（実USDC非移動のモック課金）
+  sandbox          Boolean       @default(false)
 
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
