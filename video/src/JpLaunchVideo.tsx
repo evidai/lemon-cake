@@ -1,4 +1,4 @@
-import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
+import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig, interpolate, spring, Img, staticFile } from "remotion";
 import { theme } from "./theme";
 
 // ────────────────────────────────────────────────────────────────
@@ -56,6 +56,18 @@ const Hook: React.FC<Props> = ({ vertical }) => {
         textAlign: "center",
       }}
     >
+      <Img
+        src={staticFile("logo.png")}
+        style={{
+          width: vertical ? 120 : 140,
+          height: vertical ? 120 : 140,
+          borderRadius: vertical ? 26 : 30,
+          marginBottom: vertical ? 28 : 36,
+          opacity: t1,
+          transform: `scale(${0.85 + t1 * 0.15})`,
+          boxShadow: "0 12px 40px rgba(26,15,0,0.2)",
+        }}
+      />
       <div
         style={{
           fontSize: vertical ? 60 : 96,
@@ -171,8 +183,9 @@ const Charge: React.FC<Props> = ({ vertical }) => {
           transform: `translateX(${(1 - enter) * 40}px)`,
         }}
       >
-        <div style={{ fontSize: vertical ? 22 : 28, fontWeight: 600, opacity: 0.7 }}>
-          🍋 Pay Token 残高
+        <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: vertical ? 22 : 28, fontWeight: 600, opacity: 0.85 }}>
+          <Img src={staticFile("logo.png")} style={{ width: vertical ? 36 : 44, height: vertical ? 36 : 44, borderRadius: 8 }} />
+          Pay Token 残高
         </div>
         <div
           style={{
@@ -258,21 +271,14 @@ const FreeeSync: React.FC<Props> = ({ vertical }) => {
           transform: `translateY(${(1 - enter) * -20}px)`,
         }}
       >
-        <div
+        <Img
+          src={staticFile("freee-logo.png")}
           style={{
-            width: vertical ? 56 : 72,
             height: vertical ? 56 : 72,
-            borderRadius: 14,
-            backgroundColor: "#2da44e",
-            display: "grid",
-            placeItems: "center",
-            fontSize: vertical ? 30 : 40,
-            fontWeight: 900,
-            color: theme.white,
+            width: "auto",
+            objectFit: "contain",
           }}
-        >
-          f
-        </div>
+        />
         <div>
           <div style={{ fontSize: vertical ? 28 : 36, fontWeight: 800 }}>
             会計freee · 自動仕訳
@@ -493,14 +499,16 @@ const Outro: React.FC<Props> = ({ vertical }) => {
         textAlign: "center",
       }}
     >
-      <div
+      <Img
+        src={staticFile("logo.png")}
         style={{
-          fontSize: vertical ? 160 : 220,
+          width: vertical ? 200 : 260,
+          height: vertical ? 200 : 260,
+          borderRadius: vertical ? 40 : 52,
           transform: `scale(${logoP})`,
+          boxShadow: "0 20px 60px rgba(26,15,0,0.25)",
         }}
-      >
-        🍋
-      </div>
+      />
       <div
         style={{
           fontSize: vertical ? 72 : 120,
