@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "LemonCake",
   description: "AI Agent M2M Payment Infrastructure Dashboard",
   icons: {
-    icon: "/icon-192.png",
+    icon: "/logo.png",
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",

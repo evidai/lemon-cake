@@ -27,6 +27,8 @@ export default function LoginPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "ログインに失敗しました");
       localStorage.setItem("buyer_token", data.token);
+      // middleware が / → /about にリダイレクトしないよう auth cookie を付与
+      document.cookie = `lc_auth=1; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
       window.location.href = "/";
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "ログインに失敗しました");

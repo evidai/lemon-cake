@@ -4035,12 +4035,18 @@ export default function Dashboard() {
       window.location.href = "/login";
       return;
     }
+    // 既存ログインユーザーの cookie が無い場合にここで補填（middleware 用）
+    if (!document.cookie.split("; ").some(c => c.startsWith("lc_auth="))) {
+      document.cookie = `lc_auth=1; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+    }
     setBuyerToken(token);
     setAuthReady(true);
   }, []);
 
   function handleLogout() {
     localStorage.removeItem("buyer_token");
+    // middleware の / → /about リダイレクトを再開させるため cookie を削除
+    document.cookie = "lc_auth=; path=/; max-age=0; SameSite=Lax";
     window.location.href = "/login";
   }
 

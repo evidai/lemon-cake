@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ContactButton from "./ContactButton";
+import AuthedRedirect from "./AuthedRedirect";
 
 export const metadata = {
   title: "LemonCake — M2M Payment Infrastructure for AI Agents",
@@ -134,6 +135,7 @@ const integrations = [
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-[#06060a] text-white font-sans antialiased">
+      <AuthedRedirect />
 
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-20 bg-[#06060a]/90 backdrop-blur-md border-b border-white/8">
