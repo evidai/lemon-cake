@@ -301,53 +301,90 @@ buyersRouter.openapi(
 // ─── POST /api/buyers/kya ─────────────────────────────────────
 // バイヤー自身がエージェント情報を登録し、KYAティアに昇格する（即時承認）
 
-const KyaBody = z.object({
-  agentName:        z.string().min(1).max(100),
-  agentDescription: z.string().min(1).max(500),
-});
+const KyaBody = z
+  .object({
+    agentName:        z.string().min(1).max(100).openapi({ example: "My Trading Agent" }),
+    agentDescription: z.string().min(1).max(500).openapi({ example: "自社向け為替分析エージェント" }),
+  })
+  .openapi("KyaBody");
 
-buyersRouter.post("/kya", async (c) => {
-  // ── Buyer JWT 認証 ─────────────────────────────────────────
-  const auth = c.req.header("Authorization");
-  if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401);
-  let buyerPayload: Awaited<ReturnType<typeof verifyBuyerToken>>;
-  try {
-    buyerPayload = await verifyBuyerToken(auth.slice(7));
-  } catch {
-    return c.json({ error: "Invalid token" }, 401);
-  }
-
-  // ── リクエストボディの安全なパース（空/不正JSON耐性）──────
-  const raw = await c.req.json().catch(() => null);
-  if (!raw) return c.json({ error: "Invalid JSON body" }, 400);
-  const result = KyaBody.safeParse(raw);
-  if (!result.success) {
-    return c.json({ error: result.error.issues[0]?.message ?? "Invalid input" }, 400);
-  }
-  const { agentName, agentDescription } = result.data;
-  const buyerId = buyerPayload.buyerId;
-
-  // ── アトミックな昇格: WHERE kycTier='NONE' を条件にすることで
-  // 同時リクエストのレース条件（二重昇格）を防ぐ ───────────
-  try {
-    const updated = await prisma.buyer.update({
-      where: { id: buyerId, kycTier: "NONE" },
-      data: {
-        kycTier:         "KYA",
-        dailyLimitUsdc:  1000,
-        agentName,
-        agentDescription,
-        kyaAppliedAt:    new Date(),
+buyersRouter.openapi(
+  createRoute({
+    method:  "post",
+    path:    "/kya",
+    tags:    ["Buyers"],
+    summary: "KYA 自己申請（エージェント情報登録）",
+    description:
+      "バイヤー自身が JWT 認証のうえ、エージェント名と用途を申告します。" +
+      "成功すると kycTier が NONE → KYA に昇格し、1 日あたりの上限が 10 → 1,000 USDC に引き上げられます。" +
+      "二重昇格はアトミックに防がれ、既に KYA/KYC の場合は 409 を返します。",
+    request: {
+      body: {
+        content: { "application/json": { schema: KyaBody } },
+        required: true,
       },
-    });
-    return c.json(serializeBuyer(updated), 200);
-  } catch (e: unknown) {
-    // P2025: Record not found — 既に NONE 以外のティアにいる or Buyer が存在しない
-    if (typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "P2025") {
-      const buyer = await prisma.buyer.findUnique({ where: { id: buyerId } });
-      if (!buyer) return c.json({ error: "Buyer not found" }, 404);
-      return c.json({ error: `Already at tier: ${buyer.kycTier}` }, 409);
+    },
+    responses: {
+      200: {
+        content: { "application/json": { schema: BuyerSchema } },
+        description: "KYA 昇格成功",
+      },
+      400: {
+        content: { "application/json": { schema: ErrorSchema } },
+        description: "バリデーションエラー",
+      },
+      401: {
+        content: { "application/json": { schema: ErrorSchema } },
+        description: "認証エラー",
+      },
+      404: {
+        content: { "application/json": { schema: ErrorSchema } },
+        description: "Buyer 存在せず",
+      },
+      409: {
+        content: { "application/json": { schema: ErrorSchema } },
+        description: "既に KYA/KYC ティア",
+      },
+    },
+  }),
+  async (c) => {
+    // ── Buyer JWT 認証 ─────────────────────────────────────────
+    const auth = c.req.header("Authorization");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401) as any;
+    let buyerPayload: Awaited<ReturnType<typeof verifyBuyerToken>>;
+    try {
+      buyerPayload = await verifyBuyerToken(auth.slice(7));
+    } catch {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return c.json({ error: "Invalid token" }, 401) as any;
     }
-    throw e;
-  }
-});
+
+    const { agentName, agentDescription } = c.req.valid("json");
+    const buyerId = buyerPayload.buyerId;
+
+    // ── アトミックな昇格: WHERE kycTier='NONE' を条件にすることで
+    // 同時リクエストのレース条件（二重昇格）を防ぐ ───────────
+    try {
+      const updated = await prisma.buyer.update({
+        where: { id: buyerId, kycTier: "NONE" },
+        data: {
+          kycTier:         "KYA",
+          dailyLimitUsdc:  1000,
+          agentName,
+          agentDescription,
+          kyaAppliedAt:    new Date(),
+        },
+      });
+      return c.json(serializeBuyer(updated), 200);
+    } catch (e: unknown) {
+      // P2025: Record not found — 既に NONE 以外のティアにいる or Buyer が存在しない
+      if (typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "P2025") {
+        const buyer = await prisma.buyer.findUnique({ where: { id: buyerId } });
+        if (!buyer) return c.json({ error: "Buyer not found" }, 404);
+        return c.json({ error: `Already at tier: ${buyer.kycTier}` }, 409);
+      }
+      throw e;
+    }
+  },
+);

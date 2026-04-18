@@ -43,6 +43,21 @@ const IconPackage = () => (
     <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
   </svg>
 );
+const IconPower = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>
+  </svg>
+);
+const IconBadge = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+    <circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+  </svg>
+);
+const IconBeaker = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+    <path d="M4.5 3h15"/><path d="M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3"/><path d="M6 14h12"/>
+  </svg>
+);
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const whyItems = [
@@ -148,6 +163,7 @@ export default function AboutPage() {
             <div className="hidden md:flex items-center gap-6">
               {[
                 { label: "インテグレーション", href: "#integrations" },
+                { label: "機能",             href: "#features" },
                 { label: "仕組み",           href: "#infrastructure" },
                 { label: "ユースケース",     href: "#use-cases" },
               ].map(({ label, href }) => (
@@ -235,6 +251,76 @@ export default function AboutPage() {
               </a>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── Features ── */}
+      <section id="features" className="max-w-6xl mx-auto px-6 py-28">
+        <p className="text-center text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-4">Features</p>
+        <h2 className="text-center text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
+          エージェントに渡す<br />&quot;3 つの安全装置&quot;
+        </h2>
+        <p className="text-center text-[14px] text-white/40 mb-16 max-w-xl mx-auto">
+          暴走を防ぐ緊急停止、身元証明で限度額解放、本番前にノーリスクで動作確認。<br />
+          すべてダッシュボード 1 画面から。
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Kill Switch */}
+          <div className="rounded-3xl bg-gradient-to-br from-red-500/10 to-red-500/[0.02] border border-red-500/20 p-8 flex flex-col">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400">
+                <IconPower />
+              </div>
+              <span className="text-[10px] font-semibold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">Kill Switch</span>
+            </div>
+            <h3 className="text-xl font-black text-white mb-2">緊急停止ボタン</h3>
+            <p className="text-[13px] text-white/45 leading-relaxed mb-5">
+              発行済みの Pay Token を 1 クリックで即座に無効化。エージェントが想定外の挙動を始めた瞬間、すべての支払いが止まります。revoke 後の課金リクエストは 422 で拒否されます。
+            </p>
+            <div className="mt-auto flex flex-col gap-2 text-[12px] text-white/50">
+              <div className="flex items-center gap-2"><span className="text-red-400"><IconCheck /></span>アトミック revoke（レース条件なし）</div>
+              <div className="flex items-center gap-2"><span className="text-red-400"><IconCheck /></span>所有者のみ操作可能</div>
+              <div className="flex items-center gap-2"><span className="text-red-400"><IconCheck /></span>ダッシュボード → Pay Tokens タブ</div>
+            </div>
+          </div>
+
+          {/* KYA */}
+          <div className="rounded-3xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/[0.02] border border-emerald-500/20 p-8 flex flex-col">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <IconBadge />
+              </div>
+              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">Know Your Agent</span>
+            </div>
+            <h3 className="text-xl font-black text-white mb-2">KYA 認証で上限解放</h3>
+            <p className="text-[13px] text-white/45 leading-relaxed mb-5">
+              エージェント名と用途を申告するだけで即日 KYA 認証。1 日あたりの限度額が 10 → 1,000 USDC に引き上げられます。KYC 認証まで進めば 50,000 USDC まで拡張可能。
+            </p>
+            <div className="mt-auto flex flex-col gap-2 text-[12px] text-white/50">
+              <div className="flex items-center gap-2"><span className="text-emerald-400"><IconCheck /></span>NONE: 10 USDC/日</div>
+              <div className="flex items-center gap-2"><span className="text-emerald-400"><IconCheck /></span>KYA: 1,000 USDC/日（即時）</div>
+              <div className="flex items-center gap-2"><span className="text-emerald-400"><IconCheck /></span>KYC: 50,000 USDC/日</div>
+            </div>
+          </div>
+
+          {/* Sandbox */}
+          <div className="rounded-3xl bg-gradient-to-br from-purple-500/10 to-purple-500/[0.02] border border-purple-500/20 p-8 flex flex-col">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                <IconBeaker />
+              </div>
+              <span className="text-[10px] font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">Sandbox</span>
+            </div>
+            <h3 className="text-xl font-black text-white mb-2">本番前の安全テスト</h3>
+            <p className="text-[13px] text-white/45 leading-relaxed mb-5">
+              Sandbox フラグ ON で発行したトークンは、実 USDC を 1 ドルも動かしません。上限管理・課金記録・プロキシ転送は本番と完全同一で動作するので、安心してエージェントの挙動検証ができます。
+            </p>
+            <div className="mt-auto flex flex-col gap-2 text-[12px] text-white/50">
+              <div className="flex items-center gap-2"><span className="text-purple-400"><IconCheck /></span>実残高は減算されない</div>
+              <div className="flex items-center gap-2"><span className="text-purple-400"><IconCheck /></span>上限・冪等性は本番と同挙動</div>
+              <div className="flex items-center gap-2"><span className="text-purple-400"><IconCheck /></span>行に TEST バッジ表示</div>
+            </div>
+          </div>
         </div>
       </section>
 

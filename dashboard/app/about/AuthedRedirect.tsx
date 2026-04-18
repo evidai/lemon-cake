@@ -12,7 +12,7 @@ export default function AuthedRedirect() {
     if (!token) return;
     const hasCookie = document.cookie.split("; ").some(c => c.startsWith("lc_auth="));
     if (!hasCookie) {
-      document.cookie = `lc_auth=1; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+      document.cookie = `lc_auth=1; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Strict`;
       window.location.href = "/";
     }
   }, []);

@@ -3852,12 +3852,17 @@ function AccountSettingsPage({ token, onLogout, onProfileUpdated }: { token: str
       </div>
 
       {/* 残高カード */}
-      {profile?.buyer && (
+      {profile?.buyer && (() => {
+        const b = profile.buyer;
+        const balNum = Number.parseFloat(b.balanceUsdc ?? "0");
+        const bal    = Number.isFinite(balNum) ? balNum.toFixed(4) : "0.0000";
+        const idShort = b.id ? (b.id.length > 12 ? b.id.slice(0, 12) + "…" : b.id) : "—";
+        return (
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: t("USDC 残高","USDC Balance"),  value: parseFloat(profile.buyer.balanceUsdc).toFixed(4), unit: "USDC" },
-            { label: t("KYC ティア","KYC Tier"),     value: profile.buyer.kycTier, unit: "" },
-            { label: "Buyer ID",                     value: profile.buyer.id.slice(0,12) + "…", unit: "" },
+            { label: t("USDC 残高","USDC Balance"),  value: bal,                 unit: "USDC" },
+            { label: t("KYC ティア","KYC Tier"),     value: b.kycTier ?? "NONE", unit: "" },
+            { label: "Buyer ID",                     value: idShort,             unit: "" },
           ].map(c => (
             <div key={c.label} className="bg-white border border-gray-200 rounded-2xl p-4">
               <p className="text-xs text-gray-400 mb-1">{c.label}</p>
@@ -3866,12 +3871,16 @@ function AccountSettingsPage({ token, onLogout, onProfileUpdated }: { token: str
             </div>
           ))}
         </div>
-      )}
+        );
+      })()}
 
       {/* ── KYA ステータス ─────────────────────────────────── */}
       {profile?.buyer && (() => {
-        const tier = profile.buyer!.kycTier;
-        const limit = parseFloat(profile.buyer!.dailyLimitUsdc ?? "10");
+        // profile.buyer がこのブロック内で undefined にならないことをローカルに確約
+        const buyer = profile.buyer;
+        const tier = buyer.kycTier ?? "NONE";
+        const parsedLimit = Number.parseFloat(buyer.dailyLimitUsdc ?? "10");
+        const limit = Number.isFinite(parsedLimit) ? parsedLimit : 10;
         const tierCfg: Record<string, { label: string; labelEn: string; cls: string; dot: string }> = {
           NONE: { label: "未認証",      labelEn: "Unverified", cls: "bg-gray-100 text-gray-500 border-gray-200",   dot: "bg-gray-400" },
           KYA:  { label: "KYA 認証済み", labelEn: "KYA Verified", cls: "bg-green-50 text-green-700 border-green-200", dot: "bg-green-500" },
@@ -3940,24 +3949,28 @@ function AccountSettingsPage({ token, onLogout, onProfileUpdated }: { token: str
 
             {tier !== "NONE" && (
               <div className="mt-2 flex flex-col gap-1.5">
-                {profile.buyer!.agentName && (
+                {buyer.agentName && (
                   <div className="flex items-start gap-2 text-xs text-gray-600">
                     <span className="text-gray-400 shrink-0">{t("エージェント名","Agent")}</span>
-                    <span className="font-mono font-medium">{profile.buyer!.agentName}</span>
+                    <span className="font-mono font-medium">{buyer.agentName}</span>
                   </div>
                 )}
-                {profile.buyer!.agentDescription && (
+                {buyer.agentDescription && (
                   <div className="flex items-start gap-2 text-xs text-gray-500">
                     <span className="text-gray-400 shrink-0">{t("用途","Use case")}</span>
-                    <span>{profile.buyer!.agentDescription}</span>
+                    <span>{buyer.agentDescription}</span>
                   </div>
                 )}
-                {profile.buyer!.kyaAppliedAt && (
-                  <div className="flex items-start gap-2 text-xs text-gray-400">
-                    <span className="shrink-0">{t("認証日","Verified")}</span>
-                    <span className="font-mono">{new Date(profile.buyer!.kyaAppliedAt).toLocaleDateString("ja-JP")}</span>
-                  </div>
-                )}
+                {buyer.kyaAppliedAt && (() => {
+                  const d = new Date(buyer.kyaAppliedAt);
+                  const display = Number.isNaN(d.getTime()) ? buyer.kyaAppliedAt : d.toLocaleDateString("ja-JP");
+                  return (
+                    <div className="flex items-start gap-2 text-xs text-gray-400">
+                      <span className="shrink-0">{t("認証日","Verified")}</span>
+                      <span className="font-mono">{display}</span>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -4049,7 +4062,7 @@ export default function Dashboard() {
     }
     // 既存ログインユーザーの cookie が無い場合にここで補填（middleware 用）
     if (!document.cookie.split("; ").some(c => c.startsWith("lc_auth="))) {
-      document.cookie = `lc_auth=1; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+      document.cookie = `lc_auth=1; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Strict`;
     }
     setBuyerToken(token);
     setAuthReady(true);
@@ -4058,7 +4071,7 @@ export default function Dashboard() {
   function handleLogout() {
     localStorage.removeItem("buyer_token");
     // middleware の / → /about リダイレクトを再開させるため cookie を削除
-    document.cookie = "lc_auth=; path=/; max-age=0; SameSite=Lax";
+    document.cookie = "lc_auth=; path=/; max-age=0; SameSite=Strict";
     window.location.href = "/login";
   }
 

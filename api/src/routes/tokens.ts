@@ -195,7 +195,34 @@ const listRoute = createRoute({
 
 // ─── PATCH /api/tokens/:id/revoke ──────────────────────────
 
-tokensRouter.patch("/:id/revoke", async (c) => {
+const revokeRoute = createRoute({
+  method:  "patch",
+  path:    "/{id}/revoke",
+  tags:    ["Tokens"],
+  summary: "Pay Token を無効化する（Kill Switch）",
+  description:
+    "指定した Pay Token を即座に revoke します。バイヤー自身の未失効トークンのみが対象で、" +
+    "以降の課金／プロキシ呼び出しは 422 で拒否されます。冪等: 二度目は 409。",
+  request: {
+    params: z.object({ id: z.string() }),
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: z.object({ id: z.string(), revoked: z.literal(true) }),
+        },
+      },
+      description: "無効化成功",
+    },
+    401: { description: "認証エラー" },
+    403: { description: "他人のトークン / 停止中のバイヤー" },
+    404: { description: "トークンが存在しない" },
+    409: { description: "既に無効化済み" },
+  },
+});
+
+tokensRouter.openapi(revokeRoute, async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth?.startsWith("Bearer ")) {
     throw new HTTPException(401, { message: "Unauthorized" });
@@ -207,7 +234,16 @@ tokensRouter.patch("/:id/revoke", async (c) => {
     throw new HTTPException(401, { message: "Invalid token" });
   }
 
-  const { id } = c.req.param();
+  // 停止中のバイヤーは revoke を含む全ての書き込み操作を禁止
+  // （読み出しだけは許容しているので整合性を揃える）
+  const buyer = await prisma.buyer.findUnique({
+    where:  { id: buyerPayload.buyerId },
+    select: { suspended: true },
+  });
+  if (!buyer) throw new HTTPException(401, { message: "Buyer not found" });
+  if (buyer.suspended) throw new HTTPException(403, { message: "Buyer is suspended" });
+
+  const { id } = c.req.valid("param");
 
   // アトミックに revoke: 所有者一致 & 未失効の時だけ更新
   // → 同時リクエスト時の二重実行・第三者による他人のトークン停止を一発で防ぐ
@@ -216,7 +252,7 @@ tokensRouter.patch("/:id/revoke", async (c) => {
       where: { id, buyerId: buyerPayload.buyerId, revoked: false },
       data:  { revoked: true },
     });
-    return c.json({ id: updated.id, revoked: true });
+    return c.json({ id: updated.id, revoked: true as const }, 200);
   } catch (e: unknown) {
     if (typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "P2025") {
       // 404/403/409 の区別のため個別に調べる
