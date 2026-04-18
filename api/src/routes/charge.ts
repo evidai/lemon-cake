@@ -161,6 +161,18 @@ chargeRouter.openapi(chargeRoute, async (c) => {
   // ── トランザクション: Charge作成 + 残高デクリメント + Token使用額更新 ──
   const isSandbox = token.sandbox;
   const charge = await prisma.$transaction(async (tx) => {
+    // トランザクション内で最新のトークン状態を再確認（revoke レース対策）
+    const fresh = await tx.token.findUnique({
+      where: { id: tokenId },
+      select: { revoked: true, expiresAt: true },
+    });
+    if (!fresh || fresh.revoked) {
+      throw new HTTPException(422, { message: "Token has been revoked" });
+    }
+    if (fresh.expiresAt < new Date()) {
+      throw new HTTPException(422, { message: "Token has expired" });
+    }
+
     // Charge レコードを作成（sandboxなら即時COMPLETED、実金は動かさない）
     const charge = await tx.charge.create({
       data: {

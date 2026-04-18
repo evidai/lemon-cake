@@ -98,6 +98,19 @@ proxyRouter.all("/:serviceId/*", async (c) => {
     // sandbox トークンの場合: 残高減算をスキップ・COMPLETEDで即時確定・送金キュー投入なし
     const isSandbox = token.sandbox;
     const charge = await prisma.$transaction(async (tx) => {
+      // トランザクション内で最新のトークン状態を再確認
+      // (最初の check → ここの間に revoke された場合の二重課金防止)
+      const fresh = await tx.token.findUnique({
+        where: { id: tokenId },
+        select: { revoked: true, expiresAt: true },
+      });
+      if (!fresh || fresh.revoked) {
+        throw new HTTPException(422, { message: "Token has been revoked" });
+      }
+      if (fresh.expiresAt < new Date()) {
+        throw new HTTPException(422, { message: "Token has expired" });
+      }
+
       const ch = await tx.charge.create({
         data: {
           buyerId,

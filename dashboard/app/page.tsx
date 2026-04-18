@@ -3759,7 +3759,7 @@ interface UserProfile {
   } | null;
 }
 
-function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () => void }) {
+function AccountSettingsPage({ token, onLogout, onProfileUpdated }: { token: string; onLogout: () => void; onProfileUpdated?: () => void }) {
   const t = useT();
   const [profile,      setProfile]      = useState<UserProfile | null>(null);
   const [loading,      setLoading]      = useState(true);
@@ -3809,6 +3809,8 @@ function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () 
         } : null,
       } : null);
       setKyaOpen(false);
+      // ホーム画面の BuyerOverviewCard を再取得させる
+      onProfileUpdated?.();
     } catch (e: unknown) {
       setKyaError(e instanceof Error ? e.message : t("申請に失敗しました","Failed to apply"));
     } finally {
@@ -3912,15 +3914,15 @@ function AccountSettingsPage({ token, onLogout }: { token: string; onLogout: () 
                 </p>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("エージェント名","Agent Name")} <span className="text-red-400">*</span></label>
-                  <input type="text" value={kyaName} onChange={e => setKyaName(e.target.value)} required maxLength={100}
+                  <input type="text" value={kyaName} onChange={e => setKyaName(e.target.value)} required maxLength={100} disabled={kyaSubmitting}
                     placeholder={t("例: my-procurement-agent","e.g. my-procurement-agent")}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:border-gray-400 bg-white transition-all" />
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:border-gray-400 bg-white transition-all disabled:opacity-50" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("エージェントの用途","Agent Description")} <span className="text-red-400">*</span></label>
-                  <textarea value={kyaDesc} onChange={e => setKyaDesc(e.target.value)} required maxLength={500} rows={3}
+                  <textarea value={kyaDesc} onChange={e => setKyaDesc(e.target.value)} required maxLength={500} rows={3} disabled={kyaSubmitting}
                     placeholder={t("例: 仕入れ先の検索・発注・請求書処理を自動化するエージェントです。","e.g. An agent that automates supplier search, ordering, and invoice processing.")}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:border-gray-400 bg-white transition-all resize-none" />
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:border-gray-400 bg-white transition-all resize-none disabled:opacity-50" />
                 </div>
                 {kyaError && <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{kyaError}</div>}
                 <div className="flex gap-3 justify-end">
@@ -4222,7 +4224,7 @@ export default function Dashboard() {
           {page === "jpyc"         && <JPYCDepositPage buyerToken={buyerToken} />}
           {page === "accounting"   && <AccountingPage buyerToken={buyerToken} />}
           {page === "directory"    && <DirectoryPage />}
-          {page === "account"      && <AccountSettingsPage token={buyerToken} onLogout={handleLogout} />}
+          {page === "account"      && <AccountSettingsPage token={buyerToken} onLogout={handleLogout} onProfileUpdated={() => setHomeRefreshKey(k => k + 1)} />}
           {/* ── セラーページ ── */}
           {page === "seller-services"  && (
             sellerProfile
@@ -4231,7 +4233,7 @@ export default function Dashboard() {
           )}
           {page === "seller-stats"     && <SellerStatsPage services={myServices} />}
           {page === "seller-directory" && <DirectoryPage />}
-          {page === "seller-account"   && <AccountSettingsPage token={buyerToken} onLogout={handleLogout} />}
+          {page === "seller-account"   && <AccountSettingsPage token={buyerToken} onLogout={handleLogout} onProfileUpdated={() => setHomeRefreshKey(k => k + 1)} />}
         </div>
       </main>
 

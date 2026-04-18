@@ -95,17 +95,14 @@ tokensRouter.openapi(issueRoute, async (c) => {
 
   const body = c.req.valid("json");
   const buyerId = buyerPayload.buyerId; // JWTから取得（bodyのbuyerIdは無視）
-  console.log("[POST /api/tokens] buyerId from JWT:", buyerId, "body:", JSON.stringify(body));
 
   // ── バイヤーの存在・停止確認 ──────────────────────────────
   const buyer = await prisma.buyer.findUnique({ where: { id: buyerId } });
-  console.log("[POST /api/tokens] buyer:", buyer ? `found (suspended=${buyer.suspended}, balance=${buyer.balanceUsdc})` : "NOT FOUND");
   if (!buyer) throw new HTTPException(404, { message: "Buyer not found" });
   if (buyer.suspended) throw new HTTPException(403, { message: "Buyer is suspended" });
 
   // ── サービスの存在・承認確認 ──────────────────────────────
   const service = await prisma.service.findUnique({ where: { id: body.serviceId } });
-  console.log("[POST /api/tokens] service:", service ? `found (reviewStatus=${service.reviewStatus})` : "NOT FOUND");
   if (!service) throw new HTTPException(404, { message: "Service not found" });
   if (service.reviewStatus !== "APPROVED") {
     throw new HTTPException(403, { message: `Service is not approved (status: ${service.reviewStatus})` });
@@ -200,26 +197,36 @@ const listRoute = createRoute({
 
 tokensRouter.patch("/:id/revoke", async (c) => {
   const auth = c.req.header("Authorization");
-  if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401);
+  if (!auth?.startsWith("Bearer ")) {
+    throw new HTTPException(401, { message: "Unauthorized" });
+  }
   let buyerPayload: Awaited<ReturnType<typeof verifyBuyerToken>>;
   try {
     buyerPayload = await verifyBuyerToken(auth.slice(7));
   } catch {
-    return c.json({ error: "Invalid token" }, 401);
+    throw new HTTPException(401, { message: "Invalid token" });
   }
 
   const { id } = c.req.param();
-  const token = await prisma.token.findUnique({ where: { id } });
-  if (!token) return c.json({ error: "Token not found" }, 404);
-  if (token.buyerId !== buyerPayload.buyerId) return c.json({ error: "Forbidden" }, 403);
-  if (token.revoked) return c.json({ error: "Already revoked" }, 409);
 
-  const updated = await prisma.token.update({
-    where: { id },
-    data:  { revoked: true },
-  });
-
-  return c.json({ id: updated.id, revoked: true });
+  // アトミックに revoke: 所有者一致 & 未失効の時だけ更新
+  // → 同時リクエスト時の二重実行・第三者による他人のトークン停止を一発で防ぐ
+  try {
+    const updated = await prisma.token.update({
+      where: { id, buyerId: buyerPayload.buyerId, revoked: false },
+      data:  { revoked: true },
+    });
+    return c.json({ id: updated.id, revoked: true });
+  } catch (e: unknown) {
+    if (typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "P2025") {
+      // 404/403/409 の区別のため個別に調べる
+      const token = await prisma.token.findUnique({ where: { id } });
+      if (!token) throw new HTTPException(404, { message: "Token not found" });
+      if (token.buyerId !== buyerPayload.buyerId) throw new HTTPException(403, { message: "Forbidden" });
+      if (token.revoked) throw new HTTPException(409, { message: "Already revoked" });
+    }
+    throw e;
+  }
 });
 
 // ─── GET /api/tokens ────────────────────────────────────────
