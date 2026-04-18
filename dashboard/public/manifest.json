@@ -2,7 +2,7 @@
   "name": "LemonCake",
   "short_name": "LemonCake",
   "description": "M2M Payment Infrastructure for AI Agents",
-  "start_url": "/",
+  "start_url": "/about",
   "display": "standalone",
   "background_color": "#06060a",
   "theme_color": "#fffd43",
