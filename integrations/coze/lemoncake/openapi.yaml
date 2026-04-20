@@ -1,0 +1,156 @@
+openapi: 3.1.0
+info:
+  title: LemonCake Buyer API
+  description: |
+    Machine-to-machine payments for AI agents. Mint spend-capped Pay Tokens,
+    check buyer balance, revoke tokens (kill switch), and list charges for
+    reconciliation / accounting sync.
+  version: 0.0.1
+  contact:
+    name: LemonCake
+    email: contact@aievid.com
+    url: https://lemoncake.xyz
+
+servers:
+  - url: https://api.lemoncake.xyz
+    description: Production
+
+security:
+  - buyerJwt: []
+
+paths:
+  /api/tokens:
+    post:
+      operationId: issue_pay_token
+      summary: Issue a spend-capped Pay Token
+      description: |
+        Mints a signed, time-boxed JWT the agent uses as a Bearer token to pay
+        for upstream APIs. Scope is limited to one serviceId and a USDC cap.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [serviceId, limitUsdc]
+              properties:
+                serviceId:
+                  type: string
+                  description: Upstream service identifier (e.g. "openai-gpt4o")
+                  example: "openai-gpt4o"
+                limitUsdc:
+                  type: string
+                  description: Maximum spend in USDC (decimal string)
+                  example: "10.00"
+                expiresInSeconds:
+                  type: integer
+                  description: Token lifetime in seconds (default 86400)
+                  default: 86400
+                  minimum: 60
+                  maximum: 2592000
+                sandbox:
+                  type: boolean
+                  description: If true, mint a sandbox token that does not charge
+                  default: false
+      responses:
+        "200":
+          description: Pay Token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokenId: { type: string }
+                  token: { type: string, description: "JWT for Bearer header" }
+                  serviceId: { type: string }
+                  limitUsdc: { type: string }
+                  expiresAt: { type: string, format: date-time }
+                  sandbox: { type: boolean }
+        "401": { description: Invalid Buyer JWT }
+        "402": { description: Insufficient balance }
+        "422": { description: Validation error }
+
+  /api/buyers:
+    get:
+      operationId: check_balance
+      summary: Get current buyer balance and KYA tier
+      responses:
+        "200":
+          description: Buyer profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  balanceUsdc: { type: string }
+                  kyaTier: { type: string, enum: [none, basic, verified] }
+                  dailyLimitUsdc: { type: string }
+        "401": { description: Invalid Buyer JWT }
+
+  /api/tokens/{tokenId}/revoke:
+    patch:
+      operationId: revoke_token
+      summary: Atomically revoke a Pay Token (kill switch)
+      description: |
+        Atomic revoke — any in-flight charge using the token is rejected with
+        HTTP 422. Idempotent: revoking an already-revoked token returns 200.
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Token revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokenId: { type: string }
+                  revokedAt: { type: string, format: date-time }
+        "404": { description: Token not found or not owned by this buyer }
+
+  /api/charges:
+    get:
+      operationId: list_charges
+      summary: List recent charges for reconciliation
+      parameters:
+        - name: limit
+          in: query
+          description: Number of charges to return (default 20, max 200)
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: Charge list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  charges:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        serviceId: { type: string }
+                        amountUsdc: { type: string }
+                        tokenId: { type: string }
+                        sandbox: { type: boolean }
+                        createdAt: { type: string, format: date-time }
+
+components:
+  securitySchemes:
+    buyerJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Buyer JWT (Ed25519-signed) obtained from
+        https://lemoncake.xyz → Dashboard → Settings → API.

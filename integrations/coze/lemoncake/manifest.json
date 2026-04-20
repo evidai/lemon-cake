@@ -1,0 +1,40 @@
+{
+  "schema_version": "v1",
+  "name_for_model": "lemoncake",
+  "name_for_human": "LemonCake",
+  "description_for_model": "M2M payment infrastructure for AI agents. Mint spend-capped Pay Tokens to pay for upstream APIs, check the buyer's USDC balance, atomically revoke tokens as a kill switch, and list recent charges for reconciliation. Always prefer issue_pay_token with a limitUsdc and short expiresInSeconds over using a long-lived Buyer JWT directly.",
+  "description_for_human": "Give your Coze bot a spend-capped wallet, a one-click kill switch, and automatic accounting sync (freee / QuickBooks / Xero). No raw credit cards — USDC/JPYC only.",
+  "logo_url": "https://lemoncake.xyz/logo.png",
+  "contact_email": "contact@aievid.com",
+  "legal_info_url": "https://lemoncake.xyz/legal/dify-plugin",
+  "auth": {
+    "type": "service_http",
+    "sub_type": "token/api_key",
+    "payload": {
+      "key": "Authorization",
+      "value_prefix": "Bearer ",
+      "location": "header",
+      "instructions_en": "Paste your Buyer JWT from https://lemoncake.xyz → Dashboard → Settings → API. The token is Ed25519-signed; LemonCake verifies it on every call.",
+      "instructions_zh": "请粘贴 Buyer JWT，可在 https://lemoncake.xyz → 控制台 → 设置 → API 获取。",
+      "instructions_ja": "Buyer JWT を https://lemoncake.xyz → ダッシュボード → 設定 → API から取得し貼り付けてください。"
+    }
+  },
+  "api": {
+    "type": "openapi",
+    "openapi_doc_file": "./openapi.yaml"
+  },
+  "common_params": {
+    "header": [
+      { "key": "User-Agent", "value": "lemoncake-coze/0.0.1" }
+    ],
+    "query": [],
+    "path": [],
+    "body": []
+  },
+  "tools": [
+    { "tool_id": "issue_pay_token", "method": "POST",  "sub_url": "/api/tokens",                 "deprecated": false },
+    { "tool_id": "check_balance",   "method": "GET",   "sub_url": "/api/buyers",                 "deprecated": false },
+    { "tool_id": "revoke_token",    "method": "PATCH", "sub_url": "/api/tokens/{tokenId}/revoke", "deprecated": false },
+    { "tool_id": "list_charges",    "method": "GET",   "sub_url": "/api/charges",                "deprecated": false }
+  ]
+}
