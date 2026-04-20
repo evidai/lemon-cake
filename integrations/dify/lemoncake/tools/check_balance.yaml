@@ -1,0 +1,21 @@
+identity:
+  author: lemoncake
+  name: check_balance
+  label:
+    en_US: Check Balance
+    ja_JP: 残高を確認
+    zh_Hans: 查询余额
+description:
+  human:
+    en_US: Return the authenticated buyer's current USDC balance and KYA daily limit.
+    ja_JP: ログイン中の購入者の USDC 残高と KYA 日次上限を返します。
+    zh_Hans: 查询当前购买者的 USDC 余额与 KYA 日限额。
+  llm: |
+    Query the LemonCake API for the current buyer's USDC balance, daily
+    KYA spend limit, and how much of it has already been used today.
+    Use this before issuing a large Pay Token or when deciding whether
+    to continue a spending loop.
+parameters: []
+extra:
+  python:
+    source: tools/check_balance.py

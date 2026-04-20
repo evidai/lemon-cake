@@ -1,0 +1,53 @@
+identity:
+  author: lemoncake
+  name: lemoncake
+  label:
+    en_US: LemonCake
+    ja_JP: LemonCake
+    zh_Hans: LemonCake
+  description:
+    en_US: AI agent wallet infrastructure. Mint spend-capped Pay Tokens, inspect balances, revoke a running agent, and list charges — all from inside your Dify workflow.
+    ja_JP: AIエージェント専用の決済インフラ。Pay Token 発行・残高確認・即時 Kill Switch・課金履歴の参照を Dify ワークフローから直接呼び出せます。
+    zh_Hans: 面向 AI Agent 的支付基础设施。在 Dify 工作流中直接发行 Pay Token、查询余额、紧急停止、查看扣款历史。
+  icon: icon.svg
+  tags:
+    - agent
+    - finance
+    - productivity
+credentials_for_provider:
+  api_base_url:
+    type: text-input
+    required: true
+    default: https://api.lemoncake.xyz
+    label:
+      en_US: API Base URL
+      ja_JP: API のベース URL
+      zh_Hans: API 基础地址
+    help:
+      en_US: Leave as default unless you self-host the LemonCake API.
+      ja_JP: セルフホスト運用でない場合はデフォルトのままで OK。
+      zh_Hans: 除非自建 API，否则保持默认。
+  buyer_jwt:
+    type: secret-input
+    required: true
+    label:
+      en_US: Buyer JWT
+      ja_JP: Buyer JWT（購入者トークン）
+      zh_Hans: Buyer JWT
+    help:
+      en_US: The buyer-scoped JWT issued at https://lemoncake.xyz (Dashboard → Settings → API).
+      ja_JP: ダッシュボード → 設定 → API で発行される購入者向け JWT。
+      zh_Hans: 从 LemonCake 控制面板 → 设置 → API 生成的购买者 JWT。
+    url: https://lemoncake.xyz/settings
+    placeholder:
+      en_US: eyJhbGciOi...
+      ja_JP: eyJhbGciOi...
+      zh_Hans: eyJhbGciOi...
+extra:
+  python:
+    source: provider/lemoncake.py
+tools:
+  - tools/issue_pay_token.yaml
+  - tools/check_balance.yaml
+  - tools/revoke_token.yaml
+  - tools/list_charges.yaml

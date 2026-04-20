@@ -1,0 +1,75 @@
+identity:
+  author: lemoncake
+  name: issue_pay_token
+  label:
+    en_US: Issue Pay Token
+    ja_JP: Pay Token を発行
+    zh_Hans: 签发 Pay Token
+description:
+  human:
+    en_US: Mint a spend-capped JWT that an AI agent can use as a Bearer token against paid APIs proxied by LemonCake.
+    ja_JP: 上限・有効期限・対象サービス付きの Pay Token（JWT）を発行します。エージェントはこれを Bearer で使うだけで API 課金できます。
+    zh_Hans: 发行带额度/有效期/目标服务的 JWT 支付凭证，Agent 直接作为 Bearer Token 使用即可代付 API。
+  llm: |
+    Mint a new LemonCake Pay Token with a spending cap and expiry.
+    Use this whenever you need to give an agent time-bounded spending
+    authority against a specific upstream service. Returns a JWT string
+    the agent can put in the Authorization header.
+parameters:
+  - name: service_id
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Service ID
+      ja_JP: サービスID
+      zh_Hans: 服务 ID
+    human_description:
+      en_US: The LemonCake service ID (e.g. "jina-reader", "openai-search"). See lemoncake.xyz/services.
+      ja_JP: LemonCake 側のサービスID。例 "jina-reader" "openai-search"。lemoncake.xyz/services を参照。
+      zh_Hans: LemonCake 目标服务 ID，如 "jina-reader"。
+    llm_description: The LemonCake service identifier this token may spend against.
+  - name: limit_usdc
+    type: number
+    required: true
+    form: llm
+    label:
+      en_US: Spending limit (USDC)
+      ja_JP: 上限 (USDC)
+      zh_Hans: 额度 (USDC)
+    human_description:
+      en_US: Maximum USDC this token may spend before it stops working. Must not exceed the buyer's daily KYA limit.
+      ja_JP: このトークンで使える上限額 (USDC)。KYAティアの日次上限は超えられません。
+      zh_Hans: 此 Pay Token 可消费的最大额度 (USDC)，不能超过 KYA 日限额。
+    llm_description: Maximum cumulative USDC spend allowed via this token.
+  - name: expires_in_seconds
+    type: number
+    required: false
+    default: 86400
+    form: llm
+    label:
+      en_US: Expiry (seconds)
+      ja_JP: 有効期限（秒）
+      zh_Hans: 有效期（秒）
+    human_description:
+      en_US: TTL for the token. Default 86400 = 24 hours. Use smaller values for task-scoped tokens.
+      ja_JP: TTL（秒）。デフォルト86400=24時間。タスク単位で短く設定するのを推奨。
+      zh_Hans: 过期秒数，默认 86400 = 24 小时。
+    llm_description: How many seconds until this token stops being accepted.
+  - name: sandbox
+    type: boolean
+    required: false
+    default: false
+    form: form
+    label:
+      en_US: Sandbox mode
+      ja_JP: サンドボックス
+      zh_Hans: 沙盒模式
+    human_description:
+      en_US: If true, issued token runs in sandbox — no real USDC moves, but limit accounting stays live.
+      ja_JP: true の場合サンドボックス。実際の USDC は動かず、上限管理だけ本番と同じように動きます。
+      zh_Hans: 启用沙盒：不实际转账但仍进行额度计账。
+    llm_description: Whether this token is a sandbox (dry-run) token.
+extra:
+  python:
+    source: tools/issue_pay_token.py

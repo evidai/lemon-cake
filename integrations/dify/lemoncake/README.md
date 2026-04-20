@@ -1,0 +1,53 @@
+# LemonCake for Dify 🍋
+
+Give your Dify agent a wallet — spend-capped Pay Tokens, a one-click kill switch, automatic freee journal entries, and Japanese qualified-invoice (適格請求書) verification, all callable from inside a Dify workflow.
+
+- **Homepage:** https://lemoncake.xyz
+- **Source:** https://github.com/evidai/lemon-cake
+- **Contact:** contact@aievid.com
+- **Privacy Policy:** see [`PRIVACY.md`](./PRIVACY.md) or https://lemoncake.xyz/legal/dify-plugin
+
+---
+
+## What this plugin does
+
+| Tool | Endpoint | Use for |
+|---|---|---|
+| `issue_pay_token` | `POST /api/tokens` | Mint a spend-capped, time-boxed JWT that the agent uses as a Bearer token |
+| `check_balance` | `GET /api/buyers` | Read the buyer's current USDC balance + KYA tier limit |
+| `revoke_token` | `PATCH /api/tokens/{id}/revoke` | Immediate, atomic kill switch for a running agent |
+| `list_charges` | `GET /api/charges` | Retrieve recent charges for reconciliation / summarization |
+
+All calls are proxied through Dify's own request log, giving your IT/security team a full audit trail out of the box.
+
+## Installation
+
+1. Dify → **Plugins** → **Marketplace** → search `LemonCake` → **Install**
+2. Open the plugin settings and paste your **Buyer JWT**
+   - Get it from [lemoncake.xyz → Dashboard → Settings → API](https://lemoncake.xyz/settings)
+3. Click **Save**. The plugin validates the token against `GET /api/buyers` before enabling.
+
+## Example workflow
+
+```
+User: 「この3記事を要約して」
+ └─> LLM plans tasks
+      └─> Tool: issue_pay_token(service_id="jina-reader", limit_usdc=2, expires_in_seconds=600)
+           └─> Tool: (jina-reader plugin)   ← uses the Pay Token as Bearer
+                └─> Tool: list_charges(limit=5)
+                     └─> LLM: "3件の記事を読みました。使用料は $0.045 USDC です。"
+```
+
+## Security posture
+
+- The Buyer JWT is stored in Dify's encrypted credential store (same as any other tool secret).
+- Every request from the plugin carries `Authorization: Bearer <buyer-jwt>`; no data leaves Dify except the fields you see in the tool definitions.
+- See [`/docs/dify/audit-kit/`](../../../docs/dify/audit-kit/) in the repo for a full information-security review pack (data-flow diagram, retention policy, incident response).
+
+## Japanese 🇯🇵
+
+日本語の使い方とインストール手順は [`README.ja.md`](./README.ja.md) を参照してください。
+
+## License
+
+MIT — the plugin is free to use, fork, and self-host. The upstream LemonCake managed service has its own usage terms at https://lemoncake.xyz/legal.

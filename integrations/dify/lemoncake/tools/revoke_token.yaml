@@ -1,0 +1,33 @@
+identity:
+  author: lemoncake
+  name: revoke_token
+  label:
+    en_US: Revoke Pay Token (Kill Switch)
+    ja_JP: Pay Token を停止（Kill Switch）
+    zh_Hans: 吊销 Pay Token（紧急停止）
+description:
+  human:
+    en_US: Immediately revoke a Pay Token. Any subsequent charge attempt with it will be rejected with HTTP 422.
+    ja_JP: Pay Token を即時無効化します。以降の課金リクエストは HTTP 422 で拒否されます。
+    zh_Hans: 立即吊销指定 Pay Token。之后的扣款将被 422 拒绝。
+  llm: |
+    Call this when an agent needs to be stopped RIGHT NOW, or when a
+    task has completed and you want to drop its remaining spending
+    authority. The revoke is atomic; race-safe with in-flight charges.
+parameters:
+  - name: token_id
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Token ID
+      ja_JP: トークンID
+      zh_Hans: 令牌 ID
+    human_description:
+      en_US: The ID of the Pay Token to revoke.
+      ja_JP: 停止したい Pay Token の ID。
+      zh_Hans: 需要吊销的 Pay Token ID。
+    llm_description: The id of the Pay Token to revoke.
+extra:
+  python:
+    source: tools/revoke_token.py
