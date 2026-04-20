@@ -1,4 +1,4 @@
-author: lemoncake
+author: evidai
 created_at: '2026-04-20T00:00:00Z'
 description:
   en_US: Give your AI agent a wallet — spend-capped Pay Tokens, one-click kill switch, and automatic Japanese accounting (freee) sync.
@@ -17,7 +17,7 @@ meta:
     entrypoint: main
     language: python
     version: '3.12'
-  version: 0.0.1
+  version: 0.0.2
 name: lemoncake
 plugins:
   tools:
@@ -32,6 +32,6 @@ tags:
   - productivity
   - finance
 type: plugin
-version: 0.0.1
+version: 0.0.2
 privacy: PRIVACY.md
 repo: https://github.com/evidai/lemon-cake

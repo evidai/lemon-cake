@@ -1,4 +1,4 @@
-"""list_charges — GET /api/charges"""
+"""list_charges — GET /api/charges (reconciliation / accounting)."""
 
 from __future__ import annotations
 
@@ -8,24 +8,38 @@ import httpx
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 
+from tools.http_client import base_headers, friendly_error, request, resolve_base
+
 
 class ListChargesTool(Tool):
     def _invoke(self, tool_parameters: dict) -> Generator[ToolInvokeMessage, None, None]:
-        api_base = (self.runtime.credentials.get("api_base_url") or "https://api.lemoncake.xyz").rstrip("/")
-        jwt = self.runtime.credentials["buyer_jwt"]
-        limit = max(1, min(int(tool_parameters.get("limit") or 20), 100))
+        try:
+            api_base = resolve_base(self.runtime.credentials)
+        except ValueError as exc:
+            yield self.create_text_message(str(exc))
+            return
 
-        resp = httpx.get(
-            f"{api_base}/api/charges",
-            params={"limit": limit},
-            headers={"Authorization": f"Bearer {jwt}"},
-            timeout=15.0,
-        )
+        jwt = self.runtime.credentials["buyer_jwt"]
+
+        try:
+            raw_limit = int(tool_parameters.get("limit") or 20)
+        except (TypeError, ValueError):
+            raw_limit = 20
+        limit = max(1, min(raw_limit, 100))
+
+        try:
+            resp = request(
+                "GET",
+                f"{api_base}/api/charges",
+                headers=base_headers(jwt),
+                params={"limit": limit},
+            )
+        except httpx.HTTPError as exc:
+            yield self.create_text_message(f"Network error reaching LemonCake: {exc}")
+            return
 
         if resp.status_code >= 400:
-            yield self.create_text_message(
-                f"LemonCake API error {resp.status_code}: {resp.text}"
-            )
+            yield self.create_text_message(friendly_error(resp))
             return
 
         data = resp.json()
@@ -39,5 +53,7 @@ class ListChargesTool(Tool):
                 for c in charges[:limit]
             ]
             yield self.create_text_message(
-                f"{len(charges)} charge(s):\n" + "\n".join(lines) if lines else "No charges yet."
+                f"{len(charges)} charge(s):\n" + "\n".join(lines)
+                if lines
+                else "No charges yet."
             )

@@ -25,7 +25,7 @@
   },
   "common_params": {
     "header": [
-      { "key": "User-Agent", "value": "lemoncake-coze/0.0.1" }
+      { "key": "User-Agent", "value": "lemoncake-coze/0.0.2" }
     ],
     "query": [],
     "path": [],
@@ -33,7 +33,7 @@
   },
   "tools": [
     { "tool_id": "issue_pay_token", "method": "POST",  "sub_url": "/api/tokens",                 "deprecated": false },
-    { "tool_id": "check_balance",   "method": "GET",   "sub_url": "/api/buyers",                 "deprecated": false },
+    { "tool_id": "check_balance",   "method": "GET",   "sub_url": "/api/auth/me",               "deprecated": false },
     { "tool_id": "revoke_token",    "method": "PATCH", "sub_url": "/api/tokens/{tokenId}/revoke", "deprecated": false },
     { "tool_id": "list_charges",    "method": "GET",   "sub_url": "/api/charges",                "deprecated": false }
   ]

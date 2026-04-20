@@ -5,11 +5,15 @@ info:
     Machine-to-machine payments for AI agents. Mint spend-capped Pay Tokens,
     check buyer balance, revoke tokens (kill switch), and list charges for
     reconciliation / accounting sync.
-  version: 0.0.1
+  version: 0.0.2
+  termsOfService: https://lemoncake.xyz/legal/dify-plugin
   contact:
     name: LemonCake
     email: contact@aievid.com
     url: https://lemoncake.xyz
+  license:
+    name: MIT
+    url: https://github.com/evidai/lemon-cake/blob/main/LICENSE
 
 servers:
   - url: https://api.lemoncake.xyz
@@ -95,7 +99,10 @@ paths:
                       dailyLimitUsdc: { type: string }
                       walletAddress: { type: string, nullable: true }
                       suspended: { type: boolean }
-        "401": { description: Invalid Buyer JWT }
+        "401": { description: Invalid or expired Buyer JWT }
+        "404": { description: User not found for this JWT }
+        "429": { description: Rate limit exceeded }
+        "500": { description: Upstream error }
 
   /api/tokens/{tokenId}/revoke:
     patch:

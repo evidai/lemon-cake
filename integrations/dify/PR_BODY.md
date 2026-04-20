@@ -34,19 +34,35 @@ Validated at install time via `GET /api/auth/me` before the plugin is enabled.
 ## Safety & audit
 
 - Source code for the plugin is MIT-licensed and fully public.
-- An IT/security audit kit (data-flow diagram, security whitepaper, log retention policy, compliance status, incident response) is shipped alongside the plugin: https://github.com/evidai/lemon-cake/tree/main/docs/dify/audit-kit
+- An IT/security audit kit (data-flow diagram, security whitepaper, log retention policy, compliance status, incident response, 60-item self-assessment checklist, DPA template, security-questionnaire answers) is shipped alongside the plugin: https://github.com/evidai/lemon-cake/tree/main/docs/dify/audit-kit
 - No conversation content, file uploads, or other tool outputs are ever transmitted — only the enumerated parameters per tool.
+- Hardened HTTP client (`tools/http_client.py`): HTTPS-only enforcement for `api_base_url`, retries with exponential backoff on 429/5xx, `Idempotency-Key` header on every POST/PATCH, structured error parser that never leaks raw upstream response bodies, 1 MiB response-size cap.
+
+## Changelog
+
+### 0.0.2 (current)
+- **Bug fix:** `check_balance` now hits `GET /api/auth/me` (buyer-scoped) instead of `GET /api/buyers` (admin-only list) — the previous path returned 401 for end users.
+- **Security:** plaintext `api_base_url` is refused before the Buyer JWT is transmitted; response bodies capped at 1 MiB; raw upstream error bodies replaced with a structured parser.
+- **Resilience:** exponential-backoff retries on 429 / 502 / 503 / 504 with `Retry-After` honored; single 20 s default timeout budget across all tools.
+- **Idempotency:** `issue_pay_token` and `revoke_token` now send a fresh `Idempotency-Key` on every call, so a network retry never double-mints or double-revokes.
+- **Input validation:** `token_id` must match `^[A-Za-z0-9_-]{8,64}$` (blocks path traversal); `expires_in_seconds` clamped to [60, 2 592 000]; `limit` clamped to [1, 100].
+- **Metadata:** plugin `author` corrected to `evidai`; `User-Agent: lemoncake-dify/0.0.2 (+https://lemoncake.xyz)` sent on every request.
+
+### 0.0.1
+- Initial submission.
 
 ## Testing performed
 
 - [x] Plugin installs cleanly via Dify CLI in local dev (`dify plugin init` → upload)
 - [x] Credential validation rejects an invalid JWT with a clear error message
+- [x] Credential validation rejects a non-HTTPS `api_base_url`
 - [x] Each of the 4 tools returns expected JSON + human-readable messages
 - [x] `revoke_token` behavior matches 404 / 409 / 200 paths against live API
 - [x] UTF-8 safe (Japanese copy renders correctly in all three manifest languages)
+- [x] Python files `py_compile` cleanly; no relative imports (`from tools.http_client import ...`)
 
 ## Happy to iterate on anything
 
-File paths, descriptions, icon, privacy policy copy — please flag anything that doesn't match the Dify Marketplace style and I'll ship a v0.0.2 with the adjustments.
+File paths, descriptions, icon, privacy policy copy — please flag anything that doesn't match the Dify Marketplace style and I'll ship a v0.0.3 with the adjustments.
 
 cc @langgenius/dify-plugins-reviewers 🍋
