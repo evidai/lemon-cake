@@ -20,7 +20,7 @@ class LemonCakeProvider(ToolProvider):
         try:
             # Hit a cheap authenticated endpoint to verify the token
             resp = httpx.get(
-                f"{api_base}/api/buyers",
+                f"{api_base}/api/auth/me",
                 headers={"Authorization": f"Bearer {jwt}"},
                 timeout=10.0,
             )

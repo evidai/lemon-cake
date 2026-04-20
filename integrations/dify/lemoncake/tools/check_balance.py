@@ -1,4 +1,4 @@
-"""check_balance — GET /api/buyers (authenticated buyer payload)"""
+"""check_balance — GET /api/auth/me (authenticated buyer payload)"""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ class CheckBalanceTool(Tool):
         jwt = self.runtime.credentials["buyer_jwt"]
 
         resp = httpx.get(
-            f"{api_base}/api/buyers",
+            f"{api_base}/api/auth/me",
             headers={"Authorization": f"Bearer {jwt}"},
             timeout=15.0,
         )

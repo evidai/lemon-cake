@@ -16,7 +16,7 @@ Dify のエージェントに「財布」を渡すためのプラグイン。上
 | ツール名 | 呼び出し先 | 用途 |
 |---|---|---|
 | `Pay Token を発行` | `POST /api/tokens` | 上限・有効期限付き JWT を発行。エージェントはこれを Bearer で渡すだけで課金可能 |
-| `残高を確認` | `GET /api/buyers` | USDC 残高と KYA 日次上限を取得 |
+| `残高を確認` | `GET /api/auth/me` | USDC 残高と KYA 日次上限を取得 |
 | `Pay Token を停止 (Kill Switch)` | `PATCH /api/tokens/{id}/revoke` | 即時・原子的にトークンを無効化。暴走時の最後の砦 |
 | `課金履歴を取得` | `GET /api/charges` | 直近の課金をリスト化。経費精算・要約に |
 
@@ -39,7 +39,7 @@ Plugins → Marketplace → 「LemonCake」 を検索 → Install
 1. [lemoncake.xyz](https://lemoncake.xyz) にログイン
 2. **ダッシュボード → 設定 → API** で Buyer JWT を発行してコピー
 3. Dify のプラグイン設定に貼り付けて **Save**
-4. プラグインが `GET /api/buyers` に対してトークンの有効性を検証 → 成功すれば利用可能
+4. プラグインが `GET /api/auth/me` に対してトークンの有効性を検証 → 成功すれば利用可能
 
 ### Step 3. ワークフローで使う
 

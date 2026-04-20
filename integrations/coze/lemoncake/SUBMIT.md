@@ -51,7 +51,7 @@ Coze には Dify のような **GitHub PR 経由の公開** は存在せず、**
 | ツール | Method | Path | パラメータ |
 |---|---|---|---|
 | issue_pay_token | POST | /api/tokens | body: serviceId (str), limitUsdc (str), expiresInSeconds (int, opt), sandbox (bool, opt) |
-| check_balance   | GET  | /api/buyers | なし |
+| check_balance   | GET  | /api/auth/me | なし |
 | revoke_token    | PATCH | /api/tokens/{tokenId}/revoke | path: tokenId (str) |
 | list_charges    | GET  | /api/charges | query: limit (int, default 20) |
 

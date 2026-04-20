@@ -15,9 +15,6 @@ servers:
   - url: https://api.lemoncake.xyz
     description: Production
 
-security:
-  - buyerJwt: []
-
 paths:
   /api/tokens:
     post:
@@ -70,10 +67,13 @@ paths:
         "402": { description: Insufficient balance }
         "422": { description: Validation error }
 
-  /api/buyers:
+  /api/auth/me:
     get:
       operationId: check_balance
       summary: Get current buyer balance and KYA tier
+      description: |
+        Returns the authenticated buyer's profile including USDC balance,
+        KYA tier, and daily spend limit.
       responses:
         "200":
           description: Buyer profile
@@ -82,10 +82,19 @@ paths:
               schema:
                 type: object
                 properties:
-                  id: { type: string }
-                  balanceUsdc: { type: string }
-                  kyaTier: { type: string, enum: [none, basic, verified] }
-                  dailyLimitUsdc: { type: string }
+                  id: { type: string, description: "User ID" }
+                  name: { type: string }
+                  email: { type: string }
+                  buyerId: { type: string }
+                  buyer:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      balanceUsdc: { type: string }
+                      kycTier: { type: string, enum: [NONE, KYA, KYC] }
+                      dailyLimitUsdc: { type: string }
+                      walletAddress: { type: string, nullable: true }
+                      suspended: { type: boolean }
         "401": { description: Invalid Buyer JWT }
 
   /api/tokens/{tokenId}/revoke:
@@ -133,7 +142,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  charges:
+                  data:
                     type: array
                     items:
                       type: object
@@ -145,12 +154,3 @@ paths:
                         sandbox: { type: boolean }
                         createdAt: { type: string, format: date-time }
 
-components:
-  securitySchemes:
-    buyerJwt:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: |
-        Buyer JWT (Ed25519-signed) obtained from
-        https://lemoncake.xyz → Dashboard → Settings → API.

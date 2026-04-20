@@ -12,7 +12,7 @@ Adds **LemonCake** — a payment infrastructure plugin that lets Dify agents pay
 | tool | endpoint it wraps | purpose |
 |---|---|---|
 | `issue_pay_token` | `POST /api/tokens` | Mint a spend-capped, time-boxed JWT that the agent uses as a Bearer token for paid APIs |
-| `check_balance` | `GET /api/buyers` | Return current USDC balance and KYA daily limit |
+| `check_balance` | `GET /api/auth/me` | Return current USDC balance and KYA daily limit |
 | `revoke_token` | `PATCH /api/tokens/{id}/revoke` | Atomic, race-safe kill switch — rejects subsequent charges with HTTP 422 |
 | `list_charges` | `GET /api/charges` | Retrieve recent charges for reconciliation / summarization |
 
@@ -29,7 +29,7 @@ For Japanese users specifically, charges auto-sync to freee and get checked agai
 - `api_base_url` (default `https://api.lemoncake.xyz`) — for self-hosted users
 - `buyer_jwt` — secret-input, obtained from lemoncake.xyz → Dashboard → Settings → API
 
-Validated at install time via `GET /api/buyers` before the plugin is enabled.
+Validated at install time via `GET /api/auth/me` before the plugin is enabled.
 
 ## Safety & audit
 

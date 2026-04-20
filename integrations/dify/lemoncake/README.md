@@ -14,7 +14,7 @@ Give your Dify agent a wallet — spend-capped Pay Tokens, a one-click kill swit
 | Tool | Endpoint | Use for |
 |---|---|---|
 | `issue_pay_token` | `POST /api/tokens` | Mint a spend-capped, time-boxed JWT that the agent uses as a Bearer token |
-| `check_balance` | `GET /api/buyers` | Read the buyer's current USDC balance + KYA tier limit |
+| `check_balance` | `GET /api/auth/me` | Read the buyer's current USDC balance + KYA tier limit |
 | `revoke_token` | `PATCH /api/tokens/{id}/revoke` | Immediate, atomic kill switch for a running agent |
 | `list_charges` | `GET /api/charges` | Retrieve recent charges for reconciliation / summarization |
 
@@ -25,7 +25,7 @@ All calls are proxied through Dify's own request log, giving your IT/security te
 1. Dify → **Plugins** → **Marketplace** → search `LemonCake` → **Install**
 2. Open the plugin settings and paste your **Buyer JWT**
    - Get it from [lemoncake.xyz → Dashboard → Settings → API](https://lemoncake.xyz/settings)
-3. Click **Save**. The plugin validates the token against `GET /api/buyers` before enabling.
+3. Click **Save**. The plugin validates the token against `GET /api/auth/me` before enabling.
 
 ## Example workflow
 
