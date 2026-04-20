@@ -19,7 +19,7 @@ from dify_plugin.errors.tool import ToolProviderCredentialValidationError
 
 
 _TIMEOUT = httpx.Timeout(connect=5.0, read=10.0, write=10.0, pool=5.0)
-_UA = "lemoncake-dify/0.0.5 (+https://lemoncake.xyz)"
+_UA = "lemoncake-dify/0.0.6 (+https://lemoncake.xyz)"
 
 
 class LemonCakeProvider(ToolProvider):

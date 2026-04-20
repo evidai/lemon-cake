@@ -21,7 +21,7 @@ from typing import Any, Mapping
 
 import httpx
 
-PLUGIN_UA = "lemoncake-dify/0.0.5 (+https://lemoncake.xyz)"
+PLUGIN_UA = "lemoncake-dify/0.0.6 (+https://lemoncake.xyz)"
 DEFAULT_TIMEOUT = httpx.Timeout(connect=5.0, read=15.0, write=15.0, pool=5.0)
 MAX_RESPONSE_BYTES = 1 * 1024 * 1024
 RETRYABLE_STATUSES = {429, 502, 503, 504}
