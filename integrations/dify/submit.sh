@@ -31,7 +31,7 @@ cd "$WORKDIR"
 
 if [[ ! -d dify-plugins ]]; then
   echo "🍴 Forking langgenius/dify-plugins..."
-  gh repo fork langgenius/dify-plugins --clone=true --remote=true
+  gh repo fork langgenius/dify-plugins --clone --fork-name dify-plugins
 fi
 
 cd dify-plugins
