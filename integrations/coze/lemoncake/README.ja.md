@@ -1,5 +1,7 @@
 # LemonCake for Coze（扣子）
 
+![LemonCake デモ — Pay Token 発行・上流呼び出し・失効・記帳](./demo.svg)
+
 [Coze](https://www.coze.com) / [扣子](https://www.coze.cn) のボットに **上限付き USDC ウォレット** と **ワンクリック Kill Switch** と **freee/QuickBooks 自動仕訳** を付与するプラグインです。
 
 - **認証:** Buyer JWT（Bearer、HMAC-SHA256 署名）

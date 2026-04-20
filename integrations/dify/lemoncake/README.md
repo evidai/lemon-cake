@@ -1,5 +1,7 @@
 # LemonCake for Dify 🍋
 
+![LemonCake demo — issue Pay Token, call upstream, revoke, reconcile](./_assets/demo.svg)
+
 Give your Dify agent a wallet — spend-capped Pay Tokens, a one-click kill switch, automatic freee journal entries, and Japanese qualified-invoice (適格請求書) verification, all callable from inside a Dify workflow.
 
 - **Homepage:** https://lemoncake.xyz

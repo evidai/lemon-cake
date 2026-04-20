@@ -1,5 +1,7 @@
 # LemonCake for Coze
 
+![LemonCake demo — issue Pay Token, call upstream, revoke, reconcile](./demo.svg)
+
 M2M payment infrastructure plugin for [Coze](https://www.coze.com) / [扣子](https://www.coze.cn) bots. Give your agent a spend-capped USDC wallet, a one-click kill switch, and automatic accounting sync.
 
 - **Auth:** Buyer JWT (Bearer, HMAC-SHA256 signed)

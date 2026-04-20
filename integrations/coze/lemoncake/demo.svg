@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="LemonCake demo: issue Pay Token, call upstream, revoke, reconcile">
+  <style>
+    .bg { fill: #0B1020; }
+    .card { fill: #111831; stroke: #1E2945; stroke-width: 1; rx: 10; }
+    .code { font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Consolas, monospace; font-size: 14px; fill: #E6EDF3; }
+    .muted { fill: #8B95A7; }
+    .ok { fill: #3FB950; }
+    .warn { fill: #F0883E; }
+    .accent { fill: #FFE14A; }
+    .title { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-weight: 700; font-size: 16px; fill: #E6EDF3; }
+    .sub { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; fill: #8B95A7; }
+
+    .step { opacity: 0; }
+    .s1 { animation: fade 12s infinite; animation-delay: 0s; }
+    .s2 { animation: fade 12s infinite; animation-delay: 3s; }
+    .s3 { animation: fade 12s infinite; animation-delay: 6s; }
+    .s4 { animation: fade 12s infinite; animation-delay: 9s; }
+    @keyframes fade {
+      0%   { opacity: 0; transform: translateY(6px); }
+      4%   { opacity: 1; transform: translateY(0); }
+      25%  { opacity: 1; transform: translateY(0); }
+      29%  { opacity: 0; transform: translateY(-6px); }
+      100% { opacity: 0; transform: translateY(-6px); }
+    }
+
+    .caret { animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+
+  <!-- Background -->
+  <rect class="bg" width="800" height="450"/>
+
+  <!-- Logo + brand bar -->
+  <g transform="translate(24,20)">
+    <rect width="32" height="32" rx="7" fill="#FFE14A"/>
+    <circle cx="16" cy="16" r="11" fill="#FFF7C2"/>
+    <g stroke="#FFFFFF" stroke-width="1" stroke-linecap="round">
+      <line x1="16" y1="7" x2="16" y2="25"/>
+      <line x1="7" y1="16" x2="25" y2="16"/>
+      <line x1="9.5" y1="9.5" x2="22.5" y2="22.5"/>
+      <line x1="22.5" y1="9.5" x2="9.5" y2="22.5"/>
+    </g>
+    <circle cx="16" cy="16" r="1.6" fill="#FFFFFF"/>
+    <text x="44" y="16" class="title">LemonCake</text>
+    <text x="44" y="32" class="sub">M2M payment infrastructure for AI agents</text>
+  </g>
+
+  <!-- Step indicator -->
+  <g transform="translate(660,30)">
+    <circle cx="0"  cy="0" r="5" class="s1 step accent" style="opacity:1"/>
+    <circle cx="16" cy="0" r="5" class="s2 step accent" style="opacity:1"/>
+    <circle cx="32" cy="0" r="5" class="s3 step accent" style="opacity:1"/>
+    <circle cx="48" cy="0" r="5" class="s4 step accent" style="opacity:1"/>
+    <text x="64" y="4" class="sub">1/2/3/4</text>
+  </g>
+
+  <!-- === STEP 1: issue_pay_token === -->
+  <g class="step s1">
+    <rect class="card" x="24" y="72" width="752" height="358" fill="#111831" stroke="#1E2945"/>
+    <text x="44" y="104" class="title">① issue_pay_token — mint a spend-capped Pay Token</text>
+    <text x="44" y="140" class="code">$ POST /api/tokens</text>
+    <text x="44" y="164" class="code muted">Authorization: Bearer &lt;Buyer JWT&gt;</text>
+    <text x="44" y="188" class="code muted">Idempotency-Key: b4c3…-f09a</text>
+    <text x="44" y="220" class="code">{</text>
+    <text x="60" y="242" class="code">"serviceId": "openai-gpt4o",</text>
+    <text x="60" y="264" class="code">"limitUsdc": "5.00",</text>
+    <text x="60" y="286" class="code">"expiresInSeconds": 3600</text>
+    <text x="44" y="308" class="code">}</text>
+    <text x="44" y="346" class="code ok">201 Created</text>
+    <text x="44" y="370" class="code">  tokenId:  tok_7G2f9x…</text>
+    <text x="44" y="390" class="code">  jwt:      eyJhbGciOiJIUzI1NiJ9.eyJzdWIi…</text>
+    <text x="44" y="410" class="code muted">  expiresAt: 2026-04-20T18:59:00Z  limitUsdc: 5.000000</text>
+  </g>
+
+  <!-- === STEP 2: upstream call === -->
+  <g class="step s2">
+    <rect class="card" x="24" y="72" width="752" height="358" fill="#111831" stroke="#1E2945"/>
+    <text x="44" y="104" class="title">② agent calls upstream with the Pay Token</text>
+    <text x="44" y="140" class="code">$ POST /api/proxy/openai-gpt4o/chat/completions</text>
+    <text x="44" y="164" class="code muted">Authorization: Bearer &lt;Pay Token JWT&gt;</text>
+    <text x="44" y="188" class="code muted">Idempotency-Key: 8ad1…-21cc</text>
+    <text x="44" y="220" class="code">{ "model": "gpt-4o", "messages": [ … ] }</text>
+    <text x="44" y="260" class="code ok">200 OK</text>
+    <text x="44" y="284" class="code muted">  X-Charge-Id:  chg_2kQ9L…</text>
+    <text x="44" y="304" class="code muted">  X-Amount-Usdc: 0.042000</text>
+    <text x="44" y="344" class="code">  choices: [ { message: { content: "…" } } ]</text>
+    <text x="44" y="384" class="code accent">  remaining cap: 4.958 USDC</text>
+    <text x="44" y="408" class="code muted">  charge atomically recorded · double-charge safe</text>
+  </g>
+
+  <!-- === STEP 3: revoke_token === -->
+  <g class="step s3">
+    <rect class="card" x="24" y="72" width="752" height="358" fill="#111831" stroke="#1E2945"/>
+    <text x="44" y="104" class="title">③ revoke_token — one-click kill switch</text>
+    <text x="44" y="140" class="code">$ PATCH /api/tokens/tok_7G2f9x…/revoke</text>
+    <text x="44" y="164" class="code muted">Authorization: Bearer &lt;Buyer JWT&gt;</text>
+    <text x="44" y="196" class="code ok">200 OK</text>
+    <text x="44" y="220" class="code">{ "id": "tok_7G2f9x…", "revoked": true }</text>
+    <text x="44" y="262" class="code warn">↯ any in-flight charge with this token → 422</text>
+    <text x="44" y="286" class="code muted">  single-query atomic UPDATE · no race window</text>
+    <text x="44" y="326" class="code">  UPDATE tokens SET revoked = true</text>
+    <text x="44" y="346" class="code">  WHERE id = $1 AND buyerId = $2 AND revoked = false</text>
+    <text x="44" y="390" class="code accent">idempotent · safe to retry · auditable in charges log</text>
+  </g>
+
+  <!-- === STEP 4: list_charges === -->
+  <g class="step s4">
+    <rect class="card" x="24" y="72" width="752" height="358" fill="#111831" stroke="#1E2945"/>
+    <text x="44" y="104" class="title">④ list_charges — reconcile into freee / QuickBooks / Xero</text>
+    <text x="44" y="140" class="code muted">$ GET /api/charges?limit=3</text>
+    <text x="44" y="176" class="code">  id              serviceId      amount    status</text>
+    <line x1="44" y1="186" x2="740" y2="186" stroke="#1E2945" stroke-width="1"/>
+    <text x="44" y="208" class="code">  chg_2kQ9L…     openai-gpt4o   0.042000  COMPLETED</text>
+    <text x="44" y="230" class="code">  chg_4mP3T…     perplexity     0.180000  COMPLETED</text>
+    <text x="44" y="252" class="code">  chg_9nX1V…     anthropic      0.031000  COMPLETED</text>
+    <text x="44" y="292" class="code muted">  total: 3 of 147 · page 1 · filter: status=COMPLETED</text>
+    <text x="44" y="340" class="code accent">→ auto-sync to freee 仕訳帳</text>
+    <text x="44" y="364" class="code accent">→ USDC → JPY conversion at charge time</text>
+    <text x="44" y="388" class="code accent">→ receipt PDF attached per charge · 7 year retention</text>
+    <text x="44" y="410" class="sub">IT 決裁・経理締め・監査、ぜんぶ自動。</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="24" y="442" class="sub">https://lemoncake.xyz · github.com/evidai/lemon-cake</text>
+</svg>
