@@ -13,13 +13,14 @@
 ## 1. 認証・認可
 
 ### Buyer JWT
-- 署名方式: **Ed25519**（楕円曲線 Edwards）
-- 署名鍵: LemonCake API サーバー側に AWS KMS 相当のセキュア ストアに保管
-- 検証: プロキシ側で毎回ローカル検証（署名鍵へのネットワーク呼び出しなし）
+- 署名方式: **HMAC-SHA256 (HS256, RFC 7518)**
+- 署名鍵: LemonCake API サーバー側で管理する共有秘密鍵（環境変数 `JWT_SECRET`、Railway Managed Secrets 経由で注入、at-rest 暗号化）
+- 検証: API サーバー内で毎回ローカル検証（外部鍵サーバーへの呼び出しなし）
 - クレーム: `sub` (Buyer ID), `iat`, `exp`, `jti`, `serviceId`, `limitUsdc`, `sandbox`
+- ロードマップ: v0.1.0 で **Ed25519 非対称鍵** に移行予定（外部サービスが共有秘密なしで検証可能に）
 
 ### Pay Token
-- 同じ Ed25519 鍵で署名された子 JWT
+- 同じ HS256 鍵で署名された子 JWT
 - 親 Buyer JWT の権限を継承しつつ、`limitUsdc` と `expiresInSeconds` でさらに制限
 - `jti` を使った revoke list チェックで Kill Switch に対応
 

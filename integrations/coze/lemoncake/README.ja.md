@@ -2,7 +2,7 @@
 
 [Coze](https://www.coze.com) / [扣子](https://www.coze.cn) のボットに **上限付き USDC ウォレット** と **ワンクリック Kill Switch** と **freee/QuickBooks 自動仕訳** を付与するプラグインです。
 
-- **認証:** Buyer JWT（Bearer、Ed25519 署名）
+- **認証:** Buyer JWT（Bearer、HMAC-SHA256 署名）
 - **API ベース:** `https://api.lemoncake.xyz`
 - **ツール:** `issue_pay_token` / `check_balance` / `revoke_token` / `list_charges`
 - **ソース:** https://github.com/evidai/lemon-cake

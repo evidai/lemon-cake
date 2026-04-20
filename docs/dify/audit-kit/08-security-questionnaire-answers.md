@@ -38,7 +38,7 @@
 
 | 質問 | 回答 |
 |---|---|
-| 認証方式 | Buyer JWT（Ed25519 署名） |
+| 認証方式 | Buyer JWT（HMAC-SHA256 署名、v0.1.0 で Ed25519 に移行予定） |
 | MFA 対応 | Buyer ダッシュボード ログインは Google OAuth（MFA 継承）。Enterprise で SAML 2.0 / Okta 連携予定 |
 | 最小権限原則 | Buyer 単位で分離、Pay Token で scope（serviceId + 上限額）を更に細分化 |
 | セッション タイムアウト | ダッシュボード: 24h、Pay Token: 発行時に `expiresInSeconds` で明示 |

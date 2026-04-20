@@ -2,7 +2,7 @@
 
 M2M payment infrastructure plugin for [Coze](https://www.coze.com) / [扣子](https://www.coze.cn) bots. Give your agent a spend-capped USDC wallet, a one-click kill switch, and automatic accounting sync.
 
-- **Auth:** Buyer JWT (Bearer, Ed25519-signed)
+- **Auth:** Buyer JWT (Bearer, HMAC-SHA256 signed)
 - **API base:** `https://api.lemoncake.xyz`
 - **Tools:** `issue_pay_token`, `check_balance`, `revoke_token`, `list_charges`
 - **Source:** https://github.com/evidai/lemon-cake

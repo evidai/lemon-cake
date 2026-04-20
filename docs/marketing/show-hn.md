@@ -42,7 +42,7 @@ different primitive.
 
 ## What LemonCake does
 
-The core primitive is the Pay Token: a signed JWT (Ed25519) that
+The core primitive is the Pay Token: a signed JWT (HS256 today, Ed25519 on the v0.1.0 roadmap) that
 encodes a spending limit, expiry, and a single allowed service. You
 hand the token to your agent, and the agent uses it as a Bearer token
 against our proxy:
@@ -59,7 +59,7 @@ exhausted, the agent gets a structured 402 and stops cleanly.
 ## Design decisions worth discussing
 
 - JWTs, not session tokens: the agent never talks to our auth service
-  at runtime; proxy-side verification is a local Ed25519 check.
+  at runtime; proxy-side verification is a local HMAC-SHA256 check.
 - Atomic revoke: `UPDATE tokens SET revoked=true WHERE id=? AND
   buyerId=? AND revoked=false` — one query handles the race between
   kill switch and in-flight charges.

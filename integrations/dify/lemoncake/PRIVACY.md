@@ -59,7 +59,7 @@ All requests: contact@aievid.com.
 ## 7. Security
 
 - The plugin uses TLS 1.2+ for every request.
-- Buyer JWTs are signed with Ed25519 on LemonCake's side; the plugin never inspects their contents.
+- Buyer JWTs are signed with HMAC-SHA256 (HS256) on LemonCake's side (Ed25519 migration planned for v0.1.0); the plugin never inspects their contents.
 - The upstream LemonCake API enforces rate limits, idempotency keys, and atomic revoke for race-safe kill-switch operation.
 - Source code of the plugin is public at <https://github.com/evidai/lemon-cake> under `/integrations/dify/lemoncake/` for independent review.
 

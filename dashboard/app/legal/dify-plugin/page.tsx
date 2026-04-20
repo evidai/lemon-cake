@@ -146,7 +146,7 @@ export default function DifyPluginPrivacyPage() {
         <Section title="7. Security">
           <ul className="list-disc pl-6 space-y-1">
             <li>TLS 1.2+ enforced for every request.</li>
-            <li>Buyer JWTs are Ed25519-signed on LemonCake&rsquo;s side.</li>
+            <li>Buyer JWTs are HMAC-SHA256 (HS256) signed on LemonCake&rsquo;s side; migration to Ed25519 asymmetric keys is planned for v0.1.0.</li>
             <li>
               The upstream LemonCake API enforces rate limits, idempotency keys, and atomic
               revoke for race-safe kill-switch operation.

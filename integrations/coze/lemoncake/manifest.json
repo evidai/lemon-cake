@@ -14,7 +14,7 @@
       "key": "Authorization",
       "value_prefix": "Bearer ",
       "location": "header",
-      "instructions_en": "Paste your Buyer JWT from https://lemoncake.xyz → Dashboard → Settings → API. The token is Ed25519-signed; LemonCake verifies it on every call.",
+      "instructions_en": "Paste your Buyer JWT from https://lemoncake.xyz → Dashboard → Settings → API. The token is HMAC-SHA256 (HS256) signed; LemonCake verifies it on every call.",
       "instructions_zh": "请粘贴 Buyer JWT，可在 https://lemoncake.xyz → 控制台 → 设置 → API 获取。",
       "instructions_ja": "Buyer JWT を https://lemoncake.xyz → ダッシュボード → 設定 → API から取得し貼り付けてください。"
     }
