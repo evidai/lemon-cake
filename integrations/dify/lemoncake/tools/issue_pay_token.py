@@ -62,11 +62,14 @@ class IssuePayTokenTool(Tool):
             yield self.create_text_message(friendly_error(resp))
             return
 
-        data = resp.json()
-        yield self.create_json_message(data)
+        payload = resp.json()
+        yield self.create_json_message(payload)
+
+        token_id = payload.get("tokenId") if isinstance(payload, dict) else None
+        expires_at = payload.get("expiresAt") if isinstance(payload, dict) else None
         yield self.create_text_message(
-            f"Issued Pay Token for {service_id} "
-            f"(limit {limit_usdc} USDC, expires in {expires_in}s"
+            f"Issued Pay Token {token_id or '(id unknown)'} for {service_id} "
+            f"(limit {limit_usdc} USDC, expires {expires_at or f'in {expires_in}s'}"
             + (", sandbox" if body["sandbox"] else "")
-            + ")."
+            + "). Use the returned `jwt` field as the Bearer token on the paid call."
         )

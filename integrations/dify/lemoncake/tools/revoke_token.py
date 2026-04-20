@@ -54,7 +54,8 @@ class RevokeTokenTool(Tool):
             yield self.create_text_message(friendly_error(resp))
             return
 
-        yield self.create_json_message(resp.json() if resp.content else {"revoked": True})
+        payload = resp.json() if resp.content else {"id": token_id, "revoked": True}
+        yield self.create_json_message(payload)
         yield self.create_text_message(
             f"✅ Pay Token {token_id} revoked. "
             "Further charges will be rejected atomically (HTTP 422)."

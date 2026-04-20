@@ -5,7 +5,7 @@ info:
     Machine-to-machine payments for AI agents. Mint spend-capped Pay Tokens,
     check buyer balance, revoke tokens (kill switch), and list charges for
     reconciliation / accounting sync.
-  version: 0.0.2
+  version: 0.0.3
   termsOfService: https://lemoncake.xyz/legal/dify-plugin
   contact:
     name: LemonCake
@@ -54,22 +54,27 @@ paths:
                   description: If true, mint a sandbox token that does not charge
                   default: false
       responses:
-        "200":
+        "201":
           description: Pay Token issued
           content:
             application/json:
               schema:
                 type: object
+                required: [tokenId, jwt, serviceId, limitUsdc, expiresAt]
                 properties:
-                  tokenId: { type: string }
-                  token: { type: string, description: "JWT for Bearer header" }
+                  tokenId:   { type: string, description: "Opaque token id for revoke/inspection" }
+                  jwt:       { type: string, description: "The signed Pay Token to send as Bearer on the paid upstream call" }
+                  buyerId:   { type: string }
                   serviceId: { type: string }
-                  limitUsdc: { type: string }
+                  limitUsdc: { type: string, description: "Decimal string, e.g. '10.000000'" }
                   expiresAt: { type: string, format: date-time }
-                  sandbox: { type: boolean }
-        "401": { description: Invalid Buyer JWT }
+                  sandbox:   { type: boolean }
+                  createdAt: { type: string, format: date-time }
+        "401": { description: Invalid or expired Buyer JWT }
         "402": { description: Insufficient balance }
+        "403": { description: Buyer suspended }
         "422": { description: Validation error }
+        "429": { description: Rate limit exceeded }
 
   /api/auth/me:
     get:
@@ -118,15 +123,19 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: Token revoked
+          description: Token revoked (or was already revoked — idempotent)
           content:
             application/json:
               schema:
                 type: object
+                required: [id, revoked]
                 properties:
-                  tokenId: { type: string }
-                  revokedAt: { type: string, format: date-time }
+                  id:      { type: string, description: "The tokenId that was revoked" }
+                  revoked: { type: boolean, enum: [true] }
+        "401": { description: Invalid or expired Buyer JWT }
+        "403": { description: Buyer suspended }
         "404": { description: Token not found or not owned by this buyer }
+        "409": { description: Token was already revoked (idempotent — treat same as 200) }
 
   /api/charges:
     get:
@@ -135,29 +144,52 @@ paths:
       parameters:
         - name: limit
           in: query
-          description: Number of charges to return (default 20, max 200)
+          description: Number of charges to return per page (default 20, max 100)
           schema:
             type: integer
             default: 20
             minimum: 1
-            maximum: 200
+            maximum: 100
+        - name: page
+          in: query
+          description: 1-based page index
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: serviceId
+          in: query
+          description: Filter to a single serviceId
+          schema: { type: string }
+        - name: status
+          in: query
+          description: Filter by charge status
+          schema:
+            type: string
+            enum: [PENDING, COMPLETED, FAILED]
       responses:
         "200":
-          description: Charge list
+          description: Charge list (paginated)
           content:
             application/json:
               schema:
                 type: object
+                required: [data, total, page]
                 properties:
                   data:
                     type: array
                     items:
                       type: object
                       properties:
-                        id: { type: string }
-                        serviceId: { type: string }
-                        amountUsdc: { type: string }
-                        tokenId: { type: string }
-                        sandbox: { type: boolean }
-                        createdAt: { type: string, format: date-time }
+                        id:         { type: string }
+                        serviceId:  { type: string }
+                        amountUsdc: { type: string, description: "Decimal string" }
+                        tokenId:    { type: string }
+                        sandbox:    { type: boolean }
+                        status:     { type: string, enum: [PENDING, COMPLETED, FAILED] }
+                        createdAt:  { type: string, format: date-time }
+                  total: { type: integer }
+                  page:  { type: integer }
+        "401": { description: Invalid or expired Buyer JWT }
+        "429": { description: Rate limit exceeded }
 

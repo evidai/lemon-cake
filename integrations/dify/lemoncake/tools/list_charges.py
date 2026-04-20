@@ -42,18 +42,27 @@ class ListChargesTool(Tool):
             yield self.create_text_message(friendly_error(resp))
             return
 
-        data = resp.json()
-        yield self.create_json_message(data)
+        payload = resp.json()
+        yield self.create_json_message(payload)
 
-        charges = data.get("charges") if isinstance(data, dict) else data
+        # Real API shape: {data: [...], total, page}. Fall back to legacy
+        # `charges` key defensively in case the API adds it later.
+        charges = None
+        if isinstance(payload, dict):
+            charges = payload.get("data") or payload.get("charges")
+        elif isinstance(payload, list):
+            charges = payload
+
         if isinstance(charges, list):
             lines = [
                 f"- {c.get('serviceId')} · {c.get('amountUsdc')} USDC · {c.get('createdAt')}"
                 + (" [sandbox]" if c.get("sandbox") else "")
                 for c in charges[:limit]
             ]
+            total = payload.get("total") if isinstance(payload, dict) else len(charges)
+            header = f"{len(charges)} charge(s)"
+            if isinstance(total, int) and total > len(charges):
+                header += f" of {total}"
             yield self.create_text_message(
-                f"{len(charges)} charge(s):\n" + "\n".join(lines)
-                if lines
-                else "No charges yet."
+                f"{header}:\n" + "\n".join(lines) if lines else "No charges yet."
             )
