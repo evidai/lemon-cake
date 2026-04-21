@@ -34,6 +34,7 @@ import { cloudsignWebhookRouter }   from "./routes/webhooks/cloudsign.js";
 import { aftershipWebhookRouter }   from "./routes/webhooks/aftership.js";
 import { githubWebhookRouter }      from "./routes/webhooks/github.js";
 import { kybRouter }                from "./routes/kyb.js";
+import { telemetryRouter }          from "./routes/telemetry.js";
 import { startUsdcTransferWorker, handleFailedJob } from "./workers/usdcTransfer.js";
 import { startWorkflowWorker }      from "./workers/workflowStep.js";
 
@@ -81,6 +82,7 @@ app.route("/api/webhooks/cloudsign",     cloudsignWebhookRouter);
 app.route("/api/webhooks/aftership",     aftershipWebhookRouter);
 app.route("/api/webhooks/github",        githubWebhookRouter);
 app.route("/api/kyb",                    kybRouter);
+app.route("/api/telemetry",              telemetryRouter);
 
 // ─── OpenAPI ドキュメント定義 ────────────────────────────────
 app.doc("/openapi.json", {

@@ -19,6 +19,7 @@ import {
   LemoncakeError,
   ApiErrorBody,
 } from "../types.js";
+import { LEMONCAKE_USER_AGENT } from "./userAgent.js";
 
 // ─── HTTP ヘルパー ────────────────────────────────────────────────────────
 
@@ -119,6 +120,8 @@ export class LemoncakeClient {
         headers: {
           "Content-Type":  "application/json",
           "Authorization": `Bearer ${this.buyerJwt}`,
+          "User-Agent":    LEMONCAKE_USER_AGENT,
+          "X-LemonCake-Client": LEMONCAKE_USER_AGENT,
         },
         body: JSON.stringify(req),
       },
@@ -148,8 +151,10 @@ export class LemoncakeClient {
     elizaLogger.debug({ serviceId: req.serviceId, path: subPath, method }, "[LemonCake] Calling service");
 
     const headers: Record<string, string> = {
-      "Content-Type":  "application/json",
-      "Authorization": `Bearer ${payTokenJwt}`,
+      "Content-Type":        "application/json",
+      "Authorization":       `Bearer ${payTokenJwt}`,
+      "User-Agent":          LEMONCAKE_USER_AGENT,
+      "X-LemonCake-Client":  LEMONCAKE_USER_AGENT,
     };
     if (req.idempotencyKey) {
       headers["Idempotency-Key"] = req.idempotencyKey;
@@ -218,7 +223,13 @@ export class LemoncakeClient {
     }
     return fetchJson(
       `${this.apiUrl}/api/auth/me`,
-      { headers: { Authorization: `Bearer ${this.buyerJwt}` } },
+      {
+        headers: {
+          Authorization:        `Bearer ${this.buyerJwt}`,
+          "User-Agent":         LEMONCAKE_USER_AGENT,
+          "X-LemonCake-Client": LEMONCAKE_USER_AGENT,
+        },
+      },
       "getBalance",
     );
   }

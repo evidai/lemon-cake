@@ -126,6 +126,12 @@ tokensRouter.openapi(issueRoute, async (c) => {
     throw new HTTPException(400, { message: "expiresAt must be in the future" });
   }
 
+  // ── クライアント識別（SDK/プラグインからの User-Agent） ─────
+  // X-LemonCake-Client を最優先、無ければ標準の User-Agent ヘッダを使う。
+  // 生の文字列をそのまま保存（128文字で打ち切り）。
+  const rawClient = c.req.header("X-LemonCake-Client") ?? c.req.header("User-Agent") ?? null;
+  const clientUserAgent = rawClient ? rawClient.slice(0, 128) : null;
+
   // ── DBにTokenレコードを作成（IDをjtiとして使用）────────────
   const token = await prisma.token.create({
     data: {
@@ -135,6 +141,7 @@ tokensRouter.openapi(issueRoute, async (c) => {
       buyerTag:  body.buyerTag ?? null,
       expiresAt,
       sandbox:   body.sandbox,
+      clientUserAgent,
     },
   });
 

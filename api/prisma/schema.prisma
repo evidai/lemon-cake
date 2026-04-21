@@ -162,12 +162,20 @@ model Token {
   // サンドボックスフラグ（true の場合は実USDCを動かさずモック課金のみ行う）
   sandbox       Boolean     @default(false)
 
+  // トークン発行を行ったクライアントの識別文字列。
+  // SDK / プラグインが送信する X-LemonCake-Client（無ければ User-Agent）を
+  // 生のまま記録し、バックエンドで使用状況を集計するために使う。
+  // 個人特定情報は含まないことが前提。
+  clientUserAgent String?
+
   charges       Charge[]
 
   createdAt     DateTime    @default(now())
 
   // jtiはユニークであること（replay attack防止）
   @@unique([id])
+  // クライアント別集計用
+  @@index([clientUserAgent, createdAt])
   @@map("tokens")
 }
 
