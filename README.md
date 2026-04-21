@@ -11,9 +11,12 @@
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-blue.svg)](https://modelcontextprotocol.io)
 [![npm: lemon-cake-mcp](https://img.shields.io/npm/v/lemon-cake-mcp?label=lemon-cake-mcp)](https://www.npmjs.com/package/lemon-cake-mcp)
 [![npm: eliza-plugin-lemoncake](https://img.shields.io/npm/v/eliza-plugin-lemoncake?label=eliza-plugin-lemoncake)](https://www.npmjs.com/package/eliza-plugin-lemoncake)
-[![Live Demo](https://img.shields.io/badge/live%20demo-lemoncake.xyz-fffd43)](https://lemoncake.xyz)
+[![Status](https://img.shields.io/badge/status-private%20beta-fffd43)](https://lemoncake.xyz)
 
-**[🎬 Demo](https://lemoncake.xyz) · [📚 Docs](https://lemoncake.xyz/docs) · [🚀 Quickstart](https://lemoncake.xyz/about#quickstart) · [💬 Discord](https://lemoncake.xyz) · [🐦 Twitter](https://lemoncake.xyz)**
+**[📚 Docs](https://lemoncake.xyz/about) · [🚀 Quickstart](#quickstart) · [📧 Contact](mailto:contact@aievid.com)**
+
+> Public website, Discord, and Twitter are launching alongside public beta. For now,
+> please reach out via email — we reply within 1 business day.
 
 <br />
 

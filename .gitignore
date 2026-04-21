@@ -15,6 +15,9 @@ dist/
 .next/
 out/
 
+# Third-party binaries (download at build time, do not commit)
+.bin/
+
 # Misc
 .DS_Store
 *.pptx
