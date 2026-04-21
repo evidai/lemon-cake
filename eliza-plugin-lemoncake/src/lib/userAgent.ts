@@ -11,7 +11,7 @@
 // tsc が import attributes / json import を拒否するので __PACKAGE_VERSION__ で埋める
 // package.json は files に含めないため、build 時にこの定数を更新する。
 const PLUGIN_NAME    = "eliza-plugin-lemoncake";
-const PLUGIN_VERSION = "0.2.0";
+const PLUGIN_VERSION = "0.3.0";
 
 /** `eliza-plugin-lemoncake/0.2.0 (node/23.x; darwin arm64)` のような形式 */
 export function buildUserAgent(): string {

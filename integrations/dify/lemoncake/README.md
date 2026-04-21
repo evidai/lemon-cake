@@ -22,11 +22,22 @@ Give your Dify agent a wallet — spend-capped Pay Tokens, a one-click kill swit
 
 All calls are proxied through Dify's own request log, giving your IT/security team a full audit trail out of the box.
 
+## 🚀 Get started in 3 minutes
+
+You'll need a LemonCake account with a USDC balance to use this plugin.
+
+1. **[Create a free account](https://lemoncake.xyz/register?utm_source=dify-plugin&utm_medium=marketplace-readme&utm_campaign=onboard)** — email-only signup
+2. **[Top up USDC](https://lemoncake.xyz/dashboard/billing?utm_source=dify-plugin&utm_medium=marketplace-readme&utm_campaign=topup)** — minimum $5, JPYC supported
+3. **Copy your Buyer JWT** — from [Dashboard → Settings → API](https://lemoncake.xyz/dashboard?utm_source=dify-plugin&utm_medium=marketplace-readme)
+4. Install the plugin in Dify and paste the JWT (see below)
+
+> 📚 [Full quickstart docs](https://lemoncake.xyz/docs/quickstart?utm_source=dify-plugin&utm_medium=marketplace-readme)
+
 ## Installation
 
 1. Dify → **Plugins** → **Marketplace** → search `LemonCake` → **Install**
 2. Open the plugin settings and paste your **Buyer JWT**
-   - Get it from [lemoncake.xyz → Dashboard → Settings → API](https://lemoncake.xyz/settings)
+   - Get it from [lemoncake.xyz → Dashboard → Settings → API](https://lemoncake.xyz/dashboard?utm_source=dify-plugin&utm_medium=marketplace-readme)
 3. Click **Save**. The plugin validates the token against `GET /api/auth/me` before enabling.
 
 ## Example workflow

@@ -7,7 +7,20 @@
 
 **Eliza エージェントに、3分で自律決済（JPYC/USDC）機能を追加しましょう。**
 
-[LemonCake](https://lemoncake.xyz) の JWT Pay Token を使い、AI エージェントが人間の介在なしに M2M（マシン間）API 課金を実行できるようになります。
+[LemonCake](https://lemoncake.xyz?utm_source=eliza-plugin&utm_medium=npm-readme) の JWT Pay Token を使い、AI エージェントが人間の介在なしに M2M（マシン間）API 課金を実行できるようになります。
+
+---
+
+## 🚀 3分で始める
+
+プラグインの利用には LemonCake アカウントと USDC 残高が必要です。
+
+1. **[無料アカウント作成](https://lemoncake.xyz/register?utm_source=eliza-plugin&utm_medium=npm-readme&utm_campaign=onboard)** — メール1つで完了
+2. **残高チャージ** — 最低 $5 USDC または JPYC（日本円ステーブルコイン）
+3. **Buyer JWT をコピー** — [Dashboard → API Keys](https://lemoncake.xyz/dashboard?utm_source=eliza-plugin&utm_medium=npm-readme) から
+4. `npm install eliza-plugin-lemoncake` してプラグインに設定（下記）
+
+> 📚 詳細は [クイックスタート ドキュメント](https://lemoncake.xyz/docs/quickstart?utm_source=eliza-plugin&utm_medium=npm-readme) を参照。
 
 ---
 

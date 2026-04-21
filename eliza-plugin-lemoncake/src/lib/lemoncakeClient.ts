@@ -107,7 +107,8 @@ export class LemoncakeClient {
       throw new LemoncakeError(
         "CREDENTIAL_MISSING",
         "Neither LEMONCAKE_PAY_TOKEN nor LEMONCAKE_BUYER_JWT is configured. " +
-        "Set at least one in your .env or character settings.",
+        "Create a free account at https://lemoncake.xyz/register?utm_source=eliza-plugin " +
+        "and set at least one credential in your .env or character settings.",
       );
     }
 

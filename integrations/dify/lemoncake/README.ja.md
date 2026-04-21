@@ -24,6 +24,19 @@ Dify のプロキシを経由するため、通信ログ・監査ログはすべ
 
 ---
 
+## 🚀 3分で始める
+
+プラグイン利用には LemonCake アカウントと USDC 残高が必要です。
+
+1. **[無料アカウント作成](https://lemoncake.xyz/register?utm_source=dify-plugin&utm_medium=marketplace-readme&utm_campaign=onboard)** — メール1つで完了
+2. **[USDC 残高をチャージ](https://lemoncake.xyz/dashboard/billing?utm_source=dify-plugin&utm_medium=marketplace-readme&utm_campaign=topup)** — 最低 $5、JPYC 対応
+3. **Buyer JWT をコピー** — [Dashboard → Settings → API](https://lemoncake.xyz/dashboard?utm_source=dify-plugin&utm_medium=marketplace-readme) から
+4. Dify に下記のとおりインストールして貼り付け
+
+> 📚 [クイックスタート ドキュメント](https://lemoncake.xyz/docs/quickstart?utm_source=dify-plugin&utm_medium=marketplace-readme)
+
+---
+
 ## インストール手順
 
 ### Step 1. プラグインの追加

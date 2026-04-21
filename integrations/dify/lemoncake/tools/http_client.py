@@ -21,7 +21,15 @@ from typing import Any, Mapping
 
 import httpx
 
-PLUGIN_UA = "lemoncake-dify/0.0.6 (+https://lemoncake.xyz)"
+PLUGIN_VERSION = "0.1.0"
+PLUGIN_UA      = f"lemoncake-dify/{PLUGIN_VERSION} (+https://lemoncake.xyz)"
+
+# UTM 付き CTA URL — エラー時にユーザーへ見せて登録・入金に誘導する
+UTM           = "utm_source=dify-plugin&utm_medium=workflow"
+REGISTER_URL  = f"https://lemoncake.xyz/register?{UTM}&utm_campaign=credential-missing"
+DASHBOARD_URL = f"https://lemoncake.xyz/dashboard?{UTM}"
+BILLING_URL   = f"https://lemoncake.xyz/dashboard/billing?{UTM}&utm_campaign=topup"
+DOCS_URL      = f"https://lemoncake.xyz/docs/quickstart?{UTM}"
 DEFAULT_TIMEOUT = httpx.Timeout(connect=5.0, read=15.0, write=15.0, pool=5.0)
 MAX_RESPONSE_BYTES = 1 * 1024 * 1024
 RETRYABLE_STATUSES = {429, 502, 503, 504}
@@ -30,9 +38,10 @@ MAX_RETRIES = 2
 
 def base_headers(jwt: str, *, idempotency: bool = False) -> dict[str, str]:
     headers = {
-        "Authorization": f"Bearer {jwt}",
-        "User-Agent": PLUGIN_UA,
-        "Accept": "application/json",
+        "Authorization":       f"Bearer {jwt}",
+        "User-Agent":          PLUGIN_UA,
+        "X-LemonCake-Client":  PLUGIN_UA,
+        "Accept":              "application/json",
     }
     if idempotency:
         headers["Idempotency-Key"] = str(uuid.uuid4())
@@ -98,16 +107,30 @@ def request(
 def friendly_error(resp: httpx.Response) -> str:
     """Convert a non-2xx response into a short, user-safe error string.
 
+    Appends a registration / top-up CTA so the user knows where to go next
+    when the failure is caused by a missing account or empty balance.
+
     Avoids dumping the raw body (which may contain stack traces or request
     echoes in non-prod environments)."""
     try:
         payload = resp.json()
     except Exception:
         payload = None
+    msg = None
+    code = None
     if isinstance(payload, dict):
         msg = payload.get("message") or payload.get("error") or payload.get("detail")
         code = payload.get("code")
-        if msg:
-            return f"LemonCake API {resp.status_code}"\
-                + (f" [{code}]" if code else "") + f": {str(msg)[:200]}"
-    return f"LemonCake API error {resp.status_code}."
+
+    base = f"LemonCake API {resp.status_code}" + (f" [{code}]" if code else "")
+    if msg:
+        base += f": {str(msg)[:200]}"
+
+    # Status-dependent CTA.
+    if resp.status_code in (401, 403):
+        return f"{base}\n→ Create a free account: {REGISTER_URL}\n→ Docs: {DOCS_URL}"
+    if resp.status_code == 402:
+        return f"{base}\n→ Top up your USDC balance: {BILLING_URL}"
+    if resp.status_code == 404 and code in (None, "SERVICE_NOT_FOUND"):
+        return f"{base}\n→ Browse available services: {DASHBOARD_URL}"
+    return base

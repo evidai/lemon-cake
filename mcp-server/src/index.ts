@@ -31,6 +31,17 @@ const API_URL   = (process.env.LEMON_CAKE_API_URL  ?? "https://api.lemoncake.xyz
 const PAY_TOKEN = process.env.LEMON_CAKE_PAY_TOKEN ?? "";
 const BUYER_JWT = process.env.LEMON_CAKE_BUYER_JWT ?? "";
 
+// ── バージョン・ユーザーエージェント ─────────────────────────────────────
+const MCP_VERSION = "0.3.0";
+const USER_AGENT  = `lemon-cake-mcp/${MCP_VERSION} (node/${process.versions.node}; ${process.platform} ${process.arch})`;
+
+// ── 登録/入金/ダッシュボード URL（UTM 付きで経由クライアントを区別） ──
+const UTM            = "utm_source=mcp-server&utm_medium=cli";
+const REGISTER_URL   = `https://lemoncake.xyz/register?${UTM}&utm_campaign=credential-missing`;
+const DASHBOARD_URL  = `https://lemoncake.xyz/dashboard?${UTM}`;
+const BILLING_URL    = `https://lemoncake.xyz/dashboard/billing?${UTM}&utm_campaign=topup`;
+const DOCS_URL       = `https://lemoncake.xyz/docs/quickstart?${UTM}`;
+
 // ── 起動時: 認証状態を stderr に出力（MCP クライアントのログに残る）───────────
 
 const hasPayToken = PAY_TOKEN.length > 0;
@@ -43,8 +54,12 @@ console.error(`[LemonCake MCP]   BUYER_JWT   : ${hasBuyerJwt ? "✓ set" : "✗ 
 
 if (!hasPayToken || !hasBuyerJwt) {
   console.error("[LemonCake MCP]");
-  console.error("[LemonCake MCP]   To get credentials, use the `setup` tool or visit:");
-  console.error("[LemonCake MCP]   https://lemoncake.xyz/dashboard");
+  console.error("[LemonCake MCP]   🚀 Get started in 3 minutes:");
+  console.error(`[LemonCake MCP]     1. Create a free account  →  ${REGISTER_URL}`);
+  console.error("[LemonCake MCP]     2. Top up balance ($5 USDC / JPYC supported)");
+  console.error("[LemonCake MCP]     3. Issue a Pay Token or copy Buyer JWT from Dashboard");
+  console.error("[LemonCake MCP]");
+  console.error("[LemonCake MCP]   Or call the `setup` tool from your MCP client for interactive guidance.");
 }
 
 // ── ヘルパー ──────────────────────────────────────────────────────────────────
@@ -52,7 +67,9 @@ if (!hasPayToken || !hasBuyerJwt) {
 async function apiGet(path: string, auth?: string) {
   const res = await fetch(`${API_URL}${path}`, {
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type":       "application/json",
+      "User-Agent":         USER_AGENT,
+      "X-LemonCake-Client": USER_AGENT,
       ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
     },
   });
@@ -65,7 +82,9 @@ async function apiPost(path: string, data: unknown, auth?: string, extraHeaders?
   const res = await fetch(`${API_URL}${path}`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type":       "application/json",
+      "User-Agent":         USER_AGENT,
+      "X-LemonCake-Client": USER_AGENT,
       ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
       ...(extraHeaders ?? {}),
     },
@@ -89,14 +108,16 @@ function credentialError(envVar: string, toolName: string) {
         error: `${envVar} is not configured.`,
         code:  "CREDENTIAL_MISSING",
         howToFix: [
-          `1. Sign up or log in at https://lemoncake.xyz`,
+          `1. Create a free account → ${REGISTER_URL}`,
+          `2. Top up balance ($5 USDC or JPYC) → ${BILLING_URL}`,
           envVar === "LEMON_CAKE_PAY_TOKEN"
-            ? "2. Go to Dashboard → Tokens → Issue Pay Token (set your spending limit)"
-            : "2. Go to Dashboard → Settings → Copy your Buyer JWT",
-          `3. Add to your MCP client config:`,
+            ? `3. Dashboard → Tokens → Issue Pay Token (set your spending limit) → ${DASHBOARD_URL}`
+            : `3. Dashboard → Settings → Copy your Buyer JWT → ${DASHBOARD_URL}`,
+          `4. Add to your MCP client config:`,
           `   "env": { "${envVar}": "<paste token here>" }`,
-          `4. Restart your MCP client`,
+          `5. Restart your MCP client`,
         ],
+        docs: DOCS_URL,
         tip: `You can also call the 'setup' tool to see full setup instructions.`,
       }, null, 2),
     }],
@@ -277,11 +298,12 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         if (!hasPayToken || !hasBuyerJwt) {
           steps.push("=== セットアップ手順 ===");
           steps.push("");
-          steps.push("1. アカウント作成");
-          steps.push("   https://lemoncake.xyz にアクセスしてサインアップ");
+          steps.push("1. 無料アカウント作成（3分で完了）");
+          steps.push(`   → ${REGISTER_URL}`);
           steps.push("");
-          steps.push("2. USDC残高をチャージ");
-          steps.push("   Dashboard → Deposit → JPYCをPolygonウォレットから送金");
+          steps.push("2. USDC残高をチャージ（$5〜）");
+          steps.push(`   → ${BILLING_URL}`);
+          steps.push("   JPYCまたはUSDCで入金可能");
           steps.push("");
         }
 
@@ -320,7 +342,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         }, null, 2));
 
         return json({
-          version:       "0.2.0",
+          version:       MCP_VERSION,
           apiUrl:        API_URL,
           credentials:   status,
           availableTools: {
@@ -329,7 +351,8 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
             needBuyerJwt: ["check_balance"],
           },
           setupSteps: steps.length > 0 ? steps.join("\n") : "✅ 全ての認証情報が設定されています。",
-          dashboard:  "https://lemoncake.xyz/dashboard",
+          register:   REGISTER_URL,
+          dashboard:  DASHBOARD_URL,
           docs:       "https://github.com/evidai/lemon-cake",
         });
       }
@@ -362,8 +385,10 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         const url = `${API_URL}/api/proxy/${serviceId}${normalizedPath}`;
 
         const headers: Record<string, string> = {
-          "Content-Type":  "application/json",
-          "Authorization": `Bearer ${PAY_TOKEN}`,
+          "Content-Type":       "application/json",
+          "Authorization":      `Bearer ${PAY_TOKEN}`,
+          "User-Agent":         USER_AGENT,
+          "X-LemonCake-Client": USER_AGENT,
         };
         if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
 

@@ -17,7 +17,7 @@ meta:
     entrypoint: main
     language: python
     version: '3.12'
-  version: 0.0.6
+  version: 0.1.0
 name: lemoncake
 plugins:
   tools:
@@ -32,6 +32,6 @@ tags:
   - productivity
   - finance
 type: plugin
-version: 0.0.6
+version: 0.1.0
 privacy: PRIVACY.md
 repo: https://github.com/evidai/lemon-cake

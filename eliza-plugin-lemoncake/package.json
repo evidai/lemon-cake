@@ -1,6 +1,6 @@
 {
   "name": "eliza-plugin-lemoncake",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "LemonCake payment plugin for Eliza AI agents — autonomous M2M payments via JWT Pay Token",
   "type": "module",
   "main": "dist/index.js",

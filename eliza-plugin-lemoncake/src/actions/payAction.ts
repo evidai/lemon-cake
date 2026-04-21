@@ -322,25 +322,36 @@ export const payAction: Action = {
 
 // ─── エラーメッセージ生成 ─────────────────────────────────────────────────
 
+// UTM タグ付き URL（どのサーフェス経由で登録に来たか Vercel Analytics で判別するため）
+const UTM = "utm_source=eliza-plugin&utm_medium=cli";
+const REGISTER_URL  = `https://lemoncake.xyz/register?${UTM}&utm_campaign=credential-missing`;
+const DASHBOARD_URL = `https://lemoncake.xyz/dashboard?${UTM}`;
+const BILLING_URL   = `https://lemoncake.xyz/dashboard/billing?${UTM}&utm_campaign=topup`;
+const DOCS_URL      = `https://lemoncake.xyz/docs/quickstart?${UTM}`;
+
 function buildUserErrorMessage(err: LemoncakeError): string {
   switch (err.code) {
     case "CREDENTIAL_MISSING":
       return (
         "❌ LemonCake の認証情報が設定されていません。\n\n" +
-        ".env または character の settings に以下を設定してください:\n" +
-        "```\n" +
-        "LEMONCAKE_PAY_TOKEN=<ダッシュボードで発行した Pay Token>\n" +
-        "# または\n" +
-        "LEMONCAKE_BUYER_JWT=<ダッシュボードの Settings からコピー>\n" +
-        "```\n" +
-        "👉 https://lemoncake.xyz/dashboard"
+        "🚀 3分で始める:\n" +
+        `  1. 無料アカウント作成 → ${REGISTER_URL}\n` +
+        "  2. 残高チャージ（$5 USDC 以上、JPYC 可）\n" +
+        "  3. Dashboard → API Keys で Buyer JWT をコピー\n" +
+        "  4. .env または character の settings に設定:\n" +
+        "     LEMONCAKE_BUYER_JWT=<ペースト>\n\n" +
+        `📚 クイックスタート: ${DOCS_URL}`
       );
     case "INSUFFICIENT_BALANCE":
-      return "❌ USDC 残高が不足しています。ダッシュボードから JPYC でチャージしてください。\n👉 https://lemoncake.xyz/dashboard";
+      return (
+        "❌ USDC 残高が不足しています。\n\n" +
+        `💳 チャージする → ${BILLING_URL}\n` +
+        "   JPYC（日本円ステーブルコイン）または USDC で入金可能"
+      );
     case "TOKEN_LIMIT_EXCEEDED":
       return "❌ Pay Token の上限額に達しました。新しいトークンを発行するか、limitUsdc を増やして再試行してください。";
     case "TOKEN_EXPIRED":
-      return "❌ Pay Token または Buyer JWT の有効期限が切れています。ダッシュボードで新しいトークンを発行してください。";
+      return `❌ Pay Token または Buyer JWT の有効期限が切れています。\n👉 新しく発行: ${DASHBOARD_URL}`;
     case "SERVICE_NOT_FOUND":
       return `❌ サービスが見つかりません。serviceId が正しいか確認してください。`;
     case "SERVICE_NOT_APPROVED":
