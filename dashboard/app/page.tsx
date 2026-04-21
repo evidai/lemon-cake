@@ -447,10 +447,18 @@ function Sidebar({
       {/* ── Bottom: サポート + アカウント（バイヤーのみ） ── */}
       <div className="px-3 pb-3 flex flex-col gap-0.5">
         <div className="mx-1 mb-1 border-t border-gray-100" />
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors focus:outline-none group">
+        <a
+          href="/support"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors focus:outline-none group"
+        >
           <IconSupport cls="w-5 h-5 flex-shrink-0 transition-colors text-gray-400 group-hover:text-gray-600" />
           <span className="font-medium text-[13.5px]">{t("サポート", "Support")}</span>
-        </button>
+          <svg className="w-3.5 h-3.5 ml-auto text-gray-300 group-hover:text-gray-500 transition-colors" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 3h6v6M17 3l-8 8M8 5H5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3"/>
+          </svg>
+        </a>
         <button onClick={() => setPage(role === "seller" ? "seller-account" : "account")}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors focus:outline-none group ${(page === "account" || page === "seller-account") ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"}`}>
           <svg className={`w-5 h-5 flex-shrink-0 transition-colors ${(page === "account" || page === "seller-account") ? "text-gray-700" : "text-gray-400 group-hover:text-gray-600"}`} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
