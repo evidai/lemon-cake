@@ -498,23 +498,54 @@ function AccountDetailModal({acc, onClose, onToggle}: {
 type LogEntry     = typeof DEMO_LOGS[0];
 type CircuitEntry = typeof DEMO_CIRCUITS[0];
 
-function OverviewPage({setNav, services, logs, circuits, accounts}: {
+function OverviewPage({setNav, services, logs, circuits, accounts, token}: {
   setNav:(n:NavSection)=>void;
   services: ServiceType[]; logs: LogEntry[];
   circuits: CircuitEntry[]; accounts: AccountType[];
+  token: string;
 }) {
   const totalVol   = logs.filter(l=>l.level==="normal"&&l.action.includes("transfer")).reduce((a,b)=>a+b.amount,0);
   const pendingSvc = services.filter(s=>s.reviewStatus==="pending").length;
   const openFlags  = logs.filter(l=>!l.resolved&&l.level!=="normal").length;
   const openCB     = circuits.filter(c=>c.state!=="closed").length;
 
+  // 実 API から KPI を取得
+  const [stats, setStats] = useState<{
+    totalDepositedUsdc: string;
+    totalChargedUsdc:   string;
+    totalBalanceUsdc:   string;
+    totalHeldUsdc:      string;
+    buyerCount:         number;
+    serviceCount:       number;
+    confirmedChargeCount: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API_URL}/api/admin/stats`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setStats(d))
+      .catch(() => {});
+  }, [token]);
+
+  const fmtUsdc = (s?: string) => {
+    const n = parseFloat(s ?? "0");
+    return `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  };
+
   return (
     <div className="space-y-6">
       {/* KPI row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <KpiCard
+          label="総チャージ額"
+          value={stats ? fmtUsdc(stats.totalDepositedUsdc) : "—"}
+          delta={stats ? `課金済 ${fmtUsdc(stats.totalChargedUsdc)}` : undefined}
+          color="green"
+        />
         <KpiCard label="総流通額（30d）" value={`$${totalVol.toFixed(0)}`} color="blue"/>
-        <KpiCard label="登録サービス数" value={services.filter(s=>s.reviewStatus==="approved").length} unit="件" delta={`うち審査中 ${pendingSvc}件`} color="default"/>
-        <KpiCard label="アクティブユーザー" value={accounts.filter(a=>!a.suspended).length} unit="名" color="green"/>
+        <KpiCard label="登録サービス数" value={stats?.serviceCount ?? services.filter(s=>s.reviewStatus==="approved").length} unit="件" delta={`うち審査中 ${pendingSvc}件`} color="default"/>
+        <KpiCard label="アクティブユーザー" value={stats?.buyerCount ?? accounts.filter(a=>!a.suspended).length} unit="名" color="green"/>
         <KpiCard label="未解決フラグ" value={openFlags} unit="件" delta={`CB障害 ${openCB}件`} color={openFlags>0?"red":"default"}/>
       </div>
 
@@ -1553,7 +1584,7 @@ export default function AdminRoot() {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-7 py-6">
-          {nav === "overview"    && <OverviewPage setNav={setNav} services={services} logs={logs} circuits={circuits} accounts={accounts}/>}
+          {nav === "overview"    && <OverviewPage setNav={setNav} services={services} logs={logs} circuits={circuits} accounts={accounts} token={token}/>}
           {nav === "marketplace" && <MarketplacePage services={services} setServices={setServices} accounts={accounts} setAccounts={setAccounts} token={token}/>}
           {nav === "buyers"      && <BuyersManagePage token={token}/>}
           {nav === "jpyc"        && <JpycReviewPage token={token}/>}
