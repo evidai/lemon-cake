@@ -344,7 +344,9 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
   let refreshToken: string | undefined;
 
   try {
-    const useBasicAuth = providerParam === "xero";
+    // Xero と Money Forward は CLIENT_SECRET_BASIC 必須
+    // （id/secret を Authorization ヘッダーに）。他は client_secret_post で OK。
+    const useBasicAuth = providerParam === "xero" || providerParam === "moneyforward";
 
     const tokenHeaders: Record<string, string> = {
       "Content-Type": "application/x-www-form-urlencoded",

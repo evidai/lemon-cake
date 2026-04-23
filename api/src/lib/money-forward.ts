@@ -24,13 +24,18 @@ export async function refreshMFToken(refreshToken: string): Promise<{
   refreshToken: string;
   expiresIn:    number;
 }> {
+  // MF は CLIENT_SECRET_BASIC 指定なので Authorization ヘッダーで送る
+  const basic = Buffer.from(
+    `${process.env.MF_CLIENT_ID ?? ""}:${process.env.MF_CLIENT_SECRET ?? ""}`,
+  ).toString("base64");
   const res = await fetch(`${MF_AUTH_BASE}/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type":  "application/x-www-form-urlencoded",
+      "Authorization": `Basic ${basic}`,
+    },
     body: new URLSearchParams({
       grant_type:    "refresh_token",
-      client_id:     process.env.MF_CLIENT_ID ?? "",
-      client_secret: process.env.MF_CLIENT_SECRET ?? "",
       refresh_token: refreshToken,
     }).toString(),
   });
@@ -209,14 +214,19 @@ export async function exchangeMFCode(code: string): Promise<{
   refreshToken: string;
 }> {
   const redirectUri = process.env.MF_REDIRECT_URI ?? "http://localhost:3002/api/money-forward/callback";
+  // MF は CLIENT_SECRET_BASIC — id/secret は Authorization ヘッダーへ
+  const basic = Buffer.from(
+    `${process.env.MF_CLIENT_ID ?? ""}:${process.env.MF_CLIENT_SECRET ?? ""}`,
+  ).toString("base64");
   const res = await fetch(`${MF_AUTH_BASE}/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type":  "application/x-www-form-urlencoded",
+      "Authorization": `Basic ${basic}`,
+    },
     body: new URLSearchParams({
-      grant_type:    "authorization_code",
-      client_id:     process.env.MF_CLIENT_ID ?? "",
-      client_secret: process.env.MF_CLIENT_SECRET ?? "",
-      redirect_uri:  redirectUri,
+      grant_type:   "authorization_code",
+      redirect_uri: redirectUri,
       code,
     }).toString(),
   });
