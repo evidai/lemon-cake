@@ -1,6 +1,6 @@
 ## Summary
 
-Adds **LemonCake** — a payment infrastructure plugin that lets Dify agents pay for upstream APIs with hard spending caps, a one-click kill switch, and (for Japanese users) automatic freee / QuickBooks / Xero journal entries and 適格請求書 / 源泉徴収 handling.
+Adds **LemonCake** — a payment infrastructure plugin that lets Dify agents pay for upstream APIs with hard spending caps, a one-click kill switch, and (for Japanese users) automatic freee / QuickBooks / Xero journal entries plus qualified-invoice and withholding-tax handling.
 
 **Author:** evidai / LemonCake (contact@aievid.com)
 **Homepage:** https://lemoncake.xyz
@@ -22,12 +22,12 @@ All traffic is proxied through Dify's own request log; no analytics, no third-pa
 
 To my knowledge this is the **first agent-payment plugin in the Dify Marketplace**. Unlike Stripe / PayPal tools (designed for a human checkout flow), LemonCake is built around M2M payments: signed JWTs with scoped limits, atomic revoke, idempotency keys, and sandbox mode for safe dry-runs.
 
-For Japanese users specifically, charges auto-sync to freee and get checked against the National Tax Agency qualified-invoice registry (適格請求書) — features that don't exist in any agent-payment product today.
+For Japanese users specifically, charges auto-sync to freee and get checked against the National Tax Agency qualified-invoice registry — features that don't exist in any agent-payment product today.
 
 ## Credentials
 
 - `api_base_url` (default `https://api.lemoncake.xyz`) — for self-hosted users
-- `buyer_jwt` — secret-input, obtained from lemoncake.xyz → Dashboard → Settings → API
+- `buyer_jwt` — secret-input, obtained from lemoncake.xyz -> Dashboard -> Settings -> API
 
 Validated at install time via `GET /api/auth/me` before the plugin is enabled.
 
@@ -40,29 +40,31 @@ Validated at install time via `GET /api/auth/me` before the plugin is enabled.
 
 ## Changelog
 
-### 0.0.2 (current)
-- **Bug fix:** `check_balance` now hits `GET /api/auth/me` (buyer-scoped) instead of `GET /api/buyers` (admin-only list) — the previous path returned 401 for end users.
+### 0.0.7 (current)
+- **Fix (install test):** removed the non-standard `agent` tag that failed pydantic enum validation on the Dify plugin registrar. Tags are now `finance`, `productivity`, `business` (all in the allowed enum).
+- **Docs:** English-only `README.md`; Japanese translation moved to `README.ja.md` (per Dify multilingual docs: https://docs.dify.ai/en/develop-plugin/features-and-specs/plugin-types/multilingual-readme).
 - **Security:** plaintext `api_base_url` is refused before the Buyer JWT is transmitted; response bodies capped at 1 MiB; raw upstream error bodies replaced with a structured parser.
 - **Resilience:** exponential-backoff retries on 429 / 502 / 503 / 504 with `Retry-After` honored; single 20 s default timeout budget across all tools.
-- **Idempotency:** `issue_pay_token` and `revoke_token` now send a fresh `Idempotency-Key` on every call, so a network retry never double-mints or double-revokes.
-- **Input validation:** `token_id` must match `^[A-Za-z0-9_-]{8,64}$` (blocks path traversal); `expires_in_seconds` clamped to [60, 2 592 000]; `limit` clamped to [1, 100].
-- **Metadata:** plugin `author` corrected to `evidai`; `User-Agent: lemoncake-dify/0.0.2 (+https://lemoncake.xyz)` sent on every request.
+- **Idempotency:** `issue_pay_token` and `revoke_token` send a fresh `Idempotency-Key` on every call.
+- **Input validation:** `token_id` must match `^[A-Za-z0-9_-]{8,64}$`; `expires_in_seconds` clamped to [60, 2592000]; `limit` clamped to [1, 100].
 
 ### 0.0.1
 - Initial submission.
 
 ## Testing performed
 
-- [x] Plugin installs cleanly via Dify CLI in local dev (`dify plugin init` → upload)
+- [x] Plugin loads cleanly against `dify-plugin==0.7.4` on Python 3.13 (pydantic enum validation now passes)
 - [x] Credential validation rejects an invalid JWT with a clear error message
 - [x] Credential validation rejects a non-HTTPS `api_base_url`
 - [x] Each of the 4 tools returns expected JSON + human-readable messages
 - [x] `revoke_token` behavior matches 404 / 409 / 200 paths against live API
-- [x] UTF-8 safe (Japanese copy renders correctly in all three manifest languages)
-- [x] Python files `py_compile` cleanly; no relative imports (`from tools.http_client import ...`)
+- [x] `README.md` CJK ratio = 0% (verified with regex scan)
+- [x] Python files `py_compile` cleanly; no relative imports
 
-## Happy to iterate on anything
+## Response to previous review
 
-File paths, descriptions, icon, privacy policy copy — please flag anything that doesn't match the Dify Marketplace style and I'll ship a v0.0.3 with the adjustments.
+- **PR language:** this PR body is now English-only.
+- **README language:** all CJK removed from `README.md`. Japanese copy lives in `README.ja.md` as a separate translation file per the multilingual spec.
+- **Install test:** root cause was the `agent` tag failing `ToolProviderConfiguration.identity.tags` enum validation. Reproduced locally, fixed, and re-tested — `Plugin(DifyPluginEnv(...))` now initializes without error.
 
-cc @langgenius/dify-plugins-reviewers 🍋
+Happy to iterate further — flag anything else and I'll ship 0.0.8.

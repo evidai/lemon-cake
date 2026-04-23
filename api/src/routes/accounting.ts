@@ -2,7 +2,7 @@
  * /api/accounting — Per-Buyer Accounting Integration Routes
  *
  * Buyers connect their own accounting software via OAuth.
- * Supported: QuickBooks, Xero, Zoho, Sage, NetSuite, freee
+ * Supported: QuickBooks, Xero, Zoho, Sage, NetSuite, freee, Money Forward
  */
 
 import { Hono } from "hono";
@@ -69,6 +69,13 @@ const OAUTH_CONFIGS = {
     scope:           "read write",
     clientIdEnv:     "FREEE_CLIENT_ID",
     clientSecretEnv: "FREEE_CLIENT_SECRET",
+  },
+  moneyforward: {
+    authUrl:         "https://api.biz.moneyforward.com/authorize",
+    tokenUrl:        "https://api.biz.moneyforward.com/token",
+    scope:           "mfc/invoice/data.write mfc/invoice/data.read office.read",
+    clientIdEnv:     "MF_CLIENT_ID",
+    clientSecretEnv: "MF_CLIENT_SECRET",
   },
 } as const;
 
@@ -397,7 +404,7 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
 
   // Map provider param to Prisma enum
   const providerEnum = providerParam.toUpperCase() as
-    "QUICKBOOKS" | "XERO" | "ZOHO" | "SAGE" | "FREEE";
+    "QUICKBOOKS" | "XERO" | "ZOHO" | "SAGE" | "FREEE" | "MONEYFORWARD";
 
   // Upsert connection — encrypt tokens before storing
   try {

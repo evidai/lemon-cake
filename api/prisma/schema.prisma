@@ -370,6 +370,7 @@ enum AccountingProvider {
   SAGE
   NETSUITE
   FREEE
+  MONEYFORWARD
 }
 
 // ─── ChargeRollup: M2M決済の日次/月次集計ロールアップ ────────

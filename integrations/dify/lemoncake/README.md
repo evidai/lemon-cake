@@ -2,7 +2,7 @@
 
 ![LemonCake demo — issue Pay Token, call upstream, revoke, reconcile](./_assets/demo.svg)
 
-Give your Dify agent a wallet — spend-capped Pay Tokens, a one-click kill switch, automatic freee journal entries, and Japanese qualified-invoice (適格請求書) verification, all callable from inside a Dify workflow.
+Give your Dify agent a wallet — spend-capped Pay Tokens, a one-click kill switch, automatic freee journal entries, and Japanese qualified-invoice verification, all callable from inside a Dify workflow.
 
 - **Homepage:** https://lemoncake.xyz
 - **Source:** https://github.com/evidai/lemon-cake
@@ -43,12 +43,12 @@ You'll need a LemonCake account with a USDC balance to use this plugin.
 ## Example workflow
 
 ```
-User: 「この3記事を要約して」
+User: "Summarize these 3 articles"
  └─> LLM plans tasks
       └─> Tool: issue_pay_token(service_id="jina-reader", limit_usdc=2, expires_in_seconds=600)
-           └─> Tool: (jina-reader plugin)   ← uses the Pay Token as Bearer
+           └─> Tool: (jina-reader plugin)   <- uses the Pay Token as Bearer
                 └─> Tool: list_charges(limit=5)
-                     └─> LLM: "3件の記事を読みました。使用料は $0.045 USDC です。"
+                     └─> LLM: "Read 3 articles. Total cost: $0.045 USDC."
 ```
 
 ## Security posture
@@ -57,9 +57,9 @@ User: 「この3記事を要約して」
 - Every request from the plugin carries `Authorization: Bearer <buyer-jwt>`; no data leaves Dify except the fields you see in the tool definitions.
 - See [`/docs/dify/audit-kit/`](../../../docs/dify/audit-kit/) in the repo for a full information-security review pack (data-flow diagram, retention policy, incident response).
 
-## Japanese 🇯🇵
+## Translations
 
-日本語の使い方とインストール手順は [`README.ja.md`](./README.ja.md) を参照してください。
+A Japanese translation is available at [`README.ja.md`](./README.ja.md).
 
 ## License
 
