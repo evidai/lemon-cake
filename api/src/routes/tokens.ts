@@ -270,7 +270,7 @@ tokensRouter.openapi(revokeRoute, async (c) => {
   try {
     const updated = await prisma.token.update({
       where: { id, buyerId: buyerPayload.buyerId, revoked: false },
-      data:  { revoked: true },
+      data:  { revoked: true, revokedAt: new Date() },
     });
     return c.json({ id: updated.id, revoked: true as const }, 200);
   } catch (e: unknown) {
@@ -283,6 +283,133 @@ tokensRouter.openapi(revokeRoute, async (c) => {
     }
     throw e;
   }
+});
+
+// ─── POST /api/tokens/revoke-bulk (Phase 4) ─────────────────
+// ワークフローID or インシデントタグで一括 revoke する。
+// 「うちのエージェントが prompt injection を食らった、workflow_id=X
+//  または incident_tag=Y で発行された全トークンを即停止」を 1 call で。
+
+const bulkRevokeRoute = createRoute({
+  method:  "post",
+  path:    "/revoke-bulk",
+  tags:    ["Tokens"],
+  summary: "ワークフロー / インシデントタグ単位で一括 revoke",
+  description: [
+    "`workflowId` または `incidentTag` のどちらか（または両方）を指定して、",
+    "呼び出し元バイヤーが保有する未失効トークンを一括で revoke します。",
+    "- `workflowId`: Token.workflowId に一致するトークン",
+    "- `incidentTag`: 既存 Charge.incidentTag = タグ を持つ Token を逆引き",
+    "冪等: 既に revoke 済みのものは結果に含まれない。",
+  ].join("\n"),
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            workflowId:  z.string().max(128).optional(),
+            incidentTag: z.string().max(128).optional(),
+            reason:      z.string().max(500).optional(),
+          }).refine(
+            (v) => !!(v.workflowId || v.incidentTag),
+            { message: "workflowId or incidentTag is required" },
+          ),
+        },
+      },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            revokedCount: z.number(),
+            tokenIds:     z.array(z.string()),
+          }),
+        },
+      },
+      description: "一括 revoke 成功",
+    },
+    400: { description: "バリデーションエラー" },
+    401: { description: "認証エラー" },
+    403: { description: "停止中のバイヤー" },
+  },
+});
+
+tokensRouter.openapi(bulkRevokeRoute, async (c) => {
+  const auth = c.req.header("Authorization");
+  if (!auth?.startsWith("Bearer ")) {
+    throw new HTTPException(401, { message: "Unauthorized" });
+  }
+  let buyerPayload: Awaited<ReturnType<typeof verifyBuyerToken>>;
+  try {
+    buyerPayload = await verifyBuyerToken(auth.slice(7));
+  } catch {
+    throw new HTTPException(401, { message: "Invalid token" });
+  }
+  const buyerId = buyerPayload.buyerId;
+
+  const buyer = await prisma.buyer.findUnique({
+    where:  { id: buyerId },
+    select: { suspended: true },
+  });
+  if (!buyer) throw new HTTPException(401, { message: "Buyer not found" });
+  if (buyer.suspended) throw new HTTPException(403, { message: "Buyer is suspended" });
+
+  const { workflowId, incidentTag, reason } = c.req.valid("json");
+
+  // ── revoke 対象の token ID を収集 ─────────────────────────
+  const targetIds = new Set<string>();
+
+  if (workflowId) {
+    const byWf = await prisma.token.findMany({
+      where:  { buyerId, workflowId, revoked: false },
+      select: { id: true },
+    });
+    for (const t of byWf) targetIds.add(t.id);
+  }
+
+  if (incidentTag) {
+    const byTag = await prisma.charge.findMany({
+      where:  { buyerId, incidentTag },
+      select: { tokenId: true },
+      distinct: ["tokenId"],
+    });
+    // 未失効のみに絞る
+    const tokenIds = byTag.map((c) => c.tokenId);
+    if (tokenIds.length > 0) {
+      const alive = await prisma.token.findMany({
+        where:  { id: { in: tokenIds }, buyerId, revoked: false },
+        select: { id: true },
+      });
+      for (const t of alive) targetIds.add(t.id);
+    }
+  }
+
+  if (targetIds.size === 0) {
+    return c.json({ revokedCount: 0, tokenIds: [] }, 200);
+  }
+
+  // ── 一括 update（buyerId 二重ガード）───────────────────────
+  const now = new Date();
+  const result = await prisma.token.updateMany({
+    where: {
+      id:      { in: Array.from(targetIds) },
+      buyerId,
+      revoked: false,
+    },
+    data: {
+      revoked:      true,
+      revokedAt:    now,
+      revokeReason: reason ?? (workflowId ? `bulk:workflow=${workflowId}` : `bulk:incident=${incidentTag}`),
+    },
+  });
+
+  return c.json(
+    { revokedCount: result.count, tokenIds: Array.from(targetIds) },
+    200,
+  );
 });
 
 // ─── GET /api/tokens ────────────────────────────────────────

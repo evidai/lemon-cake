@@ -21,6 +21,7 @@ import { tokensRouter }    from "./routes/tokens.js";
 import { chargeRouter }    from "./routes/charge.js";
 import { quoteRouter }     from "./routes/quote.js";
 import { spendWebhooksRouter } from "./routes/spend-webhooks.js";
+import { chargesAdminRouter } from "./routes/charges-admin.js";
 import { buyersRouter }    from "./routes/buyers.js";
 import { servicesRouter }  from "./routes/services.js";
 import { providersRouter } from "./routes/providers.js";
@@ -72,6 +73,7 @@ app.use(
 app.route("/api/auth",      authRouter);
 app.route("/api/tokens",    tokensRouter);
 app.route("/api/charges",   chargeRouter);
+app.route("/api/charges",   chargesAdminRouter);
 app.route("/api/quote",     quoteRouter);
 app.route("/api/spend-webhooks", spendWebhooksRouter);
 app.route("/api/buyers",    buyersRouter);
