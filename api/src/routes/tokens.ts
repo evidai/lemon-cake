@@ -26,6 +26,13 @@ const IssueTokenBody = z.object({
   expiresAt:  z.string().datetime().optional(),
   // サンドボックス: 実USDCを動かさずモック課金（デフォルトfalse）
   sandbox:    z.boolean().optional().default(false),
+
+  // ─── Incident contract v0 fields (all optional) ─────────────────────────
+  workflowId:       z.string().max(128).optional(),
+  agentId:          z.string().max(128).optional(),
+  allowedUpstreams: z.array(z.string().max(256)).max(32).optional(),
+  retryPolicy:      z.record(z.unknown()).optional(),
+  replaySafe:       z.boolean().optional().default(false),
 });
 
 const TokenResponse = z.object({
@@ -142,6 +149,12 @@ tokensRouter.openapi(issueRoute, async (c) => {
       expiresAt,
       sandbox:   body.sandbox,
       clientUserAgent,
+      // Incident contract v0 fields
+      workflowId:       body.workflowId ?? null,
+      agentId:          body.agentId ?? null,
+      allowedUpstreams: body.allowedUpstreams ?? [],
+      retryPolicy:      (body.retryPolicy as unknown as import("@prisma/client").Prisma.InputJsonValue | undefined) ?? undefined,
+      replaySafe:       body.replaySafe,
     },
   });
 

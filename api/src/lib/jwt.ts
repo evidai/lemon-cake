@@ -115,6 +115,46 @@ export async function verifyAdminToken(token: string): Promise<boolean> {
   }
 }
 
+// ─── Incident Contract 署名（Phase 1） ─────────────────────────
+// Pay Token の秘密鍵とは独立させ、Pay Token を回しても過去の署名検証が
+// 生き続けるようにする。fallback として JWT_SECRET を使うので、本番で
+// 独立運用したい場合は INCIDENT_SIGNING_KEY を別途 set する。
+
+function getIncidentSecret(): Uint8Array {
+  const secret = process.env.INCIDENT_SIGNING_KEY ?? process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("INCIDENT_SIGNING_KEY (or JWT_SECRET fallback) must be ≥32 chars");
+  }
+  return new TextEncoder().encode(secret);
+}
+
+/**
+ * 署名付き incident contract を発行する。
+ * - alg: HS256
+ * - iss: "kyapay-incident"
+ * - 本体の JSON を JWT claim `c` に格納し、返すのは JWS コンパクト表現。
+ *   DB には `incidentContract` (object) と `incidentSignature` (JWS) を
+ *   それぞれ分離保存する。
+ */
+export async function signIncidentContract(payload: Record<string, unknown>): Promise<string> {
+  return new SignJWT({ c: payload })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT", kid: "incident-v0" })
+    .setIssuedAt()
+    .setIssuer("kyapay-incident")
+    .sign(getIncidentSecret());
+}
+
+/** JWS を検証して contract 本体を返す。外部ツール検証用のヘルパー。 */
+export async function verifyIncidentContract(jws: string): Promise<Record<string, unknown>> {
+  const { payload } = await jwtVerify(jws, getIncidentSecret(), {
+    issuer: "kyapay-incident",
+  });
+  if (!payload.c || typeof payload.c !== "object") {
+    throw new Error("Invalid incident signature: missing contract claim");
+  }
+  return payload.c as Record<string, unknown>;
+}
+
 // ─── Pay Token 検証 ──────────────────────────────────────────
 export async function verifyPayToken(token: string): Promise<PayTokenPayload> {
   const { payload } = await jwtVerify(token, getSecret(), {

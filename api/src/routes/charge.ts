@@ -8,10 +8,12 @@
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "../lib/prisma.js";
-import { verifyPayToken, verifyBuyerToken } from "../lib/jwt.js";
+import { verifyPayToken, verifyBuyerToken, signIncidentContract } from "../lib/jwt.js";
 import { HTTPException } from "hono/http-exception";
 import { Decimal } from "@prisma/client/runtime/library";
 import { getUsdcTransferQueue } from "../lib/queue.js";
+import { buildIncidentContract } from "../lib/incident-contract.js";
+import { hashInput } from "../lib/hash.js";
 
 export const chargeRouter = new OpenAPIHono();
 
@@ -26,6 +28,16 @@ const ChargeBody = z.object({
     .string()
     .regex(/^\d+(\.\d{1,6})?$/, "amountUsdc: up to 6 decimal places (USDC precision)")
     .refine((v) => parseFloat(v) > 0, "amountUsdc must be greater than 0"),
+
+  // ─── Incident contract v0 (all optional) ────────────────────────────────
+  // 呼び出し対象の入力データ。ハッシュを contract.execution.input_hash に格納。
+  input:            z.unknown().optional(),
+  // upstream の HTTP ステータス（呼び出し済みの場合）
+  providerStatus:   z.number().int().optional(),
+  // upstream レスポンスのハッシュ（プロキシ外で呼んだ場合にクライアントが計算して送る）
+  responseHash:     z.string().max(128).optional(),
+  // インシデントタグ（bulk revoke / export のキー）
+  incidentTag:      z.string().max(128).optional(),
 });
 
 const ChargeResponse = z.object({
@@ -174,6 +186,10 @@ chargeRouter.openapi(chargeRoute, async (c) => {
     }
 
     // Charge レコードを作成（sandboxなら即時COMPLETED、実金は動かさない）
+    // Incident contract 用フィールドを Token から継承 + リクエストヘッダ/ボディから抽出
+    const requestIdHeader = c.req.header("x-request-id") ?? null;
+    const inputHash = body.input !== undefined ? hashInput(body.input) : null;
+
     const charge = await tx.charge.create({
       data: {
         buyerId,
@@ -185,6 +201,14 @@ chargeRouter.openapi(chargeRoute, async (c) => {
         // TODO: リスクスコア算出ロジック (Phase 3)
         riskScore:      0,
         sandbox:        isSandbox,
+        // ─── Incident contract fields ─────────────────────────────────
+        requestId:      requestIdHeader ?? idempotencyKey,
+        workflowId:     token.workflowId,
+        agentId:        token.agentId,
+        inputHash,
+        responseHash:   body.responseHash ?? null,
+        providerStatus: body.providerStatus ?? null,
+        incidentTag:    body.incidentTag ?? null,
       },
     });
 
@@ -231,6 +255,29 @@ chargeRouter.openapi(chargeRoute, async (c) => {
     }
   } else {
     console.log("[Charge] SKIP_WORKER=true: queue skipped, chargeId:", charge.id);
+  }
+
+  // ─── Incident contract v0 emission ──────────────────────────────────────
+  // トランザクション後に incident contract を組み立てて署名し、
+  // Charge に persist する。失敗してもメインの課金フローは成功扱い
+  // （契約は次回調停時に再発行できる）。
+  try {
+    // 最新の token + charge を引き直して組み立てる（usedUsdc/incrementedを反映）
+    const freshToken = await prisma.token.findUnique({ where: { id: tokenId } });
+    if (freshToken) {
+      const contract = buildIncidentContract({ charge, token: freshToken });
+      const signature = await signIncidentContract(contract);
+      await prisma.charge.update({
+        where: { id: charge.id },
+        data:  {
+          // Prisma's InputJsonValue cast — contract is a plain JSON object by construction
+          incidentContract: contract as unknown as import("@prisma/client").Prisma.InputJsonValue,
+          incidentSignature: signature,
+        },
+      });
+    }
+  } catch (contractErr) {
+    console.error("[Charge] Failed to emit incident contract:", contractErr);
   }
 
   return c.json(
