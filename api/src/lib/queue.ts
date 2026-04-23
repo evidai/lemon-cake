@@ -71,3 +71,27 @@ export function getWorkflowQueue(): Queue<WorkflowStepJobData> {
   }
   return _workflowQueue;
 }
+
+// ─── Spend-Threshold Webhook キュー（Phase 3） ──────────────────
+export interface WebhookDeliveryJobData {
+  deliveryId: string;     // SpendWebhookDelivery.id
+}
+
+export const WEBHOOK_DELIVERY_QUEUE = "webhook-delivery";
+
+let _webhookQueue: Queue<WebhookDeliveryJobData> | null = null;
+
+export function getWebhookDeliveryQueue(): Queue<WebhookDeliveryJobData> {
+  if (!_webhookQueue) {
+    _webhookQueue = new Queue<WebhookDeliveryJobData>(WEBHOOK_DELIVERY_QUEUE, {
+      connection: createRedisConnection(),
+      defaultJobOptions: {
+        attempts: 5,
+        backoff:  { type: "exponential", delay: 3_000 },
+        removeOnComplete: { count: 1000 },
+        removeOnFail:     { count: 500 },
+      },
+    });
+  }
+  return _webhookQueue;
+}

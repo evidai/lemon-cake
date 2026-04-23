@@ -66,6 +66,7 @@ model Buyer {
   workflows             Workflow[]
   accountingConnections BuyerAccountingConnection[]
   chargeRollups         ChargeRollup[]
+  spendWebhooks         SpendWebhook[]
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -456,4 +457,59 @@ model ChargeRollup {
 enum RollupGranularity {
   DAILY
   MONTHLY
+}
+
+// ─────────────────────────────────────────────────────────────
+// SpendWebhook: バイヤー設定の支出しきい値 webhook (Phase 3)
+// Pay Token の usedUsdc が thresholds を超えた瞬間に POST を飛ばす
+// ─────────────────────────────────────────────────────────────
+model SpendWebhook {
+  id         String   @id @default(cuid())
+
+  buyerId    String
+  buyer      Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  url        String   // webhook の送信先 URL (HTTPS 必須)
+  thresholds Int[]    @default([50, 80, 95])   // パーセント値
+  secret     String   // HMAC-SHA256 署名用シークレット
+
+  active     Boolean  @default(true)
+
+  deliveries SpendWebhookDelivery[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([buyerId])
+  @@map("spend_webhooks")
+}
+
+model SpendWebhookDelivery {
+  id          String                 @id @default(cuid())
+
+  webhookId   String
+  webhook     SpendWebhook           @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  tokenId     String                 // Token.id — 発火対象のトークン
+  threshold   Int                    // 発火したしきい値（%）
+  chargeId    String?                // 発火を引き起こした Charge.id
+
+  status      WebhookDeliveryStatus  @default(PENDING)
+  attempts    Int                    @default(0)
+  lastError   String?
+  deliveredAt DateTime?
+
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  // 同じトークンで同じしきい値を二重発火させない (SKU-style uniqueness)
+  @@unique([webhookId, tokenId, threshold])
+  @@index([status])
+  @@map("spend_webhook_deliveries")
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
 }

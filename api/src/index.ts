@@ -19,6 +19,8 @@ import { HTTPException } from "hono/http-exception";
 import { loadSecretsFromGCP } from "./lib/secrets.js";
 import { tokensRouter }    from "./routes/tokens.js";
 import { chargeRouter }    from "./routes/charge.js";
+import { quoteRouter }     from "./routes/quote.js";
+import { spendWebhooksRouter } from "./routes/spend-webhooks.js";
 import { buyersRouter }    from "./routes/buyers.js";
 import { servicesRouter }  from "./routes/services.js";
 import { providersRouter } from "./routes/providers.js";
@@ -38,6 +40,7 @@ import { telemetryRouter }          from "./routes/telemetry.js";
 import { adminRouter }              from "./routes/admin.js";
 import { startUsdcTransferWorker, handleFailedJob } from "./workers/usdcTransfer.js";
 import { startWorkflowWorker }      from "./workers/workflowStep.js";
+import { startWebhookDeliveryWorker } from "./workers/webhookDelivery.js";
 
 // ─── アプリ初期化 ────────────────────────────────────────────
 const app = new OpenAPIHono();
@@ -69,6 +72,8 @@ app.use(
 app.route("/api/auth",      authRouter);
 app.route("/api/tokens",    tokensRouter);
 app.route("/api/charges",   chargeRouter);
+app.route("/api/quote",     quoteRouter);
+app.route("/api/spend-webhooks", spendWebhooksRouter);
 app.route("/api/buyers",    buyersRouter);
 app.route("/api/services",  servicesRouter);
 app.route("/api/providers", providersRouter);
@@ -159,6 +164,7 @@ async function main(): Promise<void> {
   if (process.env.SKIP_WORKER !== "true") {
     const workflowWorker = startWorkflowWorker();
     const worker = startUsdcTransferWorker();
+    const webhookWorker = startWebhookDeliveryWorker();
 
     // 最終失敗時の補償処理（リトライ上限を超えた場合）
     worker.on("failed", async (job, err) => {
@@ -169,8 +175,8 @@ async function main(): Promise<void> {
 
     // グレースフルシャットダウン
     const shutdown = async (): Promise<void> => {
-      console.log("\n[Shutdown] Closing worker...");
-      await worker.close();
+      console.log("\n[Shutdown] Closing workers...");
+      await Promise.allSettled([worker.close(), workflowWorker.close(), webhookWorker.close()]);
       process.exit(0);
     };
     process.on("SIGTERM", shutdown);

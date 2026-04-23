@@ -11,9 +11,10 @@ import { prisma } from "../lib/prisma.js";
 import { verifyPayToken, verifyBuyerToken, signIncidentContract } from "../lib/jwt.js";
 import { HTTPException } from "hono/http-exception";
 import { Decimal } from "@prisma/client/runtime/library";
-import { getUsdcTransferQueue } from "../lib/queue.js";
+import { getUsdcTransferQueue, getWebhookDeliveryQueue } from "../lib/queue.js";
 import { buildIncidentContract } from "../lib/incident-contract.js";
 import { hashInput } from "../lib/hash.js";
+import { evaluateThresholdsCrossed } from "../lib/threshold.js";
 
 export const chargeRouter = new OpenAPIHono();
 
@@ -172,6 +173,7 @@ chargeRouter.openapi(chargeRoute, async (c) => {
 
   // ── トランザクション: Charge作成 + 残高デクリメント + Token使用額更新 ──
   const isSandbox = token.sandbox;
+  const oldUsedSnapshot = token.usedUsdc;
   const charge = await prisma.$transaction(async (tx) => {
     // トランザクション内で最新のトークン状態を再確認（revoke レース対策）
     const fresh = await tx.token.findUnique({
@@ -255,6 +257,52 @@ chargeRouter.openapi(chargeRoute, async (c) => {
     }
   } else {
     console.log("[Charge] SKIP_WORKER=true: queue skipped, chargeId:", charge.id);
+  }
+
+  // ─── Phase 3: Spend-threshold webhook evaluation ────────────────────────
+  // 今回の課金でしきい値を初めて跨いだ webhook 配信ジョブを enqueue する。
+  // 同時実行は (webhookId, tokenId, threshold) の unique 制約で de-dup される。
+  try {
+    const webhooks = await prisma.spendWebhook.findMany({
+      where: { buyerId, active: true },
+    });
+    if (webhooks.length > 0) {
+      const queue = getWebhookDeliveryQueue();
+      const newUsedSnapshot = oldUsedSnapshot.add(amountDecimal);
+      for (const wh of webhooks) {
+        const crossed = evaluateThresholdsCrossed(
+          oldUsedSnapshot,
+          newUsedSnapshot,
+          token.limitUsdc,
+          wh.thresholds,
+        );
+        for (const threshold of crossed) {
+          try {
+            const delivery = await prisma.spendWebhookDelivery.create({
+              data: {
+                webhookId: wh.id,
+                tokenId,
+                threshold,
+                chargeId:  charge.id,
+              },
+            });
+            await queue.add(
+              "deliver",
+              { deliveryId: delivery.id },
+              { jobId: delivery.id },
+            );
+          } catch (err) {
+            // P2002 unique violation — another concurrent charge won the race.
+            const code = (err as { code?: string }).code;
+            if (code !== "P2002") {
+              console.error("[Charge] webhook delivery enqueue failed:", err);
+            }
+          }
+        }
+      }
+    }
+  } catch (whErr) {
+    console.error("[Charge] spend-webhook evaluation failed:", whErr);
   }
 
   // ─── Incident contract v0 emission ──────────────────────────────────────
