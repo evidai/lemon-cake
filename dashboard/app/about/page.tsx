@@ -6,16 +6,16 @@ export const metadata = {
   title: "LemonCake — AI エージェントに財布を持たせる M2M 決済・会計インフラ",
   description: "LemonCake は AI エージェント専用の M2M 決済・会計インフラ。Pay Token 1 行で外部 API に自律決済、freee / MoneyForward 自動仕訳、源泉徴収 10.21% / インボイス国税庁 API / 電子帳簿保存法 7 年保持まで全自動。JPYC・USDC 対応。Dify・LangChain・MCP で即利用可能。",
   alternates: {
-    canonical: "https://lemoncake.xyz/about",
+    canonical: "https://lemoncake.aievid.com/about",
     languages: {
-      "ja-JP": "https://lemoncake.xyz/about",
-      "en-US": "https://lemoncake.xyz/about/en",
+      "ja-JP": "https://lemoncake.aievid.com/about",
+      "en-US": "https://lemoncake.aievid.com/about/en",
     },
   },
   openGraph: {
     title: "LemonCake — AI エージェントに財布を持たせる M2M 決済・会計インフラ",
     description: "Pay Token 1 行で AI エージェントに安全な支払い能力を付与。freee / MoneyForward 自動仕訳、源泉徴収・インボイス・電帳法対応。",
-    url: "https://lemoncake.xyz/about",
+    url: "https://lemoncake.aievid.com/about",
     type: "article",
   },
 };
@@ -78,7 +78,7 @@ const faqJsonLd = {
       name: "無料で試せますか？",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "はい。lemoncake.xyz で 30 秒でアカウントを作成でき、無料枠があります。クレジットカード登録なしで Pay Token の発行・テスト決済まで試せます。",
+        text: "はい。lemoncake.aievid.com で 30 秒でアカウントを作成でき、無料枠があります。クレジットカード登録なしで Pay Token の発行・テスト決済まで試せます。",
       },
     },
     {

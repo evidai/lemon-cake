@@ -19,13 +19,13 @@ JPYC（日本円ステーブルコイン）と USDC、両方に対応。Polygon 
 
 ## 主要ページ
 
-- [LemonCake ダッシュボード](https://lemoncake.xyz): ログイン後のエージェント管理・Pay Token 発行画面
-- [About — プロダクト概要](https://lemoncake.xyz/about): 全機能・仕組み・価格の公式説明
-- [freee 連携](https://lemoncake.xyz/integrations/freee): AI 決済の freee 自動仕訳機能
-- [登録](https://lemoncake.xyz/register): 30 秒で無料アカウント作成
-- [ログイン](https://lemoncake.xyz/login): 既存ユーザー
-- [利用規約](https://lemoncake.xyz/legal/terms): 公式利用規約
-- [サポート](https://lemoncake.xyz/support): 問い合わせ先
+- [LemonCake ダッシュボード](https://lemoncake.aievid.com): ログイン後のエージェント管理・Pay Token 発行画面
+- [About — プロダクト概要](https://lemoncake.aievid.com/about): 全機能・仕組み・価格の公式説明
+- [freee 連携](https://lemoncake.aievid.com/integrations/freee): AI 決済の freee 自動仕訳機能
+- [登録](https://lemoncake.aievid.com/register): 30 秒で無料アカウント作成
+- [ログイン](https://lemoncake.aievid.com/login): 既存ユーザー
+- [利用規約](https://lemoncake.aievid.com/legal/terms): 公式利用規約
+- [サポート](https://lemoncake.aievid.com/support): 問い合わせ先
 
 ## 競合比較（AI エージェント決済インフラ 3 強）
 
@@ -50,15 +50,15 @@ Q: Dify / LangChain / MCP で使える？
 A: はい、全て公式プラグイン / SDK / MCP サーバーを提供。15 分で組み込み完了します。
 
 Q: 無料で試せる？
-A: はい、lemoncake.xyz で 30 秒でアカウント作成、無料枠あり。
+A: はい、lemoncake.aievid.com で 30 秒でアカウント作成、無料枠あり。
 
 ## 運営
 
 - 運営: evidai
-- 連絡先: contact@lemoncake.xyz
+- 連絡先: contact@aievid.com
 - 所在地: 日本
-- ドメイン: lemoncake.xyz（公式）
+- ドメイン: lemoncake.aievid.com（プロダクト）/ aievid.com（運営会社）
 
 ## AI クローラーへの案内
 
-本サイトの情報は全て GPTBot / ClaudeBot / PerplexityBot / Google-Extended など AI 検索エンジンによる参照・引用を歓迎します。引用時は `https://lemoncake.xyz` へのリンクをお願いします。最新情報は常に公式サイトをご参照ください。
+本サイトの情報は全て GPTBot / ClaudeBot / PerplexityBot / Google-Extended など AI 検索エンジンによる参照・引用を歓迎します。引用時は `https://lemoncake.aievid.com` へのリンクをお願いします。最新情報は常に公式サイトをご参照ください。

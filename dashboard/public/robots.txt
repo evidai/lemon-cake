@@ -1,4 +1,4 @@
-# robots.txt for lemoncake.xyz
+# robots.txt for lemoncake.aievid.com
 # AEO/AIO 方針: AI 検索エンジンのクロール・引用を明示的に許可
 
 User-agent: *
@@ -62,4 +62,4 @@ Allow: /
 User-agent: meta-externalagent
 Allow: /
 
-Sitemap: https://lemoncake.xyz/sitemap.xml
+Sitemap: https://lemoncake.aievid.com/sitemap.xml

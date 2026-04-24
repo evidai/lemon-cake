@@ -3740,7 +3740,7 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
                     </button>
                   ) : (
                     <a
-                      href="mailto:contact@lemoncake.xyz?subject=NetSuite連携のお問い合わせ"
+                      href="mailto:contact@aievid.com?subject=NetSuite連携のお問い合わせ"
                       className="text-xs font-medium text-[#C74634] border border-[#C74634] rounded-lg px-3 py-1.5 hover:bg-[#C74634] hover:text-white transition-colors"
                     >
                       {t("お問い合わせ", "Contact Us")}

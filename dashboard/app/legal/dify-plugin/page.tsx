@@ -26,7 +26,7 @@ export default function DifyPluginPrivacyPage() {
         <p className="text-base leading-relaxed mb-8">
           This policy describes what data the <strong>LemonCake for Dify</strong> plugin transmits,
           where it is processed, and how long it is retained. The plugin is distributed by{" "}
-          <strong>LemonCake</strong> (contact@lemoncake.xyz). The canonical version of this
+          <strong>evidai / LemonCake</strong> (contact@aievid.com). The canonical version of this
           document lives at <code className="bg-black/10 px-1 rounded">lemoncake.xyz/legal/dify-plugin</code>{" "}
           and must match the copy shipped inside the plugin package on GitHub.
         </p>
@@ -140,7 +140,7 @@ export default function DifyPluginPrivacyPage() {
               logs after a 30-day grace window.
             </li>
           </ul>
-          <p className="mt-3">All requests: contact@lemoncake.xyz.</p>
+          <p className="mt-3">All requests: contact@aievid.com.</p>
         </Section>
 
         <Section title="7. Security">
@@ -173,7 +173,7 @@ export default function DifyPluginPrivacyPage() {
 
         <Section title="9. Contact">
           <ul className="list-disc pl-6 space-y-1">
-            <li>Email: contact@lemoncake.xyz</li>
+            <li>Email: contact@aievid.com</li>
             <li>
               Issues:{" "}
               <a href="https://github.com/evidai/lemon-cake/issues" className="underline">

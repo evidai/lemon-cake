@@ -5,12 +5,12 @@ export const metadata = {
   title: "LemonCake × freee 連携 — AI エージェントの決済を自動仕訳（源泉・インボイス対応）",
   description:
     "LemonCake の決済データを freee に自動仕訳するインテグレーション。AI エージェントが外部 API 決済を行うたび、外注費 / 通信費 と 普通預金 の仕訳、源泉徴収 10.21% 按分、適格請求書発行事業者（インボイス）国税庁 API チェック、USDC/JPYC → 円換算、電子帳簿保存法 7 年保持まで全自動化します。",
-  alternates: { canonical: "https://lemoncake.xyz/integrations/freee" },
+  alternates: { canonical: "https://lemoncake.aievid.com/integrations/freee" },
   openGraph: {
     title: "LemonCake × freee 連携 — AI エージェントの決済を自動仕訳",
     description:
       "Pay Token 決済のたびに freee へ自動記帳。源泉徴収按分・インボイス判定・USDC/JPYC 円換算・電帳法対応まで一気通貫。",
-    url: "https://lemoncake.xyz/integrations/freee",
+    url: "https://lemoncake.aievid.com/integrations/freee",
     type: "article",
   },
 };
@@ -251,7 +251,7 @@ export default function FreeeIntegrationPage() {
         </div>
 
         <div className="text-sm opacity-60">
-          お問い合わせ: <a className="underline" href="mailto:contact@lemoncake.xyz">contact@lemoncake.xyz</a>
+          運営: evidai ・ お問い合わせ: <a className="underline" href="mailto:contact@aievid.com">contact@aievid.com</a>
           <br />
           <Link href="/legal/terms" className="underline">利用規約</Link>
           {" / "}

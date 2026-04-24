@@ -7,7 +7,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email,     setEmail]     = useState("contact@lemoncake.xyz");
+  const [email,     setEmail]     = useState("contact@aievid.com");
   const [password,  setPassword]  = useState("");
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState("");
