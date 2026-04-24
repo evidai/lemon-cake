@@ -109,47 +109,55 @@ export async function createFreeeTransaction(params: CreateDealParams): Promise<
   const details: object[] = [];
 
   // ─── freee マスタ ID（事業所固有）────────────────
-  // account_item_id と tax_code は事業所によって異なるため env で上書き可能。
-  // デフォルトは Evid AI (company_id=12605324) の ID（freee-masters.ts で取得）。
-  const ACC_GAICHU   = parseInt(process.env.FREEE_ACC_GAICHU      ?? "1040532923"); // 外注費
-  const ACC_AZUKARI  = parseInt(process.env.FREEE_ACC_AZUKARI     ?? "1040532876"); // 預り金
-  const ACC_TSUSHIN  = parseInt(process.env.FREEE_ACC_TSUSHIN     ?? "1040532908"); // 通信費
-  // 現金/普通預金 の account_item_id。freee で walletable に紐付いた科目 ID を指定。
-  const ACC_CASH     = parseInt(process.env.FREEE_ACC_CASH        ?? "0");
-  if (!ACC_CASH) throw new Error("FREEE_ACC_CASH (現金/普通預金の account_item_id) が未設定");
+  const ACC_GAICHU   = parseInt(process.env.FREEE_ACC_GAICHU  ?? "1040532923"); // 外注費
+  const ACC_TSUSHIN  = parseInt(process.env.FREEE_ACC_TSUSHIN ?? "1040532908"); // 通信費
+  // 支払い元 walletable（現金/普通預金）
+  const WALLETABLE_ID   = parseInt(process.env.FREEE_WALLETABLE_ID   ?? "0");
+  const WALLETABLE_TYPE = process.env.FREEE_WALLETABLE_TYPE ?? "wallet"; // wallet|bank_account|credit_card
+  if (!WALLETABLE_ID) throw new Error("FREEE_WALLETABLE_ID (freee walletable id) が未設定");
 
-  // tax_code:
-  //   136 = 課対仕入10%
-  //   189 = 課対仕入（控80）10% — インボイス非適格からの仕入（80%控除）
-  //   2   = 対象外
-  const TAX_TAIGI      = 136;  // 適格
-  const TAX_HIKOJO80   = 189;  // 非適格・80%控除
-  const taxCodeDebit   = params.invoiceRegistered ? TAX_TAIGI : TAX_HIKOJO80;
+  // tax_code: 136 = 課対仕入10% (適格) / 189 = 課対仕入（控80）10% (非適格80%控除)
+  const taxCodeDebit = params.invoiceRegistered ? 136 : 189;
 
-  if (params.withholding?.required) {
-    // 源泉徴収あり: 外注費 / 預り金（源泉所得税）/ 現金
-    details.push(
-      { account_item_id: ACC_GAICHU,  tax_code: taxCodeDebit, amount: params.amountJpy,           entry_side: "debit",  description: memo },
-      { account_item_id: ACC_AZUKARI, tax_code: 2,            amount: params.withholding.taxAmount, entry_side: "credit",
-        description: `源泉所得税（${(params.withholding.taxAmount / params.amountJpy * 100).toFixed(2)}%）` },
-      { account_item_id: ACC_CASH,    tax_code: 2,            amount: params.withholding.netAmount, entry_side: "credit",
-        description: `${params.providerName} への支払い（差引後）` },
-    );
-  } else {
-    // 源泉徴収なし: 通信費 / 現金
-    details.push(
-      { account_item_id: ACC_TSUSHIN, tax_code: taxCodeDebit, amount: params.amountJpy, entry_side: "debit",  description: memo },
-      { account_item_id: ACC_CASH,    tax_code: 2,            amount: params.amountJpy, entry_side: "credit",
-        description: `${params.providerName} への支払い` },
-    );
-  }
+  // 源泉徴収の有無で借方科目を切り替え。/deals API は withholding_tax を支払い総額から
+  // 控除する形式のみサポート（manual journal と違って 3 勘定分けにはならない）。
+  // net 支払いのみ記録し、源泉税は description と ref_number で追跡する。
+  const accountItemId = params.withholding?.required ? ACC_GAICHU : ACC_TSUSHIN;
+  const grossAmount   = params.amountJpy;
+  const paidAmount    = params.withholding?.required ? params.withholding.netAmount : grossAmount;
 
-  const body = {
-    company_id: parseInt(companyId),
-    issue_date: params.issueDate,
-    type:       "expense",
+  details.push({
+    account_item_id: accountItemId,
+    tax_code:        taxCodeDebit,
+    amount:          grossAmount,
+    description:     memo,
+  });
+
+  const body: Record<string, unknown> = {
+    company_id:     parseInt(companyId),
+    issue_date:     params.issueDate,
+    type:           "expense",
     details,
+    payments: [
+      {
+        from_walletable_type: WALLETABLE_TYPE,
+        from_walletable_id:   WALLETABLE_ID,
+        date:                 params.issueDate,
+        amount:               paidAmount,
+      },
+    ],
   };
+
+  // 源泉徴収額は freee API の withholding_amount フィールドで控除
+  if (params.withholding?.required) {
+    body.withholdings = [
+      {
+        date:             params.issueDate,
+        amount:           params.withholding.taxAmount,
+        income_tax_type:  "normal",
+      },
+    ];
+  }
 
   const doPost = (token: string) => fetch(`${FREEE_API_BASE}/api/1/deals`, {
     method:  "POST",
