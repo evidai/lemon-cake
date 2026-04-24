@@ -28,7 +28,7 @@ export default function SupportPage() {
         {/* Quick contact options */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-10">
           <a
-            href="mailto:contact@aievid.com"
+            href="mailto:contact@lemoncake.xyz"
             className="flex items-center gap-3 bg-white/4 border border-white/8 rounded-2xl px-4 py-3.5 hover:bg-white/8 transition-colors"
           >
             <div className="w-9 h-9 rounded-xl bg-[#fffd43]/15 border border-[#fffd43]/25 flex items-center justify-center flex-shrink-0">
@@ -39,7 +39,7 @@ export default function SupportPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-semibold text-white/40 uppercase tracking-wider">メール</p>
-              <p className="text-sm text-white font-medium truncate">contact@aievid.com</p>
+              <p className="text-sm text-white font-medium truncate">contact@lemoncake.xyz</p>
             </div>
           </a>
           <a

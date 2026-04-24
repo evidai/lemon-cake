@@ -3,7 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
-const SITE_URL  = "https://lemoncake.aievid.com";
+const SITE_URL  = "https://lemoncake.xyz";
 const SITE_NAME = "LemonCake";
 const DESC_JA   = "LemonCake は AI エージェント専用の M2M 決済・会計インフラ。Pay Token 1 行で外部 API に自律決済、freee / MoneyForward に自動仕訳、源泉徴収 10.21% / インボイス（国税庁 API）/ 電子帳簿保存法 7 年保持まで全自動。JPYC・USDC 対応、Polygon 実質 1 円/件。Dify・LangChain・MCP 対応。";
 const DESC_EN   = "LemonCake is the M2M payment + accounting infrastructure built for AI agents. One-line Pay Tokens let agents pay external APIs autonomously, with auto-journaling to freee / MoneyForward, Japanese withholding tax (10.21%), invoice registration (NTA API), and 7-year ledger retention fully automated. JPYC & USDC on Polygon, ~1 JPY/tx. Dify / LangChain / MCP ready.";
@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   },
   description: DESC_JA,
   applicationName: SITE_NAME,
-  authors: [{ name: "evidai", url: "https://aievid.com" }],
-  creator: "evidai",
-  publisher: "evidai",
+  authors: [{ name: "LemonCake", url: "https://lemoncake.xyz" }],
+  creator: "LemonCake",
+  publisher: "LemonCake",
   keywords: [
     "AIエージェント",
     "AIエージェント 決済",
@@ -43,8 +43,7 @@ export const metadata: Metadata = {
     "x402 日本",
     "LemonCake",
     "レモンケーキ",
-    "evidai",
-    "aievid",
+    "lemoncake.xyz",
   ],
   alternates: {
     canonical: SITE_URL,
@@ -72,8 +71,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@aievid",
-    creator: "@aievid",
+    site: "@lemoncake_xyz",
+    creator: "@lemoncake_xyz",
     title: "LemonCake — AI エージェント向け M2M 決済・会計インフラ",
     description: DESC_JA,
     images: [`${SITE_URL}/logo.png`],
@@ -109,17 +108,17 @@ const jsonLd = {
       "@type": "Organization",
       "@id": `${SITE_URL}#organization`,
       name: "LemonCake",
-      alternateName: ["レモンケーキ", "LemonCake by evidai"],
+      alternateName: ["レモンケーキ"],
       url: SITE_URL,
       logo: `${SITE_URL}/logo.png`,
-      email: "contact@aievid.com",
-      founder: { "@type": "Organization", name: "evidai", url: "https://aievid.com" },
+      email: "contact@lemoncake.xyz",
+      founder: { "@type": "Organization", name: "LemonCake", url: "https://lemoncake.xyz" },
       description: DESC_JA,
-      sameAs: ["https://aievid.com"],
+      sameAs: [],
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer support",
-        email: "contact@aievid.com",
+        email: "contact@lemoncake.xyz",
         availableLanguage: ["Japanese", "English"],
       },
     },

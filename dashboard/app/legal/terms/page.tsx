@@ -180,8 +180,8 @@ export default function TermsPage() {
             本規約に関するお問い合わせは、以下までお願いいたします：
           </p>
           <ul className="list-none mt-2 space-y-1">
-            <li>運営会社: evidai</li>
-            <li>お問い合わせ: <a className="underline" href="mailto:contact@aievid.com">contact@aievid.com</a></li>
+            <li>運営: LemonCake</li>
+            <li>お問い合わせ: <a className="underline" href="mailto:contact@lemoncake.xyz">contact@lemoncake.xyz</a></li>
             <li>セキュリティ報告: <a className="underline" href="mailto:security@lemoncake.xyz">security@lemoncake.xyz</a></li>
           </ul>
         </Section>
