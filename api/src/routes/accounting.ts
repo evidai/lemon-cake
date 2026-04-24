@@ -435,7 +435,8 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
   }
 
   // Redirect only to hardcoded DASHBOARD_URL — never to any user-supplied URL
-  return c.redirect(`${DASHBOARD_URL}/?accounting_connected=true&provider=${providerParam}`);
+  // page=accounting でダッシュボードの会計連携タブを開いた状態で着地させる
+  return c.redirect(`${DASHBOARD_URL}/?page=accounting&accounting_connected=true&provider=${providerParam}`);
 });
 
 // ═══════════════════════════════════════════════════════════════

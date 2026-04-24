@@ -3597,7 +3597,12 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
     setLoading(true);
     fetch(`${API}/api/accounting/connections`, { headers: hdrs })
       .then(r => r.json())
-      .then((d: AccountingConnection[]) => setConnections(Array.isArray(d) ? d : []))
+      .then((d: AccountingConnection[] | { connections?: AccountingConnection[] }) => {
+        // API は { connections: [...] } 形式で返すが、古い実装との互換のため両方受ける
+        if (Array.isArray(d)) setConnections(d);
+        else if (d && Array.isArray(d.connections)) setConnections(d.connections);
+        else setConnections([]);
+      })
       .catch(() => setConnections([]))
       .finally(() => setLoading(false));
   };
@@ -4096,7 +4101,18 @@ export default function Dashboard() {
   const canSave = useRef(false);
   useEffect(() => {
     if (!authReady) return;
-    setPage(load("buyer_page", "home" as Page));
+    // URL の ?page=xxx パラメータがあれば localStorage より優先（OAuth コールバック後の着地制御）
+    const urlPage = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("page")
+      : null;
+    const validPages: readonly string[] = [
+      "home","transactions","agents","usdc","jpyc","fraud","directory","account","accounting",
+      "seller-services","seller-directory","seller-account","seller-stats",
+    ];
+    const initialPage: Page = urlPage && validPages.includes(urlPage)
+      ? (urlPage as Page)
+      : load("buyer_page", "home" as Page);
+    setPage(initialPage);
     setApiKeys(load("buyer_apiKeys", []));
     setShowOnboarding(load("buyer_showOnboarding", true));
     setSellerProfile(load("seller_profile", null));
