@@ -3,8 +3,93 @@ import ContactButton from "./ContactButton";
 import AuthedRedirect from "./AuthedRedirect";
 
 export const metadata = {
-  title: "LemonCake — M2M Payment Infrastructure for AI Agents",
-  description: "AIエージェントが自律的にAPIを呼び出し、USDC で支払いを完結させるための M2M 決済インフラ。JWT Pay Token で予算を制御し、エージェントに安全な支払い能力を付与。",
+  title: "LemonCake — AI エージェントに財布を持たせる M2M 決済・会計インフラ",
+  description: "LemonCake は AI エージェント専用の M2M 決済・会計インフラ。Pay Token 1 行で外部 API に自律決済、freee / MoneyForward 自動仕訳、源泉徴収 10.21% / インボイス国税庁 API / 電子帳簿保存法 7 年保持まで全自動。JPYC・USDC 対応。Dify・LangChain・MCP で即利用可能。",
+  alternates: {
+    canonical: "https://lemoncake.aievid.com/about",
+    languages: {
+      "ja-JP": "https://lemoncake.aievid.com/about",
+      "en-US": "https://lemoncake.aievid.com/about/en",
+    },
+  },
+  openGraph: {
+    title: "LemonCake — AI エージェントに財布を持たせる M2M 決済・会計インフラ",
+    description: "Pay Token 1 行で AI エージェントに安全な支払い能力を付与。freee / MoneyForward 自動仕訳、源泉徴収・インボイス・電帳法対応。",
+    url: "https://lemoncake.aievid.com/about",
+    type: "article",
+  },
+};
+
+// ── FAQPage JSON-LD（AEO/AIO: AI 検索エンジンが引用しやすい形で Q&A を提供） ──
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "LemonCake とは何ですか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "LemonCake は AI エージェント専用の M2M（Machine-to-Machine）決済・会計インフラです。Pay Token を 1 行発行するだけで、AI エージェントが外部 API に自律的に支払い、freee / MoneyForward に自動仕訳まで完結します。日本の源泉徴収（10.21%）、インボイス制度（国税庁 API 連携）、電子帳簿保存法（7 年保持）にフルコンプライアンス。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "AI エージェントに安全にお金を持たせるにはどうすればいい？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "LemonCake の Pay Token を発行してください。予算上限・有効期限・呼び出し先ホストの allowlist を絞ったトークンをエージェントに渡すだけで、漏洩しても被害が限定されます。リクエストごとに Reputation スコアで異常検知も行います。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "AI エージェントが外部 API に支払った場合、源泉徴収はどう処理される？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "LemonCake が自動判定します。受領者の法人/個人判定、報酬区分（原稿料・デザイン料・講演料など）、10.21% または 20.42% の税率計算、国税庁インボイス API による登録番号照合まで全自動で行い、freee に 3 勘定仕訳（外注費／預り金／普通預金）で記帳します。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "JPYC で AI エージェント決済はできますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "できます。LemonCake は JPYC（Polygon 上の円建てステーブルコイン）を標準サポート。為替リスクなし、実質手数料 1 円/件、税務は利益課税のみで暗号資産課税の複雑さを回避できます。USDC も並行サポート。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Dify / LangChain / MCP で使えますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "はい。Dify 公式プラグイン、LangChain Tool（Python/JS）、MCP サーバー（@lemoncake/mcp-server）を提供しています。中級エンジニアなら 15 分で組み込み完了します。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Skyfire や Coinbase x402 との違いは？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Skyfire は米国市場中心で USDC 主体、x402 は HTTP 402 ベースのオープン標準です。LemonCake は JPYC + USDC 両対応で、日本の税務（源泉徴収・インボイス・電子帳簿保存法）と会計ソフト（freee / MoneyForward）に唯一フル統合しています。日本市場で業務利用するなら LemonCake が最適解です。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "無料で試せますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "はい。lemoncake.aievid.com で 30 秒でアカウントを作成でき、無料枠があります。クレジットカード登録なしで Pay Token の発行・テスト決済まで試せます。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "どの会計ソフトに対応していますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "freee 会計、MoneyForward クラウド会計の両方に対応しています。OAuth 連携後は AI エージェントの決済が発生するたびにイベントベースで自動仕訳が作成されます。",
+      },
+    },
+  ],
 };
 
 // ── SVG Icons ────────────────────────────────────────────────────────────────
@@ -150,6 +235,10 @@ const integrations = [
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-[#06060a] text-white font-sans antialiased">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <AuthedRedirect />
 
       {/* ── Nav ── */}

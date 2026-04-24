@@ -2,14 +2,114 @@ import Link from "next/link";
 import Image from "next/image";
 
 export const metadata = {
-  title: "LemonCake × freee 連携 — AIエージェントの決済を自動仕訳",
+  title: "LemonCake × freee 連携 — AI エージェントの決済を自動仕訳（源泉・インボイス対応）",
   description:
-    "LemonCake の決済データを freee に自動で仕訳するインテグレーション。AIエージェントが外部API決済を行うたび、外注費/通信費と普通預金の仕訳、源泉徴収按分、適格請求書発行事業者チェックまで自動化します。",
+    "LemonCake の決済データを freee に自動仕訳するインテグレーション。AI エージェントが外部 API 決済を行うたび、外注費 / 通信費 と 普通預金 の仕訳、源泉徴収 10.21% 按分、適格請求書発行事業者（インボイス）国税庁 API チェック、USDC/JPYC → 円換算、電子帳簿保存法 7 年保持まで全自動化します。",
+  alternates: { canonical: "https://lemoncake.aievid.com/integrations/freee" },
+  openGraph: {
+    title: "LemonCake × freee 連携 — AI エージェントの決済を自動仕訳",
+    description:
+      "Pay Token 決済のたびに freee へ自動記帳。源泉徴収按分・インボイス判定・USDC/JPYC 円換算・電帳法対応まで一気通貫。",
+    url: "https://lemoncake.aievid.com/integrations/freee",
+    type: "article",
+  },
+};
+
+// ── FAQPage JSON-LD（AI 検索エンジンが FAQ 構造を認識して引用しやすくする） ──
+const freeeFaqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "Money Forward と freee の併用はできますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "はい。環境変数 ACCOUNTING_PROVIDER=both で両方に同時書き込み可能です。片方だけ使う構成も選べます。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "連携を解除するとどうなりますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "freee 側で OAuth 連携を解除すると、LemonCake からの新規仕訳作成は即座に停止します。既に作成された仕訳は freee に残ります。LemonCake 側で保管していたアクセストークンは即日 DB から削除されます。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "審査対象の freee アプリですか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "はい。LemonCake は freee アプリストアの公開アプリとして審査申請中です。審査通過後、freee 上の任意の事業所から 1 クリックで連携可能になります。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "個人事業主の freee アカウントでも使えますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "はい。freee の全プラン（個人事業主・ミニマム・ベーシック・プロフェッショナル・エンタープライズ）で動作します。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "源泉徴収の自動按分はどう処理されますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "受領者が個人で報酬区分が源泉対象の場合、10.21%（100 万円超部分は 20.42%）を自動計算し、外注費 / 預り金 / 普通預金 の 3 勘定に按分して freee に記帳します。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "インボイス（適格請求書）の判定はどのように行われますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "国税庁の適格請求書発行事業者公表システム API（invoice-kohyo.nta.go.jp）をリアルタイムで叩き、登録番号を照合します。登録済みなら tax_name を「課税仕入 10%」、未登録なら「課税仕入不可（非適格）」で自動記帳します。",
+      },
+    },
+  ],
+};
+
+// ── HowTo JSON-LD（連携 3 ステップ） ──
+const freeeHowToJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  name: "LemonCake を freee に連携する方法",
+  description: "AI エージェントの決済を freee に自動仕訳するための 3 ステップ連携手順。",
+  step: [
+    {
+      "@type": "HowToStep",
+      position: 1,
+      name: "freee アプリストアで LemonCake をインストール",
+      text: "freee にログインした状態で、freee アプリストア上の LemonCake ページから「連携する」をクリック。OAuth 画面で権限を承認します。",
+    },
+    {
+      "@type": "HowToStep",
+      position: 2,
+      name: "LemonCake ダッシュボードで事業所を選択",
+      text: "LemonCake に戻ると「連携成功」と表示され、複数事業所がある場合は仕訳を書き込む先の事業所を 1 つ選択します。",
+    },
+    {
+      "@type": "HowToStep",
+      position: 3,
+      name: "Pay Token を発行して決済を開始",
+      text: "ダッシュボードから Pay Token を発行し、Dify / Coze / MCP / 独自エージェント に渡します。以降の決済は全て自動で freee に仕訳が作成されます。",
+    },
+  ],
 };
 
 export default function FreeeIntegrationPage() {
   return (
     <main className="min-h-screen bg-[#fffd43] text-[#1a0f00]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(freeeFaqJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(freeeHowToJsonLd) }}
+      />
       <div className="max-w-4xl mx-auto px-6 py-16 md:py-24">
         <nav className="mb-10 text-sm font-medium">
           <Link href="/" className="hover:underline">← Home</Link>
