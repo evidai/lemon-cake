@@ -46,7 +46,9 @@ router.get("/", async (req: Request, res: Response) => {
         usedToday:      a.budget?.usedToday  ?? null,
         trustScore:     a.reputation?.trustScore    ?? null,
         successRate:    a.reputation?.successRate   ?? null,
-        totalVolume:    a.reputation?.totalVolume   ?? null,
+        totalVolume:    a.reputation
+          ? a.reputation.totalSent + a.reputation.totalReceived
+          : null,
       })),
     });
   } catch (err) {

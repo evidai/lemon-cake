@@ -2,6 +2,9 @@
   "name": "m2m-dashboard",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,12 +16,15 @@
     "@vercel/speed-insights": "^2.0.0",
     "google-auth-library": "^10.6.2",
     "googleapis": "^171.4.0",
-    "next": "^14.2.5",
+    "next": "^16.2.4",
     "nodemailer": "^8.0.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.12.7",
     "resend": "^6.10.0"
+  },
+  "overrides": {
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

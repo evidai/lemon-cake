@@ -37,13 +37,14 @@ async function getIdentityToken(audience: string): Promise<string> {
 
 async function handler(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   if (!CLOUD_RUN_URL) {
     return NextResponse.json({ error: "CLOUD_RUN_URL is not set" }, { status: 502 });
   }
 
-  const path    = params.path.join("/");
+  const { path: pathParts } = await params;
+  const path    = pathParts.join("/");
   const search  = req.nextUrl.search;
   const target  = `${CLOUD_RUN_URL}/api/${path}${search}`;
 

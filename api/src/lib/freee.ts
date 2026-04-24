@@ -108,45 +108,39 @@ export async function createFreeeTransaction(params: CreateDealParams): Promise<
   // 仕訳の借方/貸方明細を構築
   const details: object[] = [];
 
+  // ─── freee マスタ ID（事業所固有）────────────────
+  // account_item_id と tax_code は事業所によって異なるため env で上書き可能。
+  // デフォルトは Evid AI (company_id=12605324) の ID（freee-masters.ts で取得）。
+  const ACC_GAICHU   = parseInt(process.env.FREEE_ACC_GAICHU      ?? "1040532923"); // 外注費
+  const ACC_AZUKARI  = parseInt(process.env.FREEE_ACC_AZUKARI     ?? "1040532876"); // 預り金
+  const ACC_TSUSHIN  = parseInt(process.env.FREEE_ACC_TSUSHIN     ?? "1040532908"); // 通信費
+  // 現金/普通預金 の account_item_id。freee で walletable に紐付いた科目 ID を指定。
+  const ACC_CASH     = parseInt(process.env.FREEE_ACC_CASH        ?? "0");
+  if (!ACC_CASH) throw new Error("FREEE_ACC_CASH (現金/普通預金の account_item_id) が未設定");
+
+  // tax_code:
+  //   136 = 課対仕入10%
+  //   189 = 課対仕入（控80）10% — インボイス非適格からの仕入（80%控除）
+  //   2   = 対象外
+  const TAX_TAIGI      = 136;  // 適格
+  const TAX_HIKOJO80   = 189;  // 非適格・80%控除
+  const taxCodeDebit   = params.invoiceRegistered ? TAX_TAIGI : TAX_HIKOJO80;
+
   if (params.withholding?.required) {
-    // 源泉徴収あり: 外注費 / 預り金（源泉所得税）/ 普通預金
+    // 源泉徴収あり: 外注費 / 預り金（源泉所得税）/ 現金
     details.push(
-      {
-        account_item_name: "外注費",
-        tax_name:          params.invoiceRegistered ? "課税仕入（10%）" : "課税仕入不可（非適格）",
-        amount:            params.amountJpy,
-        entry_side:        "debit",   // 借方
-        description:       memo,
-      },
-      {
-        account_item_name: "預り金",  // 源泉所得税
-        amount:            params.withholding.taxAmount,
-        entry_side:        "credit",  // 貸方
-        description:       `源泉所得税（${(params.withholding.taxAmount / params.amountJpy * 100).toFixed(2)}%）`,
-      },
-      {
-        account_item_name: "普通預金",
-        amount:            params.withholding.netAmount,
-        entry_side:        "credit",  // 貸方
-        description:       `${params.providerName} への支払い（差引後）`,
-      },
+      { account_item_id: ACC_GAICHU,  tax_code: taxCodeDebit, amount: params.amountJpy,           entry_side: "debit",  description: memo },
+      { account_item_id: ACC_AZUKARI, tax_code: 2,            amount: params.withholding.taxAmount, entry_side: "credit",
+        description: `源泉所得税（${(params.withholding.taxAmount / params.amountJpy * 100).toFixed(2)}%）` },
+      { account_item_id: ACC_CASH,    tax_code: 2,            amount: params.withholding.netAmount, entry_side: "credit",
+        description: `${params.providerName} への支払い（差引後）` },
     );
   } else {
-    // 源泉徴収なし: 通信費（API利用料）/ 普通預金
+    // 源泉徴収なし: 通信費 / 現金
     details.push(
-      {
-        account_item_name: "通信費",  // API利用料
-        tax_name:          params.invoiceRegistered ? "課税仕入（10%）" : "課税仕入不可（非適格）",
-        amount:            params.amountJpy,
-        entry_side:        "debit",
-        description:       memo,
-      },
-      {
-        account_item_name: "普通預金",
-        amount:            params.amountJpy,
-        entry_side:        "credit",
-        description:       `${params.providerName} への支払い`,
-      },
+      { account_item_id: ACC_TSUSHIN, tax_code: taxCodeDebit, amount: params.amountJpy, entry_side: "debit",  description: memo },
+      { account_item_id: ACC_CASH,    tax_code: 2,            amount: params.amountJpy, entry_side: "credit",
+        description: `${params.providerName} への支払い` },
     );
   }
 

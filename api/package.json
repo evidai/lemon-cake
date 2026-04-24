@@ -27,7 +27,8 @@
     "zod": "^3.23.8"
   },
   "overrides": {
-    "protobufjs": "^7.5.5"
+    "protobufjs": "^7.5.5",
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
