@@ -3584,6 +3584,7 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
   const [connections, setConnections] = useState<AccountingConnection[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [connecting,  setConnecting]  = useState<AccountingProvider | null>(null);
+  const [banner,      setBanner]      = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   const t = useT();
 
@@ -3609,11 +3610,43 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
 
   useEffect(() => { fetchConnections(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Check for OAuth callback success
+  // Check for OAuth callback success or error
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params   = new URLSearchParams(window.location.search);
+    const provider = params.get("provider") ?? "";
+    const pName    = ACCOUNTING_PROVIDERS.find(p => p.id === provider)?.name ?? provider;
+
     if (params.get("accounting_connected") === "true") {
       fetchConnections();
+      setBanner({
+        kind:    "success",
+        message: t(
+          `${pName || "会計ソフト"} との連携が完了しました。`,
+          `Successfully connected to ${pName || "accounting software"}.`
+        ),
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    const errCode = params.get("accounting_error");
+    if (errCode) {
+      // Map known error codes to friendly messages
+      const errMap: Record<string, { ja: string; en: string }> = {
+        unknown_provider:       { ja: "未対応のプロバイダです。",              en: "Unsupported provider." },
+        missing_code:           { ja: "認可コードが取得できませんでした。",    en: "Authorization code was not returned." },
+        access_denied:          { ja: "ユーザーが認可をキャンセルしました。",  en: "Authorization was cancelled by the user." },
+        token_exchange_failed:  { ja: "アクセストークンの取得に失敗しました。", en: "Failed to exchange token." },
+        token_exchange_error:   { ja: "トークン交換中にエラーが発生しました。", en: "An error occurred during token exchange." },
+        db_error:               { ja: "連携情報の保存に失敗しました。",        en: "Failed to save connection." },
+      };
+      const msg = errMap[errCode] ?? { ja: `エラー: ${errCode}`, en: `Error: ${errCode}` };
+      setBanner({
+        kind:    "error",
+        message: t(
+          `${pName ? pName + " " : ""}連携エラー — ${msg.ja}（コード: ${errCode}）サポートが必要な場合は contact@aievid.com までご連絡ください。`,
+          `${pName ? pName + " " : ""}connection error — ${msg.en} (code: ${errCode}) Please contact contact@aievid.com if you need help.`
+        ),
+      });
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -3632,10 +3665,25 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
     }
   }
 
-  async function handleDisconnect(id: string) {
-    if (!confirm(t("この会計連携を解除しますか？", "Disconnect this accounting integration?"))) return;
-    await fetch(`${API}/api/accounting/connections/${id}`, { method: "DELETE", headers: hdrs });
-    fetchConnections();
+  async function handleDisconnect(id: string, providerName: string) {
+    const msg = t(
+      `${providerName} との連携を解除します。\n\n・保存されたアクセストークンを削除し、${providerName} 側でもトークンを無効化 (revoke) します。\n・これまで作成された仕訳データは ${providerName} 側に残ります。\n・再度連携するには「接続する」から OAuth 認可をやり直してください。\n\n続行しますか？`,
+      `Disconnect ${providerName} integration?\n\n• The stored access token will be deleted and revoked on ${providerName}.\n• Journal entries already created will remain on ${providerName}.\n• To reconnect, go through the OAuth flow again via "Connect".\n\nContinue?`
+    );
+    if (!confirm(msg)) return;
+    try {
+      const res = await fetch(`${API}/api/accounting/connections/${id}`, { method: "DELETE", headers: hdrs });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(d.error ?? `HTTP ${res.status}`);
+      }
+      fetchConnections();
+    } catch (e) {
+      alert(t(
+        `連携解除に失敗しました: ${e instanceof Error ? e.message : String(e)}`,
+        `Failed to disconnect: ${e instanceof Error ? e.message : String(e)}`
+      ));
+    }
   }
 
   async function handleNetSuiteSubmit(e: React.FormEvent) {
@@ -3672,6 +3720,26 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
         </p>
       </div>
 
+      {banner && (
+        <div
+          className={`rounded-xl border px-4 py-3 text-sm flex items-start gap-3 ${
+            banner.kind === "success"
+              ? "bg-green-50 border-green-200 text-green-800"
+              : "bg-red-50 border-red-200 text-red-800"
+          }`}
+          role={banner.kind === "error" ? "alert" : "status"}
+        >
+          <span className="flex-1 whitespace-pre-line">{banner.message}</span>
+          <button
+            type="button"
+            onClick={() => setBanner(null)}
+            className="text-xs underline opacity-70 hover:opacity-100 shrink-0"
+          >
+            {t("閉じる", "Dismiss")}
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-gray-400 py-8 justify-center">
           <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -3684,9 +3752,16 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
           {ACCOUNTING_PROVIDERS.map(p => {
             const conn = connectedMap.get(p.id);
             const isConnected = !!conn;
+            const needsReauth = !!conn && conn.active === false;
 
             return (
-              <div key={p.id} className={`bg-white rounded-2xl border p-5 flex items-center gap-4 ${isConnected ? "border-green-200 bg-green-50/30" : "border-gray-200"}`}>
+              <div key={p.id} className={`bg-white rounded-2xl border p-5 flex items-center gap-4 ${
+                needsReauth
+                  ? "border-amber-200 bg-amber-50/30"
+                  : isConnected
+                    ? "border-green-200 bg-green-50/30"
+                    : "border-gray-200"
+              }`}>
                 {/* Logo */}
                 {p.svgPath ? (
                   <div
@@ -3707,9 +3782,14 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
-                    {isConnected && (
+                    {isConnected && !needsReauth && (
                       <span className="text-[10px] font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                         {t("接続済み", "Connected")}
+                      </span>
+                    )}
+                    {needsReauth && (
+                      <span className="text-[10px] font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                        {t("要再認可", "Reauthorization required")}
                       </span>
                     )}
                   </div>
@@ -3721,10 +3801,19 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
                 </div>
 
                 {/* Action */}
-                <div className="shrink-0">
+                <div className="shrink-0 flex items-center gap-2">
+                  {needsReauth && p.hasOAuth && (
+                    <button
+                      onClick={() => handleConnect(p.id)}
+                      disabled={connecting === p.id}
+                      className="text-xs font-medium text-white rounded-lg px-3 py-1.5 transition-opacity disabled:opacity-60 bg-amber-600 hover:bg-amber-700"
+                    >
+                      {connecting === p.id ? t("接続中…", "Connecting…") : t("再接続", "Reauthorize")}
+                    </button>
+                  )}
                   {isConnected ? (
                     <button
-                      onClick={() => handleDisconnect(conn.id)}
+                      onClick={() => handleDisconnect(conn.id, p.name)}
                       className="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg px-3 py-1.5 transition-colors"
                     >
                       {t("解除", "Disconnect")}

@@ -662,6 +662,22 @@ export async function createFreeeJournalEntry(
     });
   }
 
+  // 403 = token が有効だが scope/権限不足 → 再認可 (scope upgrade) が必要
+  // connection を inactive にして、ダッシュボードが「再接続」ボタンを出せるようにする
+  if (res.status === 403) {
+    try {
+      await prisma.buyerAccountingConnection.update({
+        where: { id: conn.id },
+        data:  { active: false },
+      });
+    } catch (dbErr) {
+      console.error("[freee] failed to mark connection inactive after 403:", dbErr);
+    }
+    const err = new Error("freee journal entry failed [403]: scope upgrade required — user must re-authorize");
+    (err as Error & { needsReauth?: boolean }).needsReauth = true;
+    throw err;
+  }
+
   if (!res.ok) {
     throw new Error(`freee journal entry failed [${res.status}]`);
   }

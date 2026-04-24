@@ -12,7 +12,7 @@ import { randomUUID } from "crypto";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireBuyerAuth } from "../middleware/buyerAuth.js";
-import { getXeroTenantId, getZohoOrgId, encryptToken, validateNetSuiteAccountId } from "../lib/accounting.js";
+import { getXeroTenantId, getZohoOrgId, encryptToken, decryptToken, validateNetSuiteAccountId } from "../lib/accounting.js";
 
 export const accountingRouter = new Hono();
 
@@ -150,6 +150,9 @@ accountingRouter.get("/connections", requireBuyerAuth, async (c) => {
 });
 
 // ─── DELETE /connections/:id — disconnect ─────────────────────────────────────
+// freee 審査要件: ユーザーが連携解除できること。
+// - 解除ボタン → この DELETE エンドポイント
+// - 処理: ① 可能なら会計 SaaS 側でトークンを revoke ② DB から connection を削除
 accountingRouter.delete("/connections/:id", requireBuyerAuth, async (c) => {
   const buyerId = getBuyerId(c);
   const id      = c.req.param("id");
@@ -160,8 +163,29 @@ accountingRouter.delete("/connections/:id", requireBuyerAuth, async (c) => {
     throw new HTTPException(404, { message: "Connection not found" });
   }
 
+  // プロバイダー側でトークンを revoke（失敗しても DB 削除は続行）
+  try {
+    if (conn.provider === "FREEE" && conn.accessToken) {
+      const token = decryptToken(conn.accessToken);
+      const revokeRes = await fetch("https://accounts.secure.freee.co.jp/public_api/revoke", {
+        method:  "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body:    new URLSearchParams({ token }).toString(),
+      });
+      if (!revokeRes.ok) {
+        console.warn(`[Accounting] freee revoke returned ${revokeRes.status} for connection ${id} — continuing with DB deletion`);
+      } else {
+        console.log(`[Accounting] freee token revoked for connection ${id}`);
+      }
+    }
+    // 他プロバイダー（QuickBooks, Xero 等）の revoke も将来ここに追加可
+  } catch (err) {
+    console.error(`[Accounting] Provider revoke failed for ${conn.provider}:`, err instanceof Error ? err.message : "unknown");
+    // 続行: DB 削除を優先（ユーザーからは連携解除できたように見える）
+  }
+
   await prisma.buyerAccountingConnection.delete({ where: { id } });
-  return c.json({ ok: true });
+  return c.json({ ok: true, message: "Connection disconnected and token revoked" });
 });
 
 // ─── PATCH /connections/:id — update account refs ────────────────────────────
@@ -299,7 +323,7 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
   const config = OAUTH_CONFIGS[providerParam];
   if (!config) {
     // Redirect only to hardcoded DASHBOARD_URL — never to user-supplied URL
-    return c.redirect(`${DASHBOARD_URL}/?accounting_error=unknown_provider`);
+    return c.redirect(`${DASHBOARD_URL}/?page=accounting&accounting_error=unknown_provider`);
   }
 
   const { code, state, error, realmId } = c.req.query() as {
@@ -315,7 +339,7 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
   }
 
   if (error || !code) {
-    return c.redirect(`${DASHBOARD_URL}/?accounting_error=${encodeURIComponent(error ?? "missing_code")}`);
+    return c.redirect(`${DASHBOARD_URL}/?page=accounting&accounting_error=${encodeURIComponent(error ?? "missing_code")}&provider=${providerParam}`);
   }
 
   // Verify state JWT (CSRF protection)
@@ -373,7 +397,7 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
     if (!tokenRes.ok) {
       // Do NOT log or include token exchange response body — may contain credentials
       console.error(`[Accounting] Token exchange failed for ${providerParam}: HTTP ${tokenRes.status}`);
-      return c.redirect(`${DASHBOARD_URL}/?accounting_error=token_exchange_failed`);
+      return c.redirect(`${DASHBOARD_URL}/?page=accounting&accounting_error=token_exchange_failed&provider=${providerParam}`);
     }
 
     const tokenData = await tokenRes.json() as {
@@ -383,7 +407,7 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
     refreshToken = tokenData.refresh_token;
   } catch (err) {
     console.error(`[Accounting] Token exchange error for ${providerParam}:`, err instanceof Error ? err.message : "unknown");
-    return c.redirect(`${DASHBOARD_URL}/?accounting_error=token_exchange_error`);
+    return c.redirect(`${DASHBOARD_URL}/?page=accounting&accounting_error=token_exchange_error&provider=${providerParam}`);
   }
 
   // Resolve provider-specific external IDs
@@ -431,7 +455,7 @@ accountingRouter.get("/oauth/callback/:provider", async (c) => {
     });
   } catch (err) {
     console.error(`[Accounting] DB upsert failed for ${providerParam}:`, err instanceof Error ? err.message : "unknown");
-    return c.redirect(`${DASHBOARD_URL}/?accounting_error=db_error`);
+    return c.redirect(`${DASHBOARD_URL}/?page=accounting&accounting_error=db_error&provider=${providerParam}`);
   }
 
   // Redirect only to hardcoded DASHBOARD_URL — never to any user-supplied URL
