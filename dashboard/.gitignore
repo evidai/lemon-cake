@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
+
+# Next.js build
+.next/
+out/
+*.tsbuildinfo
+
+# Misc
+.DS_Store

@@ -8,7 +8,14 @@ node_modules/
 .env.local
 .env.*.local
 api/.env
-dashboard/.env.local
+api/.env.*
+!api/.env.example
+dashboard/.env
+dashboard/.env.*
+!dashboard/.env.example
+m2m-payment/.env
+m2m-payment/.env.*
+!m2m-payment/.env.example
 
 # Build outputs
 dist/
