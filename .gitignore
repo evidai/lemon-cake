@@ -40,6 +40,8 @@ __pycache__/
 !**/tsconfig.json
 !**/tsconfig.*.json
 !api/prisma/schema.prisma
+!glama.json
+!mcp-server/claude_desktop_config.example.json
 scraper.py
 lemon_cake_slides.js
 job_leads.*
