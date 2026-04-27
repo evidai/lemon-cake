@@ -1,6 +1,6 @@
 {
   "name": "lemon-cake-mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "LemonCake MCP Server — Give your AI agent a wallet. Pay-per-call M2M payment infrastructure.",
   "type": "module",
   "main": "dist/index.js",
@@ -8,7 +8,9 @@
     "lemon-cake-mcp": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "keywords": [
     "mcp",
@@ -27,7 +29,10 @@
     "url": "https://github.com/evidai/lemon-cake.git"
   },
   "homepage": "https://lemoncake.xyz",
-  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/evidai/lemon-cake/issues"
+  },
+  "license": "MIT",
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
