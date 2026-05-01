@@ -13,3 +13,4 @@ out/
 
 # Misc
 .DS_Store
+.vercel
