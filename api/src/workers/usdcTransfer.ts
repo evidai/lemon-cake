@@ -36,6 +36,16 @@ export function startUsdcTransferWorker(): Worker {
 
   worker.on("completed", (job) => {
     console.log(`[Worker] ✅ Job ${job.id} completed — chargeId: ${job.data.chargeId}`);
+    // ジョブ完了後に HOT_WALLET の残高をチェックし、必要なら自動補充
+    // 失敗してもジョブ自体は成功扱い
+    void (async () => {
+      try {
+        const { refillHotWalletIfNeeded } = await import("../lib/treasury.js");
+        await refillHotWalletIfNeeded();
+      } catch (e) {
+        console.error("[Worker] post-job refill check failed:", e);
+      }
+    })();
   });
 
   worker.on("failed", (job, err) => {
@@ -48,6 +58,15 @@ export function startUsdcTransferWorker(): Worker {
 
   console.log("[Worker] 🔧 usdcTransferWorker started");
   return worker;
+}
+
+// ─── 手数料計算 ──────────────────────────────────────────────
+// 優先順位: Service.platformFeeBps > env PLATFORM_FEE_BPS > 1000 (10%)
+function resolveFeeBps(serviceFeeBps: number | null | undefined): number {
+  if (serviceFeeBps != null && serviceFeeBps >= 0 && serviceFeeBps <= 10000) return serviceFeeBps;
+  const envBps = parseInt(process.env.PLATFORM_FEE_BPS ?? "1000", 10);
+  if (envBps >= 0 && envBps <= 10000) return envBps;
+  return 1000;
 }
 
 // ─── ジョブ処理本体 ───────────────────────────────────────────
@@ -77,34 +96,52 @@ async function processJob(job: Job<UsdcTransferJobData>): Promise<void> {
     return;
   }
 
+  // ─── 手数料分離 ──────────────────────────────────────────────
+  // total = providerAmount + platformFee
+  const totalDecimal = new Decimal(amountUsdc);
+  const feeBps       = resolveFeeBps(service.platformFeeBps);
+  const platformFee  = totalDecimal.mul(feeBps).div(10000).toDecimalPlaces(18, Decimal.ROUND_DOWN);
+  const providerAmt  = totalDecimal.sub(platformFee);
+
   // ジョブ進捗を記録
   await job.updateProgress(10);
-  console.log(`[Worker] 🚀 Sending ${amountUsdc} USDC to ${service.provider.walletAddress}`);
+  console.log(`[Worker] 🚀 ${totalDecimal} USDC → provider:${providerAmt} (${10000 - feeBps}bps) + platform:${platformFee} (${feeBps}bps)`);
 
-  // Polygon USDC 送金
+  // Polygon USDC 送金 (provider 分のみオンチェーン送金)
+  // platform 手数料分は HOT_WALLET に残し、後で管理者が引き出す
+  const providerAmtStr = providerAmt.toFixed(6);
   const { txHash } = await sendUsdcOnPolygon({
     toAddress:  service.provider.walletAddress,
-    amountUsdc,
+    amountUsdc: providerAmtStr,
   });
 
   await job.updateProgress(80);
   console.log(`[Worker] 📝 txHash: ${txHash}`);
 
-  // Charge を COMPLETED に更新 + Provider の受取残高を加算
-  const amountDecimal = new Decimal(amountUsdc);
-
+  // Charge を COMPLETED に更新 + Provider の受取残高を加算 + 手数料記録
   await prisma.$transaction([
     prisma.charge.update({
       where: { id: chargeId },
       data:  {
-        status:    "COMPLETED",
+        status:             "COMPLETED",
         txHash,
+        providerAmountUsdc: providerAmt,
+        platformFeeUsdc:    platformFee,
+        platformFeeBps:     feeBps,
       },
     }),
     prisma.provider.update({
       where: { id: service.providerId },
       data:  {
-        pendingPayoutUsdc: { increment: amountDecimal },
+        pendingPayoutUsdc: { increment: providerAmt },
+      },
+    }),
+    prisma.platformRevenue.create({
+      data: {
+        chargeId,
+        serviceId,
+        amountUsdc: platformFee,
+        feeBps,
       },
     }),
   ]);

@@ -15,18 +15,18 @@ datasource db {
 // User: ダッシュボードにログインするエンドユーザー
 // ─────────────────────────────────────────────────────────────
 model User {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   name         String
-  email        String   @unique
-  passwordHash String?  // email認証時のみ使用
-  provider     String   @default("email") // "email" | "google"
-  externalId   String?  // Google OAuth の sub
+  email        String  @unique
+  passwordHash String? // email認証時のみ使用
+  provider     String  @default("email") // "email" | "google"
+  externalId   String? // Google OAuth の sub
 
-  buyerId      String?  @unique
-  buyer        Buyer?   @relation(fields: [buyerId], references: [id])
+  buyerId String? @unique
+  buyer   Buyer?  @relation(fields: [buyerId], references: [id])
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("users")
 }
@@ -35,41 +35,41 @@ model User {
 // Buyer: KYAPayを利用するAIエージェントのオーナー
 // ─────────────────────────────────────────────────────────────
 model Buyer {
-  id            String      @id @default(cuid())
-  name          String
-  email         String      @unique
+  id    String @id @default(cuid())
+  name  String
+  email String @unique
 
   // USDC残高: Decimal(38,18) で金銭的精度を保証
   // Prismaは Decimal 型を BigDecimal として扱い、浮動小数点誤差を回避
-  balanceUsdc   Decimal     @default(0) @db.Decimal(38, 18)
+  balanceUsdc Decimal @default(0) @db.Decimal(38, 18)
 
   // KYAステータス: none=未認証 / kya=エージェント認証済み / kyc=本人確認済み
-  kycTier       KycTier     @default(NONE)
+  kycTier KycTier @default(NONE)
 
   // 一日あたりの利用上限 (USD相当, Decimal)
-  dailyLimitUsdc Decimal    @default(10) @db.Decimal(38, 18)
+  dailyLimitUsdc Decimal @default(10) @db.Decimal(38, 18)
 
-  walletAddress    String?  // オンチェーンアドレス（入金受取用）
-  stripeCustomerId String?  // Stripe Customer ID（銀行振込・カード決済用）
-  suspended        Boolean  @default(false)
+  walletAddress    String? // オンチェーンアドレス（入金受取用）
+  stripeCustomerId String? // Stripe Customer ID（銀行振込・カード決済用）
+  suspended        Boolean @default(false)
 
   // KYAフロー: エージェント身元情報
-  agentName        String?  // エージェントの名称（例: "my-procurement-agent"）
-  agentDescription String?  // エージェントの用途説明
+  agentName        String? // エージェントの名称（例: "my-procurement-agent"）
+  agentDescription String? // エージェントの用途説明
   kyaAppliedAt     DateTime? // KYA申請日時（昇格時に記録）
 
-  tokens              Token[]
-  charges             Charge[]
-  user                User?
-  jpycDepositRequests JpycDepositRequest[]
-  heldUsdc              Decimal     @default(0) @db.Decimal(38, 18)
+  tokens                Token[]
+  charges               Charge[]
+  user                  User?
+  jpycDepositRequests   JpycDepositRequest[]
+  heldUsdc              Decimal                     @default(0) @db.Decimal(38, 18)
   workflows             Workflow[]
   accountingConnections BuyerAccountingConnection[]
   chargeRollups         ChargeRollup[]
   spendWebhooks         SpendWebhook[]
 
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("buyers")
 }
@@ -78,25 +78,25 @@ model Buyer {
 // Provider: サービスを提供するAIプロバイダー
 // ─────────────────────────────────────────────────────────────
 model Provider {
-  id            String      @id @default(cuid())
-  name          String
-  email         String      @unique
+  id    String @id @default(cuid())
+  name  String
+  email String @unique
 
   // USDC受取用オンチェーンアドレス（Polygon等）
-  walletAddress String      @unique
+  walletAddress String @unique
 
   // サービス一覧（将来的にサービステーブルに正規化可能）
-  services      Service[]
+  services Service[]
 
   // 精算待ち残高
   pendingPayoutUsdc Decimal @default(0) @db.Decimal(38, 18)
 
-  buyerId       String?     @unique  // Buyerとのリンク（セラー登録時に設定）
+  buyerId String? @unique // Buyerとのリンク（セラー登録時に設定）
 
-  active        Boolean     @default(true)
+  active Boolean @default(true)
 
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("providers")
 }
@@ -105,29 +105,34 @@ model Provider {
 // Service: プロバイダーが提供するAPIサービス
 // ─────────────────────────────────────────────────────────────
 model Service {
-  id            String      @id @default(cuid())
-  providerId    String
-  provider      Provider    @relation(fields: [providerId], references: [id])
+  id         String   @id @default(cuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
 
-  name          String
-  type          ServiceType @default(API)
+  name String
+  type ServiceType @default(API)
 
   // 1コールあたりの価格 (USDC)
-  pricePerCallUsdc Decimal  @db.Decimal(38, 18)
+  pricePerCallUsdc Decimal @db.Decimal(38, 18)
 
   // プロキシ転送先 (省略可: 外部APIをラップする場合に指定)
-  endpoint      String?     // 転送先URL (例: https://api.freee.co.jp/api/1/companies)
-  authHeader    String?     // Authorizationヘッダー値 (例: Bearer sk_live_xxx) 暗号化推奨
+  endpoint   String? // 転送先URL (例: https://api.freee.co.jp/api/1/companies)
+  authHeader String? // Authorizationヘッダー値 (例: Bearer sk_live_xxx) 暗号化推奨
+
+  // プラットフォーム手数料 (basis points; 1000 = 10%)
+  // null の場合は環境変数 PLATFORM_FEE_BPS を使用
+  platformFeeBps Int?
 
   // 審査ステータス
-  reviewStatus  ReviewStatus @default(PENDING)
-  verified      Boolean      @default(false)
+  reviewStatus ReviewStatus @default(PENDING)
+  verified     Boolean      @default(false)
 
-  tokens        Token[]
-  charges       Charge[]
+  tokens           Token[]
+  charges          Charge[]
+  platformRevenues PlatformRevenue[]
 
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("services")
 }
@@ -137,37 +142,37 @@ model Service {
 // 実際の認証はJWT署名検証で行い、DBはメタデータ・無効化フラグのみ保持
 // ─────────────────────────────────────────────────────────────
 model Token {
-  id            String      @id @default(cuid())  // JWT jti (JWT ID)
+  id String @id @default(cuid()) // JWT jti (JWT ID)
 
-  buyerId       String
-  buyer         Buyer       @relation(fields: [buyerId], references: [id])
+  buyerId String
+  buyer   Buyer  @relation(fields: [buyerId], references: [id])
 
   // 単一サービス用のスコープ。ALL スコープでは null 可。
-  serviceId     String?
-  service       Service?    @relation(fields: [serviceId], references: [id])
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id])
 
   // 発行スコープ。SINGLE = serviceId 必須、ALL = 全 APPROVED サービス使用可
-  scope         TokenScope  @default(SINGLE)
+  scope TokenScope @default(SINGLE)
 
   // 利用上限額 (USDC)
-  limitUsdc     Decimal     @db.Decimal(38, 18)
+  limitUsdc Decimal @db.Decimal(38, 18)
 
   // 消費済み金額 (USDC) — Chargeが完了するたびに加算
-  usedUsdc      Decimal     @default(0) @db.Decimal(38, 18)
+  usedUsdc Decimal @default(0) @db.Decimal(38, 18)
 
   // バイヤータグ（エージェント識別用の任意文字列）
-  buyerTag      String?
+  buyerTag String?
 
   // JWT有効期限（JWTのexpクレームと同期）
-  expiresAt     DateTime
+  expiresAt DateTime
 
   // 無効化フラグ（revoke API で true にする）
-  revoked       Boolean     @default(false)
-  revokedAt     DateTime?
-  revokeReason  String?
+  revoked      Boolean   @default(false)
+  revokedAt    DateTime?
+  revokeReason String?
 
   // サンドボックスフラグ（true の場合は実USDCを動かさずモック課金のみ行う）
-  sandbox       Boolean     @default(false)
+  sandbox Boolean @default(false)
 
   // トークン発行を行ったクライアントの識別文字列。
   // SDK / プラグインが送信する X-LemonCake-Client（無ければ User-Agent）を
@@ -177,15 +182,15 @@ model Token {
 
   // ─── Incident Contract v0 fields (Phase 1) ──────────────────────────────
   // 以下はすべて任意。エージェント側がワークフロー文脈を付与できる場合に利用。
-  workflowId       String?   // 発行元ワークフローID（bulk revoke のフィルタキー）
-  agentId          String?   // エージェント識別子
-  allowedUpstreams String[]  @default([])  // 呼び出し許可 upstream ホスト一覧（将来的な policy check 用）
-  retryPolicy      Json?     // { maxAttempts, backoff, ... } — 下流が参照できる
-  replaySafe       Boolean   @default(false)
+  workflowId       String? // 発行元ワークフローID（bulk revoke のフィルタキー）
+  agentId          String? // エージェント識別子
+  allowedUpstreams String[] @default([]) // 呼び出し許可 upstream ホスト一覧（将来的な policy check 用）
+  retryPolicy      Json? // { maxAttempts, backoff, ... } — 下流が参照できる
+  replaySafe       Boolean  @default(false)
 
-  charges       Charge[]
+  charges Charge[]
 
-  createdAt     DateTime    @default(now())
+  createdAt DateTime @default(now())
 
   // jtiはユニークであること（replay attack防止）
   @@unique([id])
@@ -199,65 +204,74 @@ model Token {
 // Charge: 課金トランザクション履歴
 // ─────────────────────────────────────────────────────────────
 model Charge {
-  id               String        @id @default(cuid())
+  id String @id @default(cuid())
 
-  buyerId          String
-  buyer            Buyer         @relation(fields: [buyerId], references: [id])
+  buyerId String
+  buyer   Buyer  @relation(fields: [buyerId], references: [id])
 
-  serviceId        String
-  service          Service       @relation(fields: [serviceId], references: [id])
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
 
-  tokenId          String
-  token            Token         @relation(fields: [tokenId], references: [id])
+  tokenId String
+  token   Token  @relation(fields: [tokenId], references: [id])
 
   // 課金金額 (USDC)
-  amountUsdc       Decimal       @db.Decimal(38, 18)
+  amountUsdc Decimal @db.Decimal(38, 18)
 
   // ステータス
-  status           ChargeStatus  @default(PENDING)
+  status ChargeStatus @default(PENDING)
 
   // 冪等性キー: 同じキーで2回POST /api/charge しても重複課金しない
   // クライアントはリクエストごとにユニークなキーを生成して付与する
-  idempotencyKey   String        @unique
+  idempotencyKey String @unique
 
   // オンチェーン送金のトランザクションハッシュ（送金完了後に記録）
-  txHash           String?
+  txHash String?
 
   // 失敗時のエラー詳細
-  failureReason    String?
+  failureReason String?
 
   // リスクスコア (0–100)
-  riskScore        Int           @default(0)
+  riskScore Int @default(0)
 
   // サンドボックス（実USDC非移動のモック課金）
-  sandbox          Boolean       @default(false)
+  sandbox Boolean @default(false)
 
   // ─── Incident Contract v0 fields (Phase 1) ──────────────────────────────
-  requestId         String?        // クライアントの request_id（1 コール相当）
-  workflowId        String?        // Token から継承 — bulk revoke / export のキー
-  agentId           String?        // Token から継承
-  inputHash         String?        // SHA-256(stable JSON(input))
-  responseHash      String?        // SHA-256(raw response bytes)
-  providerStatus    Int?           // upstream HTTP ステータス
-  incidentTag       String?        // バイヤー任意のインシデントラベル
-  revokeReason      String?        // bulk revoke 時に記録
+  requestId      String? // クライアントの request_id（1 コール相当）
+  workflowId     String? // Token から継承 — bulk revoke / export のキー
+  agentId        String? // Token から継承
+  inputHash      String? // SHA-256(stable JSON(input))
+  responseHash   String? // SHA-256(raw response bytes)
+  providerStatus Int? // upstream HTTP ステータス
+  incidentTag    String? // バイヤー任意のインシデントラベル
+  revokeReason   String? // bulk revoke 時に記録
 
   // Reconciliation / ownership
-  reconcileStatus   ReconcileStatus @default(OPEN)
-  ownerQueue        String?        // 現在の所有キュー / チーム名
-  ownerReason       String?
-  escalatedAt       DateTime?
+  reconcileStatus ReconcileStatus @default(OPEN)
+  ownerQueue      String? // 現在の所有キュー / チーム名
+  ownerReason     String?
+  escalatedAt     DateTime?
 
   // 機械可読メモ（annotate エンドポイントで追記）
-  annotations       Json           @default("{}")
-  closedAt          DateTime?
+  annotations Json      @default("{}")
+  closedAt    DateTime?
 
   // 署名付き incident contract（JSON + HS256 JWS signature を分離保存）
   incidentContract  Json?
   incidentSignature String?
 
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  // ─── 手数料分離 (Phase 2) ────────────────────────────────────────────────
+  // Charge.amountUsdc = providerAmountUsdc + platformFeeUsdc
+  // 旧データは null。新規 Charge では Worker が必ず set する。
+  providerAmountUsdc Decimal? @db.Decimal(38, 18)
+  platformFeeUsdc    Decimal? @db.Decimal(38, 18)
+  platformFeeBps     Int? // 適用された手数料率（監査用）
+
+  platformRevenue PlatformRevenue?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // 複合インデックス: バイヤー × 時系列検索を高速化
   @@index([buyerId, createdAt])
@@ -275,28 +289,28 @@ model Charge {
 // Phase 1 (申請型): ユーザーがTXハッシュを提出 → 管理者が承認・USDC付与
 // ─────────────────────────────────────────────────────────────
 model JpycDepositRequest {
-  id          String             @id @default(cuid())
+  id String @id @default(cuid())
 
-  buyerId     String
-  buyer       Buyer              @relation(fields: [buyerId], references: [id])
+  buyerId String
+  buyer   Buyer  @relation(fields: [buyerId], references: [id])
 
   // Polygonチェーン上のJPYC送金トランザクションハッシュ
-  txHash      String             @unique
+  txHash String @unique
 
   // ユーザーが送金したJPYC金額
-  amountJpyc  Decimal            @db.Decimal(38, 18)
+  amountJpyc Decimal @db.Decimal(38, 18)
 
   // 承認時に付与するUSDC金額（管理者が設定）
-  amountUsdc  Decimal?           @db.Decimal(38, 18)
+  amountUsdc Decimal? @db.Decimal(38, 18)
 
-  status      JpycDepositStatus  @default(PENDING)
+  status JpycDepositStatus @default(PENDING)
 
   // 審査メモ（承認・却下理由）
-  reviewNote  String?
-  reviewedAt  DateTime?
+  reviewNote String?
+  reviewedAt DateTime?
 
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([buyerId, createdAt])
   @@map("jpyc_deposit_requests")
@@ -306,28 +320,28 @@ model JpycDepositRequest {
 // Workflow: E2Eビジネスレシピの非同期ステートマシン
 // ─────────────────────────────────────────────────────────────
 model Workflow {
-  id          String        @id @default(cuid())
+  id String @id @default(cuid())
 
-  buyerId     String
-  buyer       Buyer         @relation(fields: [buyerId], references: [id])
+  buyerId String
+  buyer   Buyer  @relation(fields: [buyerId], references: [id])
 
-  type        String        @default("E2E_PROCUREMENT")
-  state       WorkflowState @default(RESEARCH)
+  type  String        @default("E2E_PROCUREMENT")
+  state WorkflowState @default(RESEARCH)
 
   // 全ステップのコンテキストデータ（仕入先情報・注文ID・トラッキング等）
-  context     Json          @default("{}")
+  context Json @default("{}")
 
   // 与信ロック中のUSDC（ORDER_LOCKED〜PAYING 間）
-  heldUsdc    Decimal       @default(0) @db.Decimal(38, 18)
+  heldUsdc Decimal @default(0) @db.Decimal(38, 18)
 
   // 失敗・キャンセル理由
-  error       String?
+  error String?
 
   // 契約・納品の期限（超過時に自動キャンセル）
-  expiresAt   DateTime?
+  expiresAt DateTime?
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([buyerId, state])
   @@map("workflows")
@@ -338,8 +352,8 @@ model Workflow {
 // ─────────────────────────────────────────────────────────────
 enum KycTier {
   NONE
-  KYA   // Know Your Agent
-  KYC   // Know Your Customer（フル本人確認）
+  KYA // Know Your Agent
+  KYC // Know Your Customer（フル本人確認）
 }
 
 enum ServiceType {
@@ -348,8 +362,8 @@ enum ServiceType {
 }
 
 enum TokenScope {
-  SINGLE  // 既存挙動: serviceId に紐づく1サービスのみ叩ける
-  ALL     // 全 APPROVED サービスを叩ける（limitUsdc が予算上限）
+  SINGLE // 既存挙動: serviceId に紐づく1サービスのみ叩ける
+  ALL // 全 APPROVED サービスを叩ける（limitUsdc が予算上限）
 }
 
 enum ReviewStatus {
@@ -359,62 +373,62 @@ enum ReviewStatus {
 }
 
 enum ChargeStatus {
-  PENDING    // DB記録済み、送金キュー投入前 or キュー中
-  COMPLETED  // USDC送金完了、txHash記録済み
-  FAILED     // 送金失敗（残高不足・ネットワークエラー等）
+  PENDING // DB記録済み、送金キュー投入前 or キュー中
+  COMPLETED // USDC送金完了、txHash記録済み
+  FAILED // 送金失敗（残高不足・ネットワークエラー等）
 }
 
 enum JpycDepositStatus {
-  PENDING    // 審査待ち
-  APPROVED   // 承認済み（USDC付与済み）
-  REJECTED   // 却下
+  PENDING // 審査待ち
+  APPROVED // 承認済み（USDC付与済み）
+  REJECTED // 却下
 }
 
 // Charge のリコンサイル状態 (Phase 1 — incident contract)
 enum ReconcileStatus {
-  OPEN        // 未処理（デフォルト）
-  ANNOTATED   // 運用メモが追加された
-  CLOSED      // リコンサイル完了
-  DISPUTED    // 異議申立中
+  OPEN // 未処理（デフォルト）
+  ANNOTATED // 運用メモが追加された
+  CLOSED // リコンサイル完了
+  DISPUTED // 異議申立中
 }
 
 enum WorkflowState {
-  RESEARCH      // エージェントがリサーチ中
-  CONTRACTING   // CloudSign 契約書送信済み、署名待ち（非同期）
-  ORDER_LOCKED  // 署名完了 → 発注済み、USDC与信ロック中
-  VERIFYING     // AfterShip で納品確認待ち（非同期）
-  TAX_PENDING   // 国税庁 + IPinfo で税務判定中
-  PAYING        // USDC決済実行中
-  BOOKKEEPING   // freee 仕訳作成中
-  COMPLETED     // 全ステップ完了
-  FAILED        // 失敗（error フィールドに理由）
-  CANCELLED     // タイムアウトまたは手動キャンセル
+  RESEARCH // エージェントがリサーチ中
+  CONTRACTING // CloudSign 契約書送信済み、署名待ち（非同期）
+  ORDER_LOCKED // 署名完了 → 発注済み、USDC与信ロック中
+  VERIFYING // AfterShip で納品確認待ち（非同期）
+  TAX_PENDING // 国税庁 + IPinfo で税務判定中
+  PAYING // USDC決済実行中
+  BOOKKEEPING // freee 仕訳作成中
+  COMPLETED // 全ステップ完了
+  FAILED // 失敗（error フィールドに理由）
+  CANCELLED // タイムアウトまたは手動キャンセル
 }
 
 // ─────────────────────────────────────────────────────────────
 // BuyerAccountingConnection: バイヤーが接続した会計ソフトウェア
 // ─────────────────────────────────────────────────────────────
 model BuyerAccountingConnection {
-  id           String             @id @default(cuid())
-  buyerId      String
-  buyer        Buyer              @relation(fields: [buyerId], references: [id])
-  provider     AccountingProvider
-  accessToken  String
-  refreshToken String?
-  externalId   String?            // QB=realmId, Xero=tenantId, Zoho=orgId, Sage=businessId
-  externalName String?            // 表示名 e.g. "My Company"
+  id                String             @id @default(cuid())
+  buyerId           String
+  buyer             Buyer              @relation(fields: [buyerId], references: [id])
+  provider          AccountingProvider
+  accessToken       String
+  refreshToken      String?
+  externalId        String? // QB=realmId, Xero=tenantId, Zoho=orgId, Sage=businessId
+  externalName      String? // 表示名 e.g. "My Company"
   // NetSuite TBA (no OAuth)
-  nsAccountId      String?
-  nsConsumerKey    String?
-  nsConsumerSecret String?
-  nsTokenId        String?
-  nsTokenSecret    String?
+  nsAccountId       String?
+  nsConsumerKey     String?
+  nsConsumerSecret  String?
+  nsTokenId         String?
+  nsTokenSecret     String?
   // Account code mapping for journal entries
-  expenseAccountRef String?       // debit account code/id/name
-  cashAccountRef    String?       // credit account code/id/name
-  active       Boolean            @default(true)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  expenseAccountRef String? // debit account code/id/name
+  cashAccountRef    String? // credit account code/id/name
+  active            Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@unique([buyerId, provider])
   @@map("buyer_accounting_connections")
@@ -433,33 +447,33 @@ enum AccountingProvider {
 // ─── ChargeRollup: M2M決済の日次/月次集計ロールアップ ────────
 // 数万件のChargeを1本の仕訳にまとめ、会計ソフトへ自動連携する
 model ChargeRollup {
-  id              String             @id @default(cuid())
+  id String @id @default(cuid())
 
-  buyerId         String
-  buyer           Buyer              @relation(fields: [buyerId], references: [id])
+  buyerId String
+  buyer   Buyer  @relation(fields: [buyerId], references: [id])
 
   // 集計対象期間
-  periodStart     DateTime
-  periodEnd       DateTime
-  granularity     RollupGranularity  @default(DAILY)
+  periodStart DateTime
+  periodEnd   DateTime
+  granularity RollupGranularity @default(DAILY)
 
   // 集計結果
-  chargeCount     Int
-  totalUsdc       Decimal            @db.Decimal(38, 18)
-  totalJpy        Int                // 円換算合計（整数・切り捨て）
-  jpyRate         Decimal            @db.Decimal(10, 4)  // 1 USDC = X JPY
+  chargeCount Int
+  totalUsdc   Decimal @db.Decimal(38, 18)
+  totalJpy    Int // 円換算合計（整数・切り捨て）
+  jpyRate     Decimal @db.Decimal(10, 4) // 1 USDC = X JPY
 
   // 会計連携
   accountingProvider AccountingProvider?
-  externalDealId     String?          // freee deal ID / QB invoice ID 等
+  externalDealId     String? // freee deal ID / QB invoice ID 等
   syncedAt           DateTime?
   syncError          String?
 
   // 明細サマリ（JSON: serviceId→{count, usdc}）
-  serviceBreakdown   Json?
+  serviceBreakdown Json?
 
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([buyerId, periodStart])
   @@map("charge_rollups")
@@ -475,43 +489,43 @@ enum RollupGranularity {
 // Pay Token の usedUsdc が thresholds を超えた瞬間に POST を飛ばす
 // ─────────────────────────────────────────────────────────────
 model SpendWebhook {
-  id         String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  buyerId    String
-  buyer      Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  buyerId String
+  buyer   Buyer  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
 
-  url        String   // webhook の送信先 URL (HTTPS 必須)
-  thresholds Int[]    @default([50, 80, 95])   // パーセント値
-  secret     String   // HMAC-SHA256 署名用シークレット
+  url        String // webhook の送信先 URL (HTTPS 必須)
+  thresholds Int[]  @default([50, 80, 95]) // パーセント値
+  secret     String // HMAC-SHA256 署名用シークレット
 
-  active     Boolean  @default(true)
+  active Boolean @default(true)
 
   deliveries SpendWebhookDelivery[]
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([buyerId])
   @@map("spend_webhooks")
 }
 
 model SpendWebhookDelivery {
-  id          String                 @id @default(cuid())
+  id String @id @default(cuid())
 
-  webhookId   String
-  webhook     SpendWebhook           @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  webhookId String
+  webhook   SpendWebhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
-  tokenId     String                 // Token.id — 発火対象のトークン
-  threshold   Int                    // 発火したしきい値（%）
-  chargeId    String?                // 発火を引き起こした Charge.id
+  tokenId   String // Token.id — 発火対象のトークン
+  threshold Int // 発火したしきい値（%）
+  chargeId  String? // 発火を引き起こした Charge.id
 
-  status      WebhookDeliveryStatus  @default(PENDING)
-  attempts    Int                    @default(0)
+  status      WebhookDeliveryStatus @default(PENDING)
+  attempts    Int                   @default(0)
   lastError   String?
   deliveredAt DateTime?
 
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // 同じトークンで同じしきい値を二重発火させない (SKU-style uniqueness)
   @@unique([webhookId, tokenId, threshold])
@@ -523,4 +537,88 @@ enum WebhookDeliveryStatus {
   PENDING
   DELIVERED
   FAILED
+}
+
+// ─────────────────────────────────────────────────────────────
+// PlatformRevenue: チャージごとの手数料収益記録 (累計集計用)
+// Charge と 1:1。Worker が COMPLETED 時に作成する。
+// ─────────────────────────────────────────────────────────────
+model PlatformRevenue {
+  id String @id @default(cuid())
+
+  chargeId String @unique
+  charge   Charge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  // 手数料額 (USDC) と適用率 (bps)
+  amountUsdc Decimal @db.Decimal(38, 18)
+  feeBps     Int
+
+  // 引き出し済みかどうか (Withdrawal にリンク済み)
+  withdrawalId String?
+  withdrawal   PlatformWithdrawal? @relation(fields: [withdrawalId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([withdrawalId])
+  @@map("platform_revenues")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PlatformWithdrawal: 管理者による手数料引き出し履歴
+// ─────────────────────────────────────────────────────────────
+model PlatformWithdrawal {
+  id String @id @default(cuid())
+
+  amountUsdc    Decimal          @db.Decimal(38, 18)
+  toAddress     String // 送金先ウォレット
+  txHash        String? // Polygon tx hash
+  status        WithdrawalStatus @default(PENDING)
+  failureReason String?
+
+  // 集計対象期間 (任意)
+  periodFrom DateTime?
+  periodTo   DateTime?
+
+  revenues PlatformRevenue[]
+
+  initiatedBy String // adminId
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([status, createdAt])
+  @@map("platform_withdrawals")
+}
+
+enum WithdrawalStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// ─────────────────────────────────────────────────────────────
+// HotWalletRefill: Treasury → HOT_WALLET 自動補充ログ
+// ─────────────────────────────────────────────────────────────
+model HotWalletRefill {
+  id String @id @default(cuid())
+
+  amountUsdc    Decimal          @db.Decimal(38, 18)
+  fromAddress   String // Treasury wallet
+  toAddress     String // Hot wallet
+  txHash        String?
+  status        WithdrawalStatus @default(PENDING)
+  failureReason String?
+
+  // 補充トリガー時の hot wallet 残高 (監査用)
+  triggerBalanceUsdc Decimal? @db.Decimal(38, 18)
+  thresholdUsdc      Decimal? @db.Decimal(38, 18)
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([status, createdAt])
+  @@map("hot_wallet_refills")
 }

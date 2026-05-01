@@ -39,6 +39,7 @@ import { githubWebhookRouter }      from "./routes/webhooks/github.js";
 import { kybRouter }                from "./routes/kyb.js";
 import { telemetryRouter }          from "./routes/telemetry.js";
 import { adminRouter }              from "./routes/admin.js";
+import { adminRevenueRouter }       from "./routes/admin-revenue.js";
 import { startUsdcTransferWorker, handleFailedJob } from "./workers/usdcTransfer.js";
 import { startWorkflowWorker }      from "./workers/workflowStep.js";
 import { startWebhookDeliveryWorker } from "./workers/webhookDelivery.js";
@@ -92,6 +93,7 @@ app.route("/api/webhooks/github",        githubWebhookRouter);
 app.route("/api/kyb",                    kybRouter);
 app.route("/api/telemetry",              telemetryRouter);
 app.route("/api/admin",                  adminRouter);
+app.route("/api/admin/revenue",          adminRevenueRouter);
 
 // ─── OpenAPI ドキュメント定義 ────────────────────────────────
 app.doc("/openapi.json", {
@@ -175,9 +177,24 @@ async function main(): Promise<void> {
       }
     });
 
+    // ─── HOT_WALLET 自動補充 cron (5分間隔) ──────────────────
+    // ジョブ完了時にもチェックされるが、低トラフィック時の保険として定期実行
+    const REFILL_INTERVAL_MS = 5 * 60 * 1000;
+    const refillTimer = setInterval(async () => {
+      try {
+        const { refillHotWalletIfNeeded } = await import("./lib/treasury.js");
+        const result = await refillHotWalletIfNeeded();
+        if (result.refilled) console.log("[CronRefill] ✅", result);
+      } catch (e) {
+        console.error("[CronRefill] error:", e);
+      }
+    }, REFILL_INTERVAL_MS);
+    refillTimer.unref();
+
     // グレースフルシャットダウン
     const shutdown = async (): Promise<void> => {
       console.log("\n[Shutdown] Closing workers...");
+      clearInterval(refillTimer);
       await Promise.allSettled([worker.close(), workflowWorker.close(), webhookWorker.close()]);
       process.exit(0);
     };

@@ -1330,92 +1330,232 @@ function JpycReviewPage({ token }: { token: string }) {
 }
 
 // ── Finance & System page ─────────────────────────────────────────────────────
+interface RevenueSummary {
+  revenue: { allTimeUsdc:string; thisMonthUsdc:string; todayUsdc:string; chargeCount:number; withdrawnUsdc:string; availableUsdc:string };
+  providerPayouts: { pendingTotalUsdc:string; providerCount:number };
+  wallet: { hotWallet:{address:string;balanceUsdc:string}; treasuryWallet:{address:string;balanceUsdc:string}|null; thresholdUsdc:string; refillAmount:string } | null;
+  walletError: string | null;
+  config: { defaultFeeBps: number };
+}
+interface ProviderSettlement { id:string; name:string; walletAddress:string; pendingPayoutUsdc:string }
+interface WithdrawalRow { id:string; amountUsdc:string; toAddress:string; txHash:string|null; status:string; createdAt:string; failureReason?:string|null }
+interface RefillRow { id:string; amountUsdc:string; fromAddress:string; toAddress:string; txHash:string|null; status:string; createdAt:string; triggerBalanceUsdc:string|null; thresholdUsdc:string|null; failureReason?:string|null }
+
 function FinancePage() {
-  const [fee, setFee] = useState("2.5");
-  const [maxTx, setMaxTx] = useState("10000");
-  const [settlements, setSettlements] = useState<typeof DEMO_SETTLEMENTS[0][]>([]);
-  const [saved, setSaved] = useState(false);
+  const [summary, setSummary] = useState<RevenueSummary|null>(null);
+  const [providers, setProviders] = useState<ProviderSettlement[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
+  const [refills, setRefills] = useState<RefillRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{msg:string;type:"success"|"error"|"info"}|null>(null);
+  const [withdrawTo, setWithdrawTo] = useState("");
+  const [withdrawAmt, setWithdrawAmt] = useState("");
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [refilling, setRefilling] = useState(false);
 
-  function markPaid(id: string) {
-    setSettlements(prev => prev.map(s => s.id===id ? {...s, status:"paid"} : s));
-    setToast({msg:"精算を実行しました", type:"success"});
-    setTimeout(()=>setToast(null), 2500);
+  const showToast = (msg:string, type:"success"|"error"|"info"="info") => {
+    setToast({msg,type}); setTimeout(()=>setToast(null), 3000);
+  };
+
+  const authHeader = useCallback((): Record<string,string> => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  }, []);
+
+  const loadAll = useCallback(async () => {
+    try {
+      const headers = authHeader();
+      const [s, p, w, r] = await Promise.all([
+        fetch(`${API_URL}/api/admin/revenue/summary`,             { headers }).then(r=>r.json()),
+        fetch(`${API_URL}/api/admin/revenue/provider-settlements`, { headers }).then(r=>r.json()),
+        fetch(`${API_URL}/api/admin/revenue/withdrawals`,         { headers }).then(r=>r.json()),
+        fetch(`${API_URL}/api/admin/revenue/refills`,             { headers }).then(r=>r.json()),
+      ]);
+      if (s?.revenue) setSummary(s);
+      if (p?.providers) setProviders(p.providers);
+      if (w?.withdrawals) setWithdrawals(w.withdrawals);
+      if (r?.refills) setRefills(r.refills);
+    } catch (e) {
+      console.error("[FinancePage] load failed:", e);
+    } finally { setLoading(false); }
+  }, [authHeader]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  async function handleWithdraw() {
+    if (!/^0x[a-fA-F0-9]{40}$/.test(withdrawTo.trim())) { showToast("送金先アドレスが無効です", "error"); return; }
+    if (!withdrawAmt || parseFloat(withdrawAmt) <= 0)   { showToast("金額を入力してください", "error"); return; }
+    setWithdrawing(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/revenue/withdraw`, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json", ...authHeader() },
+        body: JSON.stringify({ toAddress: withdrawTo.trim(), amountUsdc: withdrawAmt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message ?? "withdrawal failed");
+      showToast(`✅ 引き出し完了 ${data.amountUsdc} USDC tx:${data.txHash?.slice(0,10)}…`, "success");
+      setWithdrawTo(""); setWithdrawAmt("");
+      await loadAll();
+    } catch (e) { showToast(e instanceof Error ? e.message : "失敗", "error"); }
+    finally { setWithdrawing(false); }
   }
 
-  function saveParams() {
-    setSaved(true);
-    setToast({msg:"システムパラメーターを保存しました", type:"success"});
-    setTimeout(()=>{ setSaved(false); setToast(null); }, 2500);
+  async function handleManualRefill() {
+    setRefilling(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/revenue/refill`, { method:"POST", headers: authHeader() });
+      const data = await res.json();
+      if (data.refilled) showToast(`✅ HOT 補充 ${data.txHash?.slice(0,10)}…`, "success");
+      else               showToast(`スキップ: ${data.reason} (HOT=${data.hotBalance ?? "?"})`, "info");
+      await loadAll();
+    } catch (e) { showToast(e instanceof Error ? e.message : "失敗", "error"); }
+    finally { setRefilling(false); }
   }
 
-  const totalPending = settlements.filter(s=>s.status==="pending").reduce((a,b)=>a+b.amount,0);
-  const totalPaid    = settlements.filter(s=>s.status==="paid").reduce((a,b)=>a+b.amount,0);
+  const allTime    = parseFloat(summary?.revenue.allTimeUsdc   ?? "0");
+  const thisMonth  = parseFloat(summary?.revenue.thisMonthUsdc ?? "0");
+  const available  = parseFloat(summary?.revenue.availableUsdc ?? "0");
+  const pendingTot = parseFloat(summary?.providerPayouts.pendingTotalUsdc ?? "0");
+  const feePercent = ((summary?.config.defaultFeeBps ?? 1000) / 100).toFixed(1);
 
   return (
     <div className="space-y-6">
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
+
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <KpiCard label="精算待ち総額" value={`$${totalPending.toFixed(2)}`} color="amber" delta={`${settlements.filter(s=>s.status==="pending").length}プロバイダー`}/>
-        <KpiCard label="精算済み総額（今月）" value={`$${totalPaid.toFixed(2)}`} color="green"/>
-        <KpiCard label="プラットフォーム手数料収入" value={`$${(totalPaid * parseFloat(fee)/100).toFixed(2)}`} color="blue" delta={`手数料率 ${fee}%`}/>
+        <KpiCard label="精算待ち総額" value={`$${pendingTot.toFixed(4)}`} color="amber" delta={`${summary?.providerPayouts.providerCount ?? 0}プロバイダー`}/>
+        <KpiCard label="今月の手数料収益"  value={`$${thisMonth.toFixed(4)}`} color="green" delta={`累計 $${allTime.toFixed(4)}`}/>
+        <KpiCard label="引き出し可能額" value={`$${available.toFixed(4)}`} color="blue" delta={`手数料率 ${feePercent}% · ${summary?.revenue.chargeCount ?? 0}件`}/>
       </div>
 
-      {/* Settlements */}
+      {/* ウォレット残高 + 手動補充 */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-gray-900">ウォレット残高 (Polygon USDC)</h3>
+          <Btn label={refilling ? "補充中..." : "Treasury → HOT 補充"} color="amber" size="xs" onClick={handleManualRefill} />
+        </div>
+        {summary?.walletError && <div className="text-xs text-red-600 mb-2">{summary.walletError}</div>}
+        {summary?.wallet && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div className="border border-gray-100 rounded-lg p-3">
+              <div className="text-gray-500 mb-1">HOT_WALLET (送金実行用)</div>
+              <div className="font-mono text-gray-900 truncate">{summary.wallet.hotWallet.address}</div>
+              <div className="mt-1 text-lg font-bold tabular-nums">{summary.wallet.hotWallet.balanceUsdc} <span className="text-xs font-normal text-gray-400">USDC</span></div>
+              <div className="text-[10px] text-gray-400 mt-0.5">補充閾値 {summary.wallet.thresholdUsdc} USDC / 1回 {summary.wallet.refillAmount} USDC</div>
+            </div>
+            <div className="border border-gray-100 rounded-lg p-3">
+              <div className="text-gray-500 mb-1">TREASURY_WALLET (補充元)</div>
+              {summary.wallet.treasuryWallet ? (<>
+                <div className="font-mono text-gray-900 truncate">{summary.wallet.treasuryWallet.address}</div>
+                <div className="mt-1 text-lg font-bold tabular-nums">{summary.wallet.treasuryWallet.balanceUsdc} <span className="text-xs font-normal text-gray-400">USDC</span></div>
+              </>) : (
+                <div className="text-amber-600 text-xs">TREASURY_WALLET_PRIVATE_KEY 未設定 → 自動補充は無効</div>
+              )}
+            </div>
+          </div>
+        )}
+        {!summary?.wallet && !loading && <div className="text-xs text-gray-400">ウォレット情報を取得できません</div>}
+      </div>
+
+      {/* 手数料引き出し */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <h3 className="text-sm font-bold text-gray-900 mb-3">プラットフォーム手数料 引き出し</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="md:col-span-2">
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">送金先ウォレット (0x...)</label>
+            <input value={withdrawTo} onChange={e=>setWithdrawTo(e.target.value)} placeholder="0x..." className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30"/>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">金額 (USDC)</label>
+            <div className="flex items-center gap-2">
+              <input type="number" value={withdrawAmt} onChange={e=>setWithdrawAmt(e.target.value)} step="0.000001" min="0" max={available} placeholder={available.toString()} className="flex-1 text-xs px-3 py-2 border border-gray-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30"/>
+              <button type="button" onClick={()=>setWithdrawAmt(available.toString())} className="text-[10px] px-2 py-1 border border-gray-200 rounded hover:bg-gray-50">MAX</button>
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <button onClick={handleWithdraw} disabled={withdrawing} className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+            {withdrawing ? "送金中..." : `${withdrawAmt || "0"} USDC を引き出す`}
+          </button>
+          <span className="text-[11px] text-gray-400">引き出し可能 ${available.toFixed(6)} USDC</span>
+        </div>
+      </div>
+
+      {/* プロバイダー精算 */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100">
           <h3 className="text-sm font-bold text-gray-900">プロバイダー精算</h3>
-          <p className="text-xs text-gray-400 mt-0.5">各プロバイダーへの売上精算ステータス</p>
+          <p className="text-xs text-gray-400 mt-0.5">各プロバイダーへの累計精算待ち残高（API 課金時に自動でオンチェーン送金されます）</p>
         </div>
         <table className="w-full">
-          <thead><tr><Th>プロバイダー</Th><Th>対象期間</Th><Th right>精算額</Th><Th>通貨</Th><Th>期日</Th><Th>ステータス</Th><Th>操作</Th></tr></thead>
+          <thead><tr><Th>プロバイダー</Th><Th>ウォレット</Th><Th right>精算待ち</Th></tr></thead>
           <tbody>
-            {settlements.map(s=>(
-              <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                <Td cls="font-semibold text-gray-900">{s.provider}</Td>
-                <Td cls="text-gray-500 text-[11px]">{s.period}</Td>
-                <Td right mono cls="text-gray-900 font-bold">${s.amount.toFixed(2)}</Td>
-                <Td><span className="font-mono text-[10px] text-gray-500">{s.currency}</span></Td>
-                <Td mono cls="text-gray-400 text-[10px]">{s.dueAt}</Td>
-                <Td>
-                  {s.status==="pending" ? <Pill label="未精算" variant="amber"/> : <Pill label="精算済" variant="green"/>}
-                </Td>
-                <Td>
-                  {s.status==="pending" && <Btn label="精算実行" color="green" size="xs" onClick={()=>markPaid(s.id)}/>}
-                </Td>
+            {providers.length === 0 && (
+              <tr><td colSpan={3} className="text-center text-xs text-gray-400 py-6">精算対象のプロバイダーはまだありません</td></tr>
+            )}
+            {providers.map(p=>(
+              <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                <Td cls="font-semibold text-gray-900">{p.name}</Td>
+                <Td cls="text-gray-500 text-[10px] font-mono">{p.walletAddress.slice(0,10)}…{p.walletAddress.slice(-6)}</Td>
+                <Td right mono cls="text-gray-900 font-bold">${parseFloat(p.pendingPayoutUsdc).toFixed(6)}</Td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {/* System params */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-5">
-        <h3 className="text-sm font-bold text-gray-900">システムパラメーター</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">プラットフォーム手数料率 (%)</label>
-            <div className="flex items-center gap-2">
-              <input type="number" value={fee} onChange={e=>setFee(e.target.value)} step="0.1" min="0" max="10"
-                className="w-28 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-mono"/>
-              <span className="text-xs text-gray-400">現在: {fee}% / 取引</span>
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">1取引あたり上限額 (USDC)</label>
-            <div className="flex items-center gap-2">
-              <input type="number" value={maxTx} onChange={e=>setMaxTx(e.target.value)} step="100" min="100"
-                className="w-28 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-mono"/>
-              <span className="text-xs text-gray-400">USDC 上限</span>
-            </div>
-          </div>
+      {/* 引き出し履歴 */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <h3 className="text-sm font-bold text-gray-900">手数料 引き出し履歴</h3>
         </div>
-        <div className="pt-2 flex items-center gap-3">
-          <button onClick={saveParams} className={`px-4 py-2 text-white text-sm font-semibold rounded-lg transition-all ${saved?"bg-green-600 hover:bg-green-700":"bg-lemon hover:bg-lemon-hover text-text-primary"}`}>
-            {saved ? "✓ 保存しました" : "変更を保存"}
-          </button>
-          {saved && <span className="text-xs text-green-600 font-medium">設定が反映されました</span>}
+        <table className="w-full">
+          <thead><tr><Th>日時</Th><Th right>金額</Th><Th>送金先</Th><Th>tx</Th><Th>ステータス</Th></tr></thead>
+          <tbody>
+            {withdrawals.length === 0 && <tr><td colSpan={5} className="text-center text-xs text-gray-400 py-6">引き出し履歴なし</td></tr>}
+            {withdrawals.map(w=>(
+              <tr key={w.id} className="hover:bg-gray-50">
+                <Td cls="text-[10px] text-gray-500">{new Date(w.createdAt).toLocaleString("ja-JP")}</Td>
+                <Td right mono cls="font-bold">${parseFloat(w.amountUsdc).toFixed(6)}</Td>
+                <Td cls="font-mono text-[10px]">{w.toAddress.slice(0,8)}…{w.toAddress.slice(-4)}</Td>
+                <Td cls="font-mono text-[10px]">{w.txHash ? <a href={`https://polygonscan.com/tx/${w.txHash}`} target="_blank" rel="noopener" className="text-blue-600 hover:underline">{w.txHash.slice(0,8)}…</a> : "-"}</Td>
+                <Td><Pill label={w.status} variant={w.status==="COMPLETED"?"green":w.status==="PENDING"?"amber":"red"}/></Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 自動補充履歴 */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <h3 className="text-sm font-bold text-gray-900">HOT_WALLET 補充履歴</h3>
+        </div>
+        <table className="w-full">
+          <thead><tr><Th>日時</Th><Th right>金額</Th><Th>残高(時点)</Th><Th>tx</Th><Th>ステータス</Th></tr></thead>
+          <tbody>
+            {refills.length === 0 && <tr><td colSpan={5} className="text-center text-xs text-gray-400 py-6">補充履歴なし</td></tr>}
+            {refills.map(r=>(
+              <tr key={r.id} className="hover:bg-gray-50">
+                <Td cls="text-[10px] text-gray-500">{new Date(r.createdAt).toLocaleString("ja-JP")}</Td>
+                <Td right mono cls="font-bold">+${parseFloat(r.amountUsdc).toFixed(6)}</Td>
+                <Td mono cls="text-[10px] text-gray-500">{r.triggerBalanceUsdc ?? "-"} → 閾値 {r.thresholdUsdc ?? "-"}</Td>
+                <Td cls="font-mono text-[10px]">{r.txHash ? <a href={`https://polygonscan.com/tx/${r.txHash}`} target="_blank" rel="noopener" className="text-blue-600 hover:underline">{r.txHash.slice(0,8)}…</a> : "-"}</Td>
+                <Td><Pill label={r.status} variant={r.status==="COMPLETED"?"green":r.status==="PENDING"?"amber":"red"}/></Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* システムパラメーター */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <h3 className="text-sm font-bold text-gray-900 mb-3">システムパラメーター</h3>
+        <div className="text-xs text-gray-500">
+          手数料率は環境変数 <code className="bg-gray-100 px-1 py-0.5 rounded">PLATFORM_FEE_BPS</code> (現在 {summary?.config.defaultFeeBps ?? 1000} bps = {feePercent}%) で設定されます。
+          サービス個別に上書きしたい場合は <code className="bg-gray-100 px-1 py-0.5 rounded">Service.platformFeeBps</code> をセットしてください。
         </div>
       </div>
     </div>
