@@ -2571,16 +2571,16 @@ function DirectoryPage() {
   const [search,     setSearch]     = useState("");
   const [filter,     setFilter]     = useState<"all" | "API" | "MCP">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [services,   setServices]   = useState<Service[]>(DEMO_SERVICES);
+  const [services,   setServices]   = useState<Service[]>([]);
   const [loading,    setLoading]    = useState(true);
 
   useEffect(() => {
     fetch(`${API_URL}/api/services?reviewStatus=APPROVED&limit=100`)
       .then((r) => r.ok ? r.json() : Promise.reject(r))
       .then((data: ApiService[]) => {
-        if (Array.isArray(data) && data.length > 0) setServices(data.map(apiServiceToService));
+        setServices(Array.isArray(data) && data.length > 0 ? data.map(apiServiceToService) : DEMO_SERVICES);
       })
-      .catch(() => {})
+      .catch(() => setServices(DEMO_SERVICES))
       .finally(() => setLoading(false));
   }, []);
 
