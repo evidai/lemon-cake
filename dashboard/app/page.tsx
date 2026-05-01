@@ -1055,6 +1055,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
   // ── 発行フォーム ──
   const [showForm,  setShowForm]  = useState(false);
   const [services,  setServices]  = useState<ApprovedService[]>([]);
+  const [scope,     setScope]     = useState<"ALL" | "SINGLE">("ALL");
   const [svcId,     setSvcId]     = useState("");
   const [limitAmt,  setLimitAmt]  = useState("1.00");
   const [buyerTag,  setBuyerTag]  = useState("");
@@ -1091,7 +1092,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
       const res = await fetch(`${API_URL}/api/tokens`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${buyerToken}` },
-        body: JSON.stringify({ serviceId: svcId, limitUsdc: limitAmt, buyerTag: buyerTag || undefined, sandbox }),
+        body: JSON.stringify({ scope, ...(scope === "SINGLE" ? { serviceId: svcId } : {}), limitUsdc: limitAmt, buyerTag: buyerTag || undefined, sandbox }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "発行に失敗しました");
@@ -1196,6 +1197,21 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
             </div>
           ) : (
             <form onSubmit={handleIssue} className="flex flex-col gap-4">
+              {/* Scope */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("スコープ", "Scope")}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["ALL", "SINGLE"] as const).map((s) => (
+                    <button key={s} type="button" onClick={() => setScope(s)}
+                      className={`px-3 py-2.5 rounded-xl border text-xs font-medium text-left transition-colors ${scope === s ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"}`}>
+                      <span className="font-bold">{s === "ALL" ? t("ALL — 全サービス", "ALL — Any service") : t("SINGLE — 特定サービス", "SINGLE — One service")}</span>
+                      <span className="block text-[10px] opacity-60 mt-0.5">{s === "ALL" ? t("エージェント向け推奨", "Recommended for agents") : t("1サービスのみ", "One service only")}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Service — SINGLE のみ */}
+              {scope === "SINGLE" && (
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("サービス", "Service")}</label>
                 <select value={svcId} onChange={e => setSvcId(e.target.value)} required
@@ -1208,6 +1224,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
                   }
                 </select>
               </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("利用上限 (USDC)", "Limit (USDC)")}</label>
@@ -1240,7 +1257,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
 
               {issueErr && <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{issueErr}</div>}
               <div className="flex justify-end">
-                <button type="submit" disabled={issuing || !svcId}
+                <button type="submit" disabled={issuing || (scope === "SINGLE" && !svcId)}
                   className="px-6 py-2.5 bg-lemon hover:bg-lemon-hover text-text-primary text-sm font-semibold rounded-xl disabled:opacity-50 transition-colors">
                   {issuing ? t("発行中…", "Issuing…") : t("トークンを発行する", "Issue Token")}
                 </button>
