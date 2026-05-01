@@ -1455,7 +1455,12 @@ function FinancePage() {
           <h3 className="text-sm font-bold text-gray-900">ウォレット残高 (Polygon USDC)</h3>
           <Btn label={refilling ? "補充中..." : "Treasury → HOT 補充"} color="amber" size="xs" onClick={handleManualRefill} />
         </div>
-        {summary?.walletError && <div className="text-xs text-red-600 mb-2">{summary.walletError}</div>}
+        {summary?.walletError && (
+          <details className="text-xs text-red-600 mb-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <summary className="cursor-pointer font-semibold">⚠️ ウォレット情報の取得に失敗しました（クリックで詳細）</summary>
+            <pre className="mt-2 text-[10px] whitespace-pre-wrap break-all opacity-70">{summary.walletError.slice(0, 400)}</pre>
+          </details>
+        )}
         {summary?.wallet && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
             <div className="border border-gray-100 rounded-lg p-3">
