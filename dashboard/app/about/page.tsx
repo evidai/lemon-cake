@@ -620,6 +620,79 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* ── なぜ USDC / JPYC か ── */}
+      <div className="bg-white w-full">
+        <section className="max-w-5xl mx-auto px-6 py-28">
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4 text-center">Why USDC / JPYC?</p>
+          <h2 className="text-3xl font-black text-gray-900 text-center mb-4">なぜ円ではなく USDC なのか</h2>
+          <p className="text-gray-500 text-center text-sm mb-14 max-w-xl mx-auto">AIエージェントによる決済には、銀行振込でも法定通貨APIでも解決できない根本的な問題があります。</p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                title: "1リクエスト = $0.001 の決済が必要",
+                body: "銀行振込の最小単位は1円。マイクロペイメントには対応していません。クレジットカードは手数料が課金額を上回ります。USDC/JPYCなら0.001ドルの課金が手数料ほぼゼロで実現できます。",
+                icon: "⚡",
+              },
+              {
+                title: "エージェントはAPIキーを持てない",
+                body: "外部APIの認証情報をエージェントに渡すと漏洩リスクがあります。Pay Tokenは予算上限・有効期限・呼び出し先を制限でき、漏洩しても被害が限定されます。",
+                icon: "🔐",
+              },
+              {
+                title: "円建てで使いたい → JPYCで可能",
+                body: "LemonCakeはJPYC（Polygon上の円建てステーブルコイン）も標準サポート。為替リスクなし、暗号資産課税の複雑さを回避しながらマイクロペイメントが実現できます。",
+                icon: "🇯🇵",
+              },
+            ].map((item) => (
+              <div key={item.title} className="rounded-2xl border border-gray-200 p-6">
+                <div className="text-2xl mb-3">{item.icon}</div>
+                <p className="font-semibold text-gray-900 mb-2 text-sm">{item.title}</p>
+                <p className="text-gray-500 text-sm leading-relaxed">{item.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      {/* ── 競合比較 ── */}
+      <section className="max-w-5xl mx-auto px-6 py-28">
+        <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-4 text-center">Comparison</p>
+        <h2 className="text-3xl font-black text-white text-center mb-4">他のサービスとの違い</h2>
+        <p className="text-white/50 text-center text-sm mb-14 max-w-xl mx-auto">「APIマーケットプレイス」「エージェント決済」と名乗るサービスは複数あります。何が違うのか。</p>
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/10 bg-white/5">
+                <th className="text-left px-5 py-4 text-white/60 font-medium">機能</th>
+                <th className="px-5 py-4 text-[#fffd43] font-bold text-center">LemonCake</th>
+                <th className="px-5 py-4 text-white/40 font-medium text-center">Composio</th>
+                <th className="px-5 py-4 text-white/40 font-medium text-center">RapidAPI</th>
+                <th className="px-5 py-4 text-white/40 font-medium text-center">Skyfire</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["マイクロペイメント（$0.001/call）", "✅", "❌", "❌", "✅"],
+                ["日本の税務対応（源泉・インボイス）", "✅", "❌", "❌", "❌"],
+                ["freee / MF 自動仕訳", "✅", "❌", "❌", "❌"],
+                ["JPYC（円建て）対応", "✅", "❌", "❌", "❌"],
+                ["MCP サーバー対応", "✅", "❌", "❌", "❌"],
+                ["APIキー不要のエージェント決済", "✅", "❌", "❌", "✅"],
+                ["npx 1行でエージェント作成", "✅", "❌", "❌", "❌"],
+              ].map(([feature, ...vals]) => (
+                <tr key={String(feature)} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                  <td className="px-5 py-4 text-white/70">{feature}</td>
+                  {vals.map((v, i) => (
+                    <td key={i} className="px-5 py-4 text-center text-base">{v}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-white/30 text-xs text-center mt-4">※ 2026年5月時点の調査。各社公開情報に基づく。</p>
+      </section>
+
       {/* ── Philosophy ── */}
       <section className="px-6 pt-28 pb-40 text-center">
         <div className="max-w-4xl mx-auto">
