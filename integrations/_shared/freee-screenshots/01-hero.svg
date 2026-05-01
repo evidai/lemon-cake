@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <style>
+      .bg { fill: #fffd43; }
+      .title { font-family: -apple-system, 'Hiragino Sans', sans-serif; font-weight: 900; fill: #1a0f00; }
+      .body  { font-family: -apple-system, 'Hiragino Sans', sans-serif; fill: #1a0f00; }
+      .dark  { fill: #1a0f00; }
+      .yellow { fill: #fffd43; }
+    </style>
+  </defs>
+  <rect class="bg" width="1920" height="1080"/>
+
+  <!-- Brand -->
+  <text class="title" x="120" y="180" font-size="64">LemonCake</text>
+  <text class="body" x="120" y="230" font-size="28" opacity="0.6">× freee 会計</text>
+
+  <!-- Headline -->
+  <text class="title" x="120" y="400" font-size="96">AIエージェントに</text>
+  <text class="title" x="120" y="520" font-size="96">「上限付きの財布」を。</text>
+
+  <!-- Subheadline -->
+  <text class="body" x="120" y="620" font-size="38" opacity="0.8">Pay Token で外部API決済 → freee へ自動仕訳。</text>
+  <text class="body" x="120" y="675" font-size="38" opacity="0.8">AI暴走による過剰請求は、上限値で強制ブロック。</text>
+
+  <!-- Three feature pills -->
+  <g transform="translate(120, 800)">
+    <rect class="dark" width="420" height="130" rx="16"/>
+    <text class="yellow" x="40" y="55" font-size="24" font-weight="700">上限付き Pay Token</text>
+    <text class="yellow" x="40" y="95" font-size="20" opacity="0.7">HMAC-SHA256 署名</text>
+  </g>
+  <g transform="translate(560, 800)">
+    <rect class="dark" width="420" height="130" rx="16"/>
+    <text class="yellow" x="40" y="55" font-size="24" font-weight="700">ワンクリック Kill Switch</text>
+    <text class="yellow" x="40" y="95" font-size="20" opacity="0.7">秒単位で全トークン失効</text>
+  </g>
+  <g transform="translate(1000, 800)">
+    <rect class="dark" width="420" height="130" rx="16"/>
+    <text class="yellow" x="40" y="55" font-size="24" font-weight="700">freee 自動仕訳</text>
+    <text class="yellow" x="40" y="95" font-size="20" opacity="0.7">源泉徴収・インボイス対応</text>
+  </g>
+
+  <!-- Lemon icon illustration -->
+  <g transform="translate(1500, 400)">
+    <circle cx="150" cy="150" r="150" fill="#1a0f00"/>
+    <circle cx="150" cy="150" r="120" fill="#FFE14A"/>
+    <line x1="150" y1="30" x2="150" y2="270" stroke="#1a0f00" stroke-width="4"/>
+    <line x1="30" y1="150" x2="270" y2="150" stroke="#1a0f00" stroke-width="4"/>
+    <line x1="65" y1="65" x2="235" y2="235" stroke="#1a0f00" stroke-width="4"/>
+    <line x1="235" y1="65" x2="65" y2="235" stroke="#1a0f00" stroke-width="4"/>
+    <circle cx="150" cy="150" r="16" fill="#1a0f00"/>
+  </g>
+
+  <!-- Footer -->
+  <text class="body" x="120" y="1020" font-size="22" opacity="0.5">lemoncake.xyz  /  contact@aievid.com</text>
+</svg>

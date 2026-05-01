@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <style>
+      .bg { fill: #fffd43; }
+      .title { font-family: -apple-system, 'Hiragino Sans', sans-serif; font-weight: 900; fill: #1a0f00; }
+      .body  { font-family: -apple-system, 'Hiragino Sans', sans-serif; fill: #1a0f00; }
+      .dark  { fill: #1a0f00; }
+      .yellow { fill: #fffd43; }
+      .caption { font-family: -apple-system, 'Hiragino Sans', sans-serif; fill: #1a0f00; opacity: 0.6; }
+    </style>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="12" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#1a0f00"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="1920" height="1080"/>
+
+  <!-- Title -->
+  <text class="title" x="120" y="120" font-size="56">LemonCake アーキテクチャ</text>
+  <text class="caption" x="120" y="170" font-size="26">AIエージェントが外部API決済を行い、freee に自動仕訳されるまでの流れ</text>
+
+  <!-- Row 1: Agent -->
+  <g transform="translate(160, 280)">
+    <rect class="dark" width="260" height="140" rx="16"/>
+    <text class="yellow" x="130" y="65" font-size="28" font-weight="700" text-anchor="middle">AIエージェント</text>
+    <text class="yellow" x="130" y="100" font-size="20" text-anchor="middle" opacity="0.7">Dify / Coze / MCP</text>
+  </g>
+
+  <!-- Arrow 1 -->
+  <line x1="420" y1="350" x2="570" y2="350" stroke="#1a0f00" stroke-width="4" marker-end="url(#arrow)"/>
+  <text class="caption" x="495" y="330" font-size="20" text-anchor="middle">Pay Token</text>
+  <text class="caption" x="495" y="380" font-size="16" text-anchor="middle">(HMAC-SHA256)</text>
+
+  <!-- LemonCake -->
+  <g transform="translate(580, 260)">
+    <rect class="dark" width="300" height="180" rx="16"/>
+    <text class="yellow" x="150" y="60" font-size="32" font-weight="700" text-anchor="middle">LemonCake</text>
+    <text class="yellow" x="150" y="100" font-size="20" text-anchor="middle" opacity="0.7">上限チェック</text>
+    <text class="yellow" x="150" y="130" font-size="20" text-anchor="middle" opacity="0.7">残高引当</text>
+    <text class="yellow" x="150" y="160" font-size="20" text-anchor="middle" opacity="0.7">プロキシ決済</text>
+  </g>
+
+  <!-- Arrow 2 -->
+  <line x1="880" y1="350" x2="1030" y2="350" stroke="#1a0f00" stroke-width="4" marker-end="url(#arrow)"/>
+  <text class="caption" x="955" y="330" font-size="20" text-anchor="middle">API Call + USDC</text>
+  <text class="caption" x="955" y="380" font-size="16" text-anchor="middle">(決済付きプロキシ)</text>
+
+  <!-- Upstream API -->
+  <g transform="translate(1040, 280)">
+    <rect class="dark" width="260" height="140" rx="16"/>
+    <text class="yellow" x="130" y="60" font-size="26" font-weight="700" text-anchor="middle">外部API</text>
+    <text class="yellow" x="130" y="95" font-size="18" text-anchor="middle" opacity="0.7">LLM / 画像生成 /</text>
+    <text class="yellow" x="130" y="118" font-size="18" text-anchor="middle" opacity="0.7">データベース API</text>
+  </g>
+
+  <!-- Arrow back: settlement -->
+  <path d="M 1170 420 L 1170 520 L 730 520 L 730 450" stroke="#1a0f00" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+  <text class="caption" x="960" y="510" font-size="20" text-anchor="middle">決済確定・レスポンス</text>
+
+  <!-- Row 2: Journal engine -->
+  <g transform="translate(580, 620)">
+    <rect class="dark" width="300" height="160" rx="16"/>
+    <text class="yellow" x="150" y="55" font-size="28" font-weight="700" text-anchor="middle">仕訳生成エンジン</text>
+    <text class="yellow" x="150" y="95" font-size="18" text-anchor="middle" opacity="0.7">USDC → 円 換算</text>
+    <text class="yellow" x="150" y="120" font-size="18" text-anchor="middle" opacity="0.7">源泉徴収 按分</text>
+    <text class="yellow" x="150" y="145" font-size="18" text-anchor="middle" opacity="0.7">インボイス照合</text>
+  </g>
+
+  <!-- Arrow LC → Journal engine -->
+  <line x1="730" y1="440" x2="730" y2="618" stroke="#1a0f00" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- Arrow Journal engine → freee -->
+  <line x1="880" y1="700" x2="1030" y2="700" stroke="#1a0f00" stroke-width="4" marker-end="url(#arrow)"/>
+  <text class="caption" x="955" y="680" font-size="20" text-anchor="middle">POST /api/1/deals</text>
+
+  <!-- freee -->
+  <g transform="translate(1040, 620)">
+    <rect class="dark" width="300" height="160" rx="16"/>
+    <text class="yellow" x="150" y="60" font-size="32" font-weight="700" text-anchor="middle">freee 会計</text>
+    <text class="yellow" x="150" y="105" font-size="20" text-anchor="middle" opacity="0.7">取引（仕訳）自動記帳</text>
+    <text class="yellow" x="150" y="135" font-size="18" text-anchor="middle" opacity="0.7">外注費 / 預り金 / 普通預金</text>
+  </g>
+
+  <!-- Security note -->
+  <g transform="translate(120, 880)">
+    <rect x="0" y="0" width="1680" height="130" rx="16" fill="#1a0f00" opacity="0.05" stroke="#1a0f00" stroke-width="2"/>
+    <text class="title" x="40" y="45" font-size="24">セキュリティ境界</text>
+    <text class="body" x="40" y="85" font-size="20" opacity="0.8">TLS 1.3 強制 ・ Buyer JWT は HMAC-SHA256 署名 ・ OAuth トークンは AES-256 暗号化保管 ・ 監査ログ 90日保持</text>
+  </g>
+</svg>

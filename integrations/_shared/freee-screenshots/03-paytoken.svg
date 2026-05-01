@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <style>
+      .bg { fill: #fffd43; }
+      .title { font-family: -apple-system, 'Hiragino Sans', sans-serif; font-weight: 900; fill: #1a0f00; }
+      .body  { font-family: -apple-system, 'Hiragino Sans', sans-serif; fill: #1a0f00; }
+      .dark  { fill: #1a0f00; }
+      .yellow { fill: #fffd43; }
+      .mono  { font-family: 'SF Mono', Menlo, monospace; fill: #1a0f00; }
+      .caption { font-family: -apple-system, 'Hiragino Sans', sans-serif; fill: #1a0f00; opacity: 0.6; }
+    </style>
+  </defs>
+  <rect class="bg" width="1920" height="1080"/>
+
+  <text class="title" x="120" y="120" font-size="56">Pay Token の構造</text>
+  <text class="caption" x="120" y="170" font-size="26">AIエージェントに渡すのはこの1文字列だけ。上限・有効期限・用途が構造的に縛られている。</text>
+
+  <!-- Token card -->
+  <g transform="translate(120, 240)">
+    <rect class="dark" width="1680" height="280" rx="20"/>
+    <text class="yellow" x="40" y="55" font-size="22" opacity="0.6">Pay Token (JWT — HS256)</text>
+    <text class="mono" fill="#fffd43" x="40" y="115" font-size="28" font-weight="700">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.</text>
+    <text class="mono" fill="#fffd43" x="40" y="155" font-size="28" font-weight="700">eyJzdWIiOiJidXllcl9hYmMxMjMiLCJsaW1pdF91c2RjIjoiMTAuMDAiLA==</text>
+    <text class="mono" fill="#fffd43" x="40" y="195" font-size="28" font-weight="700">ImV4cCI6MTc2NDU4ODAwMCwic2NvcGUiOiJodHRwczovL2FwaS5v...</text>
+    <text class="mono" fill="#fffd43" x="40" y="235" font-size="28" font-weight="700">.8kzR2nQ4vL1xP7jM3sH9yW5bE6cN0dF8gT2aV1uI3oK</text>
+  </g>
+
+  <!-- Payload decoded -->
+  <text class="title" x="120" y="600" font-size="36">Payload（復号）</text>
+
+  <g transform="translate(120, 640)">
+    <rect width="800" height="340" rx="16" fill="#1a0f00" opacity="0.08" stroke="#1a0f00" stroke-width="2"/>
+    <text class="mono" x="30" y="50" font-size="24">{</text>
+    <text class="mono" x="60" y="85" font-size="24">"sub":       "buyer_abc123",</text>
+    <text class="mono" x="60" y="120" font-size="24">"limit_usdc": "10.00",</text>
+    <text class="mono" x="60" y="155" font-size="24">"exp":        1764588000,</text>
+    <text class="mono" x="60" y="190" font-size="24">"scope":      "https://api.openai.com/*",</text>
+    <text class="mono" x="60" y="225" font-size="24">"nonce":      "9f3c...d1a2",</text>
+    <text class="mono" x="60" y="260" font-size="24">"kya":        true</text>
+    <text class="mono" x="30" y="295" font-size="24">}</text>
+  </g>
+
+  <!-- Guarantees -->
+  <g transform="translate(960, 640)">
+    <text class="title" x="0" y="0" font-size="28">構造的ガードレール</text>
+    <g transform="translate(0, 30)">
+      <rect width="840" height="70" rx="12" fill="#1a0f00"/>
+      <text class="yellow" x="24" y="30" font-size="20" font-weight="700">💰 利用上限（limit_usdc）</text>
+      <text class="yellow" x="24" y="58" font-size="16" opacity="0.7">トークン毎にハード上限。1円でも超過すれば署名検証で拒否。</text>
+    </g>
+    <g transform="translate(0, 110)">
+      <rect width="840" height="70" rx="12" fill="#1a0f00"/>
+      <text class="yellow" x="24" y="30" font-size="20" font-weight="700">⏱ 有効期限（exp）</text>
+      <text class="yellow" x="24" y="58" font-size="16" opacity="0.7">秒単位でexpiry。流出しても数時間後には自動で無効。</text>
+    </g>
+    <g transform="translate(0, 190)">
+      <rect width="840" height="70" rx="12" fill="#1a0f00"/>
+      <text class="yellow" x="24" y="30" font-size="20" font-weight="700">🎯 用途スコープ（scope）</text>
+      <text class="yellow" x="24" y="58" font-size="16" opacity="0.7">許可ドメインを列挙。想定外のAPIには絶対に使えない。</text>
+    </g>
+    <g transform="translate(0, 270)">
+      <rect width="840" height="70" rx="12" fill="#1a0f00"/>
+      <text class="yellow" x="24" y="30" font-size="20" font-weight="700">🔐 HMAC-SHA256 署名</text>
+      <text class="yellow" x="24" y="58" font-size="16" opacity="0.7">改ざん不能。サーバー側秘密鍵はKMSで厳重管理。</text>
+    </g>
+  </g>
+</svg>

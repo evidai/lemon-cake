@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <style>
+      .bg { fill: #fffd43; }
+      .title { font-family: -apple-system, 'Hiragino Sans', sans-serif; font-weight: 900; fill: #1a0f00; }
+      .body  { font-family: -apple-system, 'Hiragino Sans', sans-serif; fill: #1a0f00; }
+      .dark  { fill: #1a0f00; }
+      .yellow { fill: #fffd43; }
+      .red   { fill: #d93025; }
+      .caption { font-family: -apple-system, 'Hiragino Sans', sans-serif; fill: #1a0f00; opacity: 0.6; }
+    </style>
+  </defs>
+  <rect class="bg" width="1920" height="1080"/>
+
+  <text class="title" x="120" y="120" font-size="56">ワンクリック Kill Switch</text>
+  <text class="caption" x="120" y="170" font-size="26">AI暴走検知・鍵流出の疑い・不正アクセス — 全 Pay Token を秒単位で失効。</text>
+
+  <!-- Dashboard mockup -->
+  <g transform="translate(120, 240)">
+    <rect width="1680" height="720" rx="20" fill="#ffffff" stroke="#1a0f00" stroke-width="3"/>
+
+    <!-- Header bar -->
+    <rect width="1680" height="70" rx="20" fill="#1a0f00"/>
+    <rect y="50" width="1680" height="20" fill="#1a0f00"/>
+    <text class="yellow" x="40" y="46" font-size="24" font-weight="900">LemonCake Dashboard</text>
+    <text class="yellow" x="1540" y="46" font-size="20" opacity="0.7">buyer_abc123</text>
+
+    <!-- Stats row -->
+    <g transform="translate(40, 110)">
+      <rect width="380" height="120" rx="12" fill="#1a0f00" opacity="0.05" stroke="#1a0f00" stroke-width="2"/>
+      <text class="caption" x="24" y="35" font-size="18">発行済 Pay Token</text>
+      <text class="title" x="24" y="85" font-size="42">12</text>
+      <text class="caption" x="24" y="110" font-size="16">うち有効 9 / 失効 3</text>
+    </g>
+    <g transform="translate(440, 110)">
+      <rect width="380" height="120" rx="12" fill="#1a0f00" opacity="0.05" stroke="#1a0f00" stroke-width="2"/>
+      <text class="caption" x="24" y="35" font-size="18">本日の消費額</text>
+      <text class="title" x="24" y="85" font-size="42">$ 18.42</text>
+      <text class="caption" x="24" y="110" font-size="16">日次上限 $50.00 / 36.8%</text>
+    </g>
+    <g transform="translate(840, 110)">
+      <rect width="380" height="120" rx="12" fill="#1a0f00" opacity="0.05" stroke="#1a0f00" stroke-width="2"/>
+      <text class="caption" x="24" y="35" font-size="18">直近24h 決済数</text>
+      <text class="title" x="24" y="85" font-size="42">342</text>
+      <text class="caption" x="24" y="110" font-size="16">成功 341 / 上限拒否 1</text>
+    </g>
+
+    <!-- Big Kill Switch -->
+    <g transform="translate(1240, 110)">
+      <rect width="400" height="120" rx="12" fill="#d93025"/>
+      <circle cx="60" cy="60" r="20" fill="#fffd43"/>
+      <circle cx="60" cy="60" r="10" fill="#d93025"/>
+      <text fill="#fffd43" x="100" y="50" font-size="24" font-weight="900" font-family="-apple-system, 'Hiragino Sans', sans-serif">Kill Switch</text>
+      <text fill="#fffd43" x="100" y="80" font-size="16" font-family="-apple-system, 'Hiragino Sans', sans-serif" opacity="0.9">全トークンを即時失効</text>
+      <text fill="#fffd43" x="100" y="102" font-size="14" font-family="-apple-system, 'Hiragino Sans', sans-serif" opacity="0.7">2クリックで確定</text>
+    </g>
+
+    <!-- Token list -->
+    <text class="title" x="40" y="290" font-size="26">アクティブな Pay Token</text>
+
+    <g transform="translate(40, 320)">
+      <rect width="1600" height="70" rx="10" fill="#1a0f00" opacity="0.04" stroke="#1a0f00" stroke-width="1"/>
+      <text class="body" x="20" y="30" font-size="18" font-weight="700">pk_live_7jM3sH9yW5bE...</text>
+      <text class="caption" x="20" y="55" font-size="15">上限 $10.00 / 消費 $3.42 / exp 2026-04-21 10:00</text>
+      <text class="body" x="900" y="30" font-size="18">OpenAI API</text>
+      <text class="caption" x="900" y="55" font-size="15">scope: api.openai.com/*</text>
+      <rect x="1460" y="20" width="120" height="32" rx="6" fill="#1a0f00"/>
+      <text class="yellow" x="1520" y="41" font-size="16" text-anchor="middle">失効</text>
+    </g>
+
+    <g transform="translate(40, 410)">
+      <rect width="1600" height="70" rx="10" fill="#1a0f00" opacity="0.04" stroke="#1a0f00" stroke-width="1"/>
+      <text class="body" x="20" y="30" font-size="18" font-weight="700">pk_live_2aV1uI3oK8kz...</text>
+      <text class="caption" x="20" y="55" font-size="15">上限 $5.00 / 消費 $4.88 / exp 2026-04-20 23:00</text>
+      <text class="body" x="900" y="30" font-size="18">Anthropic API</text>
+      <text class="caption" x="900" y="55" font-size="15">scope: api.anthropic.com/*</text>
+      <rect x="1460" y="20" width="120" height="32" rx="6" fill="#1a0f00"/>
+      <text class="yellow" x="1520" y="41" font-size="16" text-anchor="middle">失効</text>
+    </g>
+
+    <g transform="translate(40, 500)">
+      <rect width="1600" height="70" rx="10" fill="#1a0f00" opacity="0.04" stroke="#1a0f00" stroke-width="1"/>
+      <text class="body" x="20" y="30" font-size="18" font-weight="700">pk_live_N0dF8gT9xP7j...</text>
+      <text class="caption" x="20" y="55" font-size="15">上限 $20.00 / 消費 $10.12 / exp 2026-04-22 15:00</text>
+      <text class="body" x="900" y="30" font-size="18">Replicate (画像生成)</text>
+      <text class="caption" x="900" y="55" font-size="15">scope: api.replicate.com/*</text>
+      <rect x="1460" y="20" width="120" height="32" rx="6" fill="#1a0f00"/>
+      <text class="yellow" x="1520" y="41" font-size="16" text-anchor="middle">失効</text>
+    </g>
+
+    <!-- Response time note -->
+    <g transform="translate(40, 610)">
+      <rect width="1600" height="80" rx="12" fill="#1a0f00"/>
+      <text class="yellow" x="24" y="34" font-size="20" font-weight="700">⚡ 応答時間：中央値 0.8秒 / P99 2.1秒</text>
+      <text class="yellow" x="24" y="62" font-size="16" opacity="0.7">Kill Switch 起動 → 全 Pay Token の署名検証が失敗に切替 → 以降の決済は即座に 403 Forbidden</text>
+    </g>
+  </g>
+</svg>

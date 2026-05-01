@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <style>
+      .bg { fill: #fffd43; }
+      .title { font-family: -apple-system, 'Hiragino Sans', sans-serif; font-weight: 900; fill: #1a0f00; }
+      .body  { font-family: -apple-system, 'Hiragino Sans', sans-serif; fill: #1a0f00; }
+      .dark  { fill: #1a0f00; }
+      .yellow { fill: #fffd43; }
+      .caption { font-family: -apple-system, 'Hiragino Sans', sans-serif; fill: #1a0f00; opacity: 0.6; }
+    </style>
+  </defs>
+  <rect class="bg" width="1920" height="1080"/>
+
+  <text class="title" x="120" y="120" font-size="56">freee 自動仕訳 — Before / After</text>
+  <text class="caption" x="120" y="170" font-size="26">AI決済が増えるほど経理工数は爆発する。LemonCake は決済の瞬間に仕訳を書き込む。</text>
+
+  <!-- Before -->
+  <g transform="translate(120, 240)">
+    <rect width="820" height="720" rx="20" fill="#1a0f00" opacity="0.08" stroke="#1a0f00" stroke-width="3"/>
+    <text class="title" x="40" y="60" font-size="40">❌ Before</text>
+    <text class="caption" x="40" y="95" font-size="22">手作業の月次経理</text>
+
+    <g transform="translate(40, 140)">
+      <rect width="740" height="60" rx="10" fill="#1a0f00" opacity="0.1"/>
+      <text class="body" x="20" y="38" font-size="20">1. 各API事業者のCSVをダウンロード（×10社）</text>
+    </g>
+    <g transform="translate(40, 220)">
+      <rect width="740" height="60" rx="10" fill="#1a0f00" opacity="0.1"/>
+      <text class="body" x="20" y="38" font-size="20">2. USD → JPY 為替レートを日付ごとに手動換算</text>
+    </g>
+    <g transform="translate(40, 300)">
+      <rect width="740" height="60" rx="10" fill="#1a0f00" opacity="0.1"/>
+      <text class="body" x="20" y="38" font-size="20">3. 源泉徴収対象かを取引先ごとに判定</text>
+    </g>
+    <g transform="translate(40, 380)">
+      <rect width="740" height="60" rx="10" fill="#1a0f00" opacity="0.1"/>
+      <text class="body" x="20" y="38" font-size="20">4. 適格請求書発行事業者か国税庁で照会</text>
+    </g>
+    <g transform="translate(40, 460)">
+      <rect width="740" height="60" rx="10" fill="#1a0f00" opacity="0.1"/>
+      <text class="body" x="20" y="38" font-size="20">5. freee にCSVインポート → 勘定科目を手動マッピング</text>
+    </g>
+    <g transform="translate(40, 540)">
+      <rect width="740" height="60" rx="10" fill="#1a0f00" opacity="0.1"/>
+      <text class="body" x="20" y="38" font-size="20">6. 仕訳のエビデンスを Drive / Slack から探す</text>
+    </g>
+
+    <text class="title" x="40" y="680" font-size="32">⏱ 月次工数：20〜40時間</text>
+  </g>
+
+  <!-- After -->
+  <g transform="translate(980, 240)">
+    <rect width="820" height="720" rx="20" fill="#1a0f00"/>
+    <text class="yellow" x="40" y="60" font-size="40" font-weight="900">✅ After</text>
+    <text class="yellow" x="40" y="95" font-size="22" opacity="0.6">LemonCake × freee で自動化</text>
+
+    <g transform="translate(40, 140)">
+      <rect width="740" height="60" rx="10" fill="#fffd43" opacity="0.15"/>
+      <text class="yellow" x="20" y="38" font-size="20">1. Pay Token 発行（ダッシュボードから1クリック）</text>
+    </g>
+    <g transform="translate(40, 220)">
+      <rect width="740" height="60" rx="10" fill="#fffd43" opacity="0.15"/>
+      <text class="yellow" x="20" y="38" font-size="20">2. AIエージェント決済 →自動で USDC→JPY 換算</text>
+    </g>
+    <g transform="translate(40, 300)">
+      <rect width="740" height="60" rx="10" fill="#fffd43" opacity="0.15"/>
+      <text class="yellow" x="20" y="38" font-size="20">3. 源泉徴収 10.21% / 20.42% 自動按分</text>
+    </g>
+    <g transform="translate(40, 380)">
+      <rect width="740" height="60" rx="10" fill="#fffd43" opacity="0.15"/>
+      <text class="yellow" x="20" y="38" font-size="20">4. 国税庁API連携でインボイス登録番号 自動照合</text>
+    </g>
+    <g transform="translate(40, 460)">
+      <rect width="740" height="60" rx="10" fill="#fffd43" opacity="0.15"/>
+      <text class="yellow" x="20" y="38" font-size="20">5. POST /api/1/deals で freee に即時仕訳記帳</text>
+    </g>
+    <g transform="translate(40, 540)">
+      <rect width="740" height="60" rx="10" fill="#fffd43" opacity="0.15"/>
+      <text class="yellow" x="20" y="38" font-size="20">6. Evidence Hash を摘要欄に自動添付</text>
+    </g>
+
+    <text class="yellow" x="40" y="680" font-size="32" font-weight="900">⏱ 月次工数：0時間</text>
+  </g>
+</svg>
