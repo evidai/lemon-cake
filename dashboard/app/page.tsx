@@ -2094,6 +2094,7 @@ interface ApiService {
 function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreated: (key: string) => void }) {
   const [step,      setStep]      = useState<0 | 1 | 2>(0);
   const [buyerId,   setBuyerId]   = useState("");
+  const [scope,     setScope]     = useState<"SINGLE" | "ALL">("ALL");
   const [serviceId, setServiceId] = useState("");
   const [limitUsdc, setLimitUsdc] = useState("1.0");
   const [buyerTag,  setBuyerTag]  = useState("");
@@ -2114,7 +2115,8 @@ function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreate
   }, []);
 
   async function handleIssue() {
-    if (!buyerId || !serviceId || !limitUsdc) return;
+    if (!buyerId || !limitUsdc) return;
+    if (scope === "SINGLE" && !serviceId) return;
     setSubmitting(true); setErrMsg("");
     try {
       const res = await fetch(`${API_URL}/api/tokens`, {
@@ -2122,7 +2124,8 @@ function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreate
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           buyerId,
-          serviceId,
+          scope,
+          ...(scope === "SINGLE" ? { serviceId } : {}),
           limitUsdc,
           buyerTag:  buyerTag || undefined,
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
@@ -2204,7 +2207,30 @@ function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreate
             )}
           </div>
 
-          {/* Service */}
+          {/* Scope */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-gray-700">スコープ <span className="text-red-500">*</span></label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["ALL", "SINGLE"] as const).map((s) => (
+                <button key={s} type="button"
+                  onClick={() => setScope(s)}
+                  className={`px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors text-left ${
+                    scope === s
+                      ? "border-gray-900 bg-gray-900 text-white"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
+                  }`}>
+                  {s === "ALL" ? (
+                    <><span className="font-semibold">ALL</span><span className="block text-[10px] opacity-70 mt-0.5">全サービスに課金可（エージェント向け）</span></>
+                  ) : (
+                    <><span className="font-semibold">SINGLE</span><span className="block text-[10px] opacity-70 mt-0.5">特定サービスのみ</span></>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Service — SINGLE のみ表示 */}
+          {scope === "SINGLE" && (
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-gray-700">サービス <span className="text-red-500">*</span></label>
             <select value={serviceId} onChange={(e) => setServiceId(e.target.value)}
@@ -2225,6 +2251,7 @@ function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreate
                 : "APPROVEDサービスがありません。先にサービスを登録・審査してください。"}
             </p>
           </div>
+          )}
 
           {/* Limit */}
           <div className="flex flex-col gap-1.5">
@@ -2261,9 +2288,9 @@ function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreate
             </button>
             <button
               onClick={handleIssue}
-              disabled={submitting || !buyerId || !serviceId || !limitUsdc}
+              disabled={submitting || !buyerId || !limitUsdc || (scope === "SINGLE" && !serviceId)}
               className={`px-6 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
-                !submitting && buyerId && serviceId && limitUsdc
+                !submitting && buyerId && limitUsdc && (scope === "ALL" || serviceId)
                   ? "bg-lemon text-text-primary hover:bg-lemon-hover"
                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
               }`}>
@@ -3638,6 +3665,11 @@ function AccountingPage({ buyerToken }: { buyerToken: string }) {
         token_exchange_failed:  { ja: "アクセストークンの取得に失敗しました。", en: "Failed to exchange token." },
         token_exchange_error:   { ja: "トークン交換中にエラーが発生しました。", en: "An error occurred during token exchange." },
         db_error:               { ja: "連携情報の保存に失敗しました。",        en: "Failed to save connection." },
+        invalid_request:        { ja: "認可リクエストの形式が不正です。",      en: "Authorization request was malformed." },
+        invalid_scope:          { ja: "要求したスコープが許可されていません。", en: "Requested scope is not permitted." },
+        unauthorized_client:    { ja: "アプリが認可サーバーで未承認です。",    en: "App is not authorized by the OAuth server." },
+        server_error:           { ja: "認可サーバーでエラーが発生しました。",  en: "OAuth server returned an error." },
+        temporarily_unavailable:{ ja: "認可サーバーが一時的に利用不可です。",  en: "OAuth server is temporarily unavailable." },
       };
       const msg = errMap[errCode] ?? { ja: `エラー: ${errCode}`, en: `Error: ${errCode}` };
       setBanner({

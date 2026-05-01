@@ -13,6 +13,7 @@
 import { prisma } from "./prisma.js";
 import { Decimal } from "@prisma/client/runtime/library";
 import { createFreeeTransaction } from "./freee.js";
+import { createMFTransaction } from "./money-forward.js";
 
 // ─── JPY換算レート（固定フォールバック + 将来的に為替API連携）─
 const DEFAULT_JPY_RATE = new Decimal("150"); // 1 USDC = 150 JPY
@@ -150,6 +151,19 @@ export async function syncRollup(rollupId: string): Promise<{
         break;
       }
 
+      case "MONEYFORWARD": {
+        const result = await createMFTransaction({
+          issueDate,
+          description,
+          amountUsdc:        rollup.totalUsdc.toFixed(6),
+          amountJpy:         rollup.totalJpy,
+          providerName:      "LemonCake Platform",
+          invoiceRegistered: true,
+        });
+        externalDealId = String(result.journalId);
+        break;
+      }
+
       case "QUICKBOOKS": {
         externalDealId = await syncToQuickBooks(conn, rollup, description);
         break;
@@ -165,6 +179,8 @@ export async function syncRollup(rollupId: string): Promise<{
         break;
       }
 
+      case "SAGE":
+      case "NETSUITE":
       default:
         return { success: false, error: `Provider ${conn.provider} not yet supported for rollup` };
     }
