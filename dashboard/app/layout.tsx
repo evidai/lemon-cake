@@ -3,7 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
-const SITE_URL  = "https://lemoncake.aievid.com";
+const SITE_URL  = "https://lemoncake.xyz";
 const SITE_NAME = "LemonCake";
 const DESC_JA   = "LemonCake は AI エージェント専用の M2M 決済・会計インフラ。Pay Token 1 行で外部 API に自律決済、freee / MoneyForward に自動仕訳、源泉徴収 10.21% / インボイス（国税庁 API）/ 電子帳簿保存法 7 年保持まで全自動。JPYC・USDC 対応、Polygon 実質 1 円/件。Dify・LangChain・MCP 対応。";
 const DESC_EN   = "LemonCake is the M2M payment + accounting infrastructure built for AI agents. One-line Pay Tokens let agents pay external APIs autonomously, with auto-journaling to freee / MoneyForward, Japanese withholding tax (10.21%), invoice registration (NTA API), and 7-year ledger retention fully automated. JPYC & USDC on Polygon, ~1 JPY/tx. Dify / LangChain / MCP ready.";
