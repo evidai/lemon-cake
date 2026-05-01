@@ -14,6 +14,7 @@ import { adminAuth } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
 import { Decimal } from "@prisma/client/runtime/library";
 import { getWalletBalances, refillHotWalletIfNeeded, withdrawFromHotWallet } from "../lib/treasury.js";
+import { runProviderPayouts } from "../workers/providerPayout.js";
 
 export const adminRevenueRouter = new Hono();
 
@@ -179,7 +180,8 @@ adminRevenueRouter.get("/provider-settlements", async (c) => {
     where:    { active: true },
     orderBy:  { pendingPayoutUsdc: "desc" },
     select: {
-      id: true, name: true, walletAddress: true, pendingPayoutUsdc: true, createdAt: true,
+      id: true, name: true, walletAddress: true,
+      pendingPayoutUsdc: true, totalPaidOutUsdc: true, createdAt: true,
     },
   });
   return c.json({
@@ -188,6 +190,42 @@ adminRevenueRouter.get("/provider-settlements", async (c) => {
       name:              p.name,
       walletAddress:     p.walletAddress,
       pendingPayoutUsdc: p.pendingPayoutUsdc.toFixed(6),
+      totalPaidOutUsdc:  p.totalPaidOutUsdc.toFixed(6),
+    })),
+    config: {
+      minPayoutUsdc: process.env.PROVIDER_MIN_PAYOUT_USDC ?? "1",
+      cronHourUtc:   parseInt(process.env.PROVIDER_PAYOUT_CRON_HOUR_UTC ?? "0", 10),
+    },
+  });
+});
+
+// ─── GET /provider-payouts ─────────────────────────────────────
+adminRevenueRouter.get("/provider-payouts", async (c) => {
+  const payouts = await prisma.providerPayout.findMany({
+    orderBy:  { createdAt: "desc" },
+    take:     50,
+    include:  { provider: { select: { name: true } } },
+  });
+  return c.json({
+    payouts: payouts.map(p => ({
+      id:            p.id,
+      providerId:    p.providerId,
+      providerName:  p.provider.name,
+      amountUsdc:    p.amountUsdc.toFixed(6),
+      txHash:        p.txHash,
+      status:        p.status,
+      failureReason: p.failureReason,
+      periodFrom:    p.periodFrom.toISOString(),
+      periodTo:      p.periodTo.toISOString(),
+      chargeCount:   p.chargeCount,
+      createdAt:     p.createdAt.toISOString(),
+      completedAt:   p.completedAt?.toISOString() ?? null,
     })),
   });
+});
+
+// ─── POST /run-provider-payouts (manual trigger) ──────────────
+adminRevenueRouter.post("/run-provider-payouts", async (c) => {
+  const summary = await runProviderPayouts({ manual: true });
+  return c.json(summary);
 });

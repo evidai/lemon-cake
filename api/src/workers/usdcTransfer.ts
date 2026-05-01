@@ -15,7 +15,6 @@
 
 import { Worker, type Job } from "bullmq";
 import { prisma } from "../lib/prisma.js";
-import { sendUsdcOnPolygon } from "../lib/usdc.js";
 import {
   createRedisConnection,
   USDC_TRANSFER_QUEUE,
@@ -36,16 +35,8 @@ export function startUsdcTransferWorker(): Worker {
 
   worker.on("completed", (job) => {
     console.log(`[Worker] ✅ Job ${job.id} completed — chargeId: ${job.data.chargeId}`);
-    // ジョブ完了後に HOT_WALLET の残高をチェックし、必要なら自動補充
-    // 失敗してもジョブ自体は成功扱い
-    void (async () => {
-      try {
-        const { refillHotWalletIfNeeded } = await import("../lib/treasury.js");
-        await refillHotWalletIfNeeded();
-      } catch (e) {
-        console.error("[Worker] post-job refill check failed:", e);
-      }
-    })();
+    // バッチ送金モードでは Charge 完了 = on-chain 送金ではないため HOT 補充チェックは不要
+    // (ProviderPayoutWorker / 管理者引き出し時のみ HOT が消費される)
   });
 
   worker.on("failed", (job, err) => {
@@ -103,28 +94,18 @@ async function processJob(job: Job<UsdcTransferJobData>): Promise<void> {
   const platformFee  = totalDecimal.mul(feeBps).div(10000).toDecimalPlaces(18, Decimal.ROUND_DOWN);
   const providerAmt  = totalDecimal.sub(platformFee);
 
-  // ジョブ進捗を記録
-  await job.updateProgress(10);
-  console.log(`[Worker] 🚀 ${totalDecimal} USDC → provider:${providerAmt} (${10000 - feeBps}bps) + platform:${platformFee} (${feeBps}bps)`);
+  await job.updateProgress(40);
+  console.log(`[Worker] 💰 charge ${chargeId}: total=${totalDecimal} → provider+=${providerAmt} (accrue) + platform=${platformFee}`);
 
-  // Polygon USDC 送金 (provider 分のみオンチェーン送金)
-  // platform 手数料分は HOT_WALLET に残し、後で管理者が引き出す
-  const providerAmtStr = providerAmt.toFixed(6);
-  const { txHash } = await sendUsdcOnPolygon({
-    toAddress:  service.provider.walletAddress,
-    amountUsdc: providerAmtStr,
-  });
-
-  await job.updateProgress(80);
-  console.log(`[Worker] 📝 txHash: ${txHash}`);
-
-  // Charge を COMPLETED に更新 + Provider の受取残高を加算 + 手数料記録
+  // ⚡ バッチ送金モード: provider 分は on-chain 送金せず pendingPayoutUsdc に蓄積
+  // 日次 cron (providerPayoutWorker) でまとめて Polygon 送金しガス代を節約
+  // platform 手数料分は HOT_WALLET に残り、後で管理者が引き出す
   await prisma.$transaction([
     prisma.charge.update({
       where: { id: chargeId },
       data:  {
         status:             "COMPLETED",
-        txHash,
+        // 即時 on-chain 送金しないので txHash は payout 時に ProviderPayout 側に記録
         providerAmountUsdc: providerAmt,
         platformFeeUsdc:    platformFee,
         platformFeeBps:     feeBps,

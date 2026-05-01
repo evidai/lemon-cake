@@ -1669,6 +1669,31 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
     }
   }
 
+  // ─── Coinbase Commerce (USDC 直接決済) ────────────────────
+  const [coinbaseAmount, setCoinbaseAmount] = useState("10");
+  const [coinbaseLoading, setCoinbaseLoading] = useState(false);
+  const [coinbaseErr, setCoinbaseErr] = useState("");
+
+  async function handleCoinbaseCheckout(e: React.FormEvent) {
+    e.preventDefault();
+    const amt = parseFloat(coinbaseAmount);
+    if (!amt || amt < 1) { setCoinbaseErr("Minimum $1"); return; }
+    setCoinbaseLoading(true); setCoinbaseErr("");
+    try {
+      const origin = window.location.origin;
+      const res = await fetch(`${API}/api/coinbase/checkout`, {
+        method: "POST", headers: hdrs,
+        body: JSON.stringify({ amountUsd: amt, successUrl: `${origin}/?charge=success`, cancelUrl: `${origin}/?charge=cancel` }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "checkout failed");
+      window.location.href = data.hostedUrl;
+    } catch (err: unknown) {
+      setCoinbaseErr(err instanceof Error ? err.message : "error");
+      setCoinbaseLoading(false);
+    }
+  }
+
   const meta = CURRENCY_META[currency];
 
   // render bank detail rows based on type
@@ -1840,14 +1865,37 @@ function USDCDepositPage({ buyerToken }: { buyerToken: string }) {
 
       {/* ── On-chain ── */}
       {tab === "onchain" && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col items-center gap-4 text-center py-12">
-          <div className="w-12 h-12 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center">
-            <IconUSDC cls="w-6 h-6 text-violet-500" />
+        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-sm font-semibold text-gray-900">{t("USDC で直接チャージ", "Direct USDC payment")}</p>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">{t("手数料 1%", "1% fee")}</span>
           </div>
-          <p className="font-semibold text-gray-700">{t("準備中", "Coming soon")}</p>
-          <p className="text-sm text-gray-400 max-w-xs">
-            {t("Polygon ウォレットから直接 USDC を送金できる入金アドレスを近日公開予定です。", "A Polygon deposit address is coming soon.")}
+          <p className="text-xs text-gray-500 mb-5">
+            {t("Coinbase Commerce 経由で USDC / ETH / Bitcoin を直接送金。Stripe (3.6%) より大幅に安く、確認後すぐ残高反映。", "Pay USDC/ETH/Bitcoin directly via Coinbase Commerce. Much cheaper than Stripe (3.6%), credited immediately on confirmation.")}
           </p>
+          <form onSubmit={handleCoinbaseCheckout} className="flex flex-col gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("入金金額 (USD)", "Amount (USD)")}</label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">$</span>
+                <input type="number" value={coinbaseAmount} onChange={e=>setCoinbaseAmount(e.target.value)} min={1} step={1}
+                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/20" required/>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">≈ {coinbaseAmount} USDC <span className="ml-1 text-emerald-500">(1:1)</span></p>
+              <div className="flex gap-2 mt-2 flex-wrap">
+                {[5, 10, 50, 100, 500].map(v => (
+                  <button key={v} type="button" onClick={()=>setCoinbaseAmount(String(v))}
+                    className="px-2 py-1 rounded-lg border border-gray-200 text-[11px] text-gray-600 hover:bg-gray-50 transition-colors">${v.toLocaleString()}</button>
+                ))}
+              </div>
+            </div>
+            {coinbaseErr && <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{coinbaseErr}</div>}
+            <button type="submit" disabled={coinbaseLoading}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              {coinbaseLoading ? t("リダイレクト中…", "Redirecting…") : <>🪙 {t("Coinbase Commerce で支払う", "Pay with Coinbase Commerce")}</>}
+            </button>
+            <p className="text-[10px] text-gray-400 text-center">{t("Coinbase の決済ページへ遷移します（USDC/ETH/Bitcoin 対応）", "You will be redirected to Coinbase's checkout page (USDC/ETH/Bitcoin supported)")}</p>
+          </form>
         </div>
       )}
     </div>

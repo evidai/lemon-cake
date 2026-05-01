@@ -88,17 +88,50 @@ model Provider {
   // サービス一覧（将来的にサービステーブルに正規化可能）
   services Service[]
 
-  // 精算待ち残高
+  // 精算待ち残高（バッチ送金時にゼロにリセット）
   pendingPayoutUsdc Decimal @default(0) @db.Decimal(38, 18)
+
+  // 累計支払い済額（参考用、リセットされない）
+  totalPaidOutUsdc Decimal @default(0) @db.Decimal(38, 18)
 
   buyerId String? @unique // Buyerとのリンク（セラー登録時に設定）
 
   active Boolean @default(true)
 
+  payouts ProviderPayout[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("providers")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ProviderPayout: バッチでプロバイダーへ送金した履歴
+// 日次 cron で pendingPayoutUsdc >= 閾値 のプロバイダーへまとめて送金
+// ─────────────────────────────────────────────────────────────
+model ProviderPayout {
+  id String @id @default(cuid())
+
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+
+  amountUsdc    Decimal          @db.Decimal(38, 18)
+  txHash        String?
+  status        WithdrawalStatus @default(PENDING)
+  failureReason String?
+
+  // 集計対象期間
+  periodFrom  DateTime
+  periodTo    DateTime
+  chargeCount Int      @default(0)
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([providerId, createdAt])
+  @@index([status])
+  @@map("provider_payouts")
 }
 
 // ─────────────────────────────────────────────────────────────

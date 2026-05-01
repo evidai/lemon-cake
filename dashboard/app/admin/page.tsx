@@ -1337,21 +1337,26 @@ interface RevenueSummary {
   walletError: string | null;
   config: { defaultFeeBps: number };
 }
-interface ProviderSettlement { id:string; name:string; walletAddress:string; pendingPayoutUsdc:string }
+interface ProviderSettlement { id:string; name:string; walletAddress:string; pendingPayoutUsdc:string; totalPaidOutUsdc:string }
+interface SettlementsResp { providers: ProviderSettlement[]; config: { minPayoutUsdc:string; cronHourUtc:number } }
 interface WithdrawalRow { id:string; amountUsdc:string; toAddress:string; txHash:string|null; status:string; createdAt:string; failureReason?:string|null }
 interface RefillRow { id:string; amountUsdc:string; fromAddress:string; toAddress:string; txHash:string|null; status:string; createdAt:string; triggerBalanceUsdc:string|null; thresholdUsdc:string|null; failureReason?:string|null }
+interface PayoutRow { id:string; providerName:string; amountUsdc:string; txHash:string|null; status:string; chargeCount:number; periodFrom:string; periodTo:string; createdAt:string; failureReason?:string|null }
 
 function FinancePage() {
   const [summary, setSummary] = useState<RevenueSummary|null>(null);
   const [providers, setProviders] = useState<ProviderSettlement[]>([]);
+  const [settlementCfg, setSettlementCfg] = useState<SettlementsResp["config"]|null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
   const [refills, setRefills] = useState<RefillRow[]>([]);
+  const [payouts, setPayouts] = useState<PayoutRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{msg:string;type:"success"|"error"|"info"}|null>(null);
   const [withdrawTo, setWithdrawTo] = useState("");
   const [withdrawAmt, setWithdrawAmt] = useState("");
   const [withdrawing, setWithdrawing] = useState(false);
   const [refilling, setRefilling] = useState(false);
+  const [runningPayouts, setRunningPayouts] = useState(false);
 
   const showToast = (msg:string, type:"success"|"error"|"info"="info") => {
     setToast({msg,type}); setTimeout(()=>setToast(null), 3000);
@@ -1365,16 +1370,18 @@ function FinancePage() {
   const loadAll = useCallback(async () => {
     try {
       const headers = authHeader();
-      const [s, p, w, r] = await Promise.all([
+      const [s, p, w, r, po] = await Promise.all([
         fetch(`${API_URL}/api/admin/revenue/summary`,             { headers }).then(r=>r.json()),
         fetch(`${API_URL}/api/admin/revenue/provider-settlements`, { headers }).then(r=>r.json()),
         fetch(`${API_URL}/api/admin/revenue/withdrawals`,         { headers }).then(r=>r.json()),
         fetch(`${API_URL}/api/admin/revenue/refills`,             { headers }).then(r=>r.json()),
+        fetch(`${API_URL}/api/admin/revenue/provider-payouts`,    { headers }).then(r=>r.json()),
       ]);
       if (s?.revenue) setSummary(s);
-      if (p?.providers) setProviders(p.providers);
+      if (p?.providers) { setProviders(p.providers); setSettlementCfg(p.config ?? null); }
       if (w?.withdrawals) setWithdrawals(w.withdrawals);
       if (r?.refills) setRefills(r.refills);
+      if (po?.payouts) setPayouts(po.payouts);
     } catch (e) {
       console.error("[FinancePage] load failed:", e);
     } finally { setLoading(false); }
@@ -1399,6 +1406,18 @@ function FinancePage() {
       await loadAll();
     } catch (e) { showToast(e instanceof Error ? e.message : "失敗", "error"); }
     finally { setWithdrawing(false); }
+  }
+
+  async function handleRunPayouts() {
+    setRunningPayouts(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/revenue/run-provider-payouts`, { method:"POST", headers: authHeader() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message ?? "failed");
+      showToast(`✅ ${data.succeeded}件成功 / ${data.failed}件失敗 (合計 $${data.totalSentUsdc} USDC)`, data.failed > 0 ? "info" : "success");
+      await loadAll();
+    } catch (e) { showToast(e instanceof Error ? e.message : "失敗", "error"); }
+    finally { setRunningPayouts(false); }
   }
 
   async function handleManualRefill() {
@@ -1485,21 +1504,56 @@ function FinancePage() {
 
       {/* プロバイダー精算 */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100">
-          <h3 className="text-sm font-bold text-gray-900">プロバイダー精算</h3>
-          <p className="text-xs text-gray-400 mt-0.5">各プロバイダーへの累計精算待ち残高（API 課金時に自動でオンチェーン送金されます）</p>
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">プロバイダー精算（バッチ送金）</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              最低 ${settlementCfg?.minPayoutUsdc ?? "1"} USDC 以上のプロバイダーへ日次でまとめて on-chain 送金
+              {settlementCfg && <span className="ml-1">— 毎日 UTC {settlementCfg.cronHourUtc}:00 (JST {(settlementCfg.cronHourUtc + 9) % 24}:00)</span>}
+            </p>
+          </div>
+          <Btn label={runningPayouts ? "実行中..." : "今すぐ精算実行"} color="green" size="xs" onClick={handleRunPayouts}/>
         </div>
         <table className="w-full">
-          <thead><tr><Th>プロバイダー</Th><Th>ウォレット</Th><Th right>精算待ち</Th></tr></thead>
+          <thead><tr><Th>プロバイダー</Th><Th>ウォレット</Th><Th right>精算待ち</Th><Th right>累計支払済</Th></tr></thead>
           <tbody>
             {providers.length === 0 && (
-              <tr><td colSpan={3} className="text-center text-xs text-gray-400 py-6">精算対象のプロバイダーはまだありません</td></tr>
+              <tr><td colSpan={4} className="text-center text-xs text-gray-400 py-6">精算対象のプロバイダーはまだありません</td></tr>
             )}
-            {providers.map(p=>(
-              <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                <Td cls="font-semibold text-gray-900">{p.name}</Td>
-                <Td cls="text-gray-500 text-[10px] font-mono">{p.walletAddress.slice(0,10)}…{p.walletAddress.slice(-6)}</Td>
-                <Td right mono cls="text-gray-900 font-bold">${parseFloat(p.pendingPayoutUsdc).toFixed(6)}</Td>
+            {providers.map(p=>{
+              const pending = parseFloat(p.pendingPayoutUsdc);
+              const min     = parseFloat(settlementCfg?.minPayoutUsdc ?? "1");
+              const reachable = pending >= min;
+              return (
+                <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                  <Td cls="font-semibold text-gray-900">{p.name}</Td>
+                  <Td cls="text-gray-500 text-[10px] font-mono">{p.walletAddress.slice(0,10)}…{p.walletAddress.slice(-6)}</Td>
+                  <Td right mono cls={`font-bold ${reachable ? "text-green-700" : "text-gray-400"}`}>${pending.toFixed(6)}{!reachable && pending > 0 && <span className="text-[9px] ml-1 text-gray-400">(下回る)</span>}</Td>
+                  <Td right mono cls="text-gray-500">${parseFloat(p.totalPaidOutUsdc).toFixed(6)}</Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* プロバイダー送金履歴 */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <h3 className="text-sm font-bold text-gray-900">プロバイダー送金履歴</h3>
+        </div>
+        <table className="w-full">
+          <thead><tr><Th>日時</Th><Th>プロバイダー</Th><Th right>金額</Th><Th right>件数</Th><Th>tx</Th><Th>ステータス</Th></tr></thead>
+          <tbody>
+            {payouts.length === 0 && <tr><td colSpan={6} className="text-center text-xs text-gray-400 py-6">送金履歴なし</td></tr>}
+            {payouts.map(p=>(
+              <tr key={p.id} className="hover:bg-gray-50">
+                <Td cls="text-[10px] text-gray-500">{new Date(p.createdAt).toLocaleString("ja-JP")}</Td>
+                <Td cls="font-semibold text-gray-900">{p.providerName}</Td>
+                <Td right mono cls="font-bold">${parseFloat(p.amountUsdc).toFixed(6)}</Td>
+                <Td right mono cls="text-[10px] text-gray-500">{p.chargeCount}件</Td>
+                <Td cls="font-mono text-[10px]">{p.txHash ? <a href={`https://polygonscan.com/tx/${p.txHash}`} target="_blank" rel="noopener" className="text-blue-600 hover:underline">{p.txHash.slice(0,8)}…</a> : "-"}</Td>
+                <Td><Pill label={p.status} variant={p.status==="COMPLETED"?"green":p.status==="PENDING"?"amber":"red"}/></Td>
               </tr>
             ))}
           </tbody>
