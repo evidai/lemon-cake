@@ -62,6 +62,20 @@ proxyRouter.all("/:serviceId/*", async (c) => {
   if (!service.verified) throw new HTTPException(403, { message: "Service is not approved yet" });
   if (!service.endpoint) throw new HTTPException(501, { message: "このサービスはプロキシ未対応です（endpoint 未設定）" });
 
+  // ── 3.5. 採算ガード: pricePerCall × feeBps が最低収益を下回るコールは拒否 ─
+  // (マイクロペイメントで運営側が赤字になるのを防ぐ)
+  const minRevenuePerCall = new Decimal(process.env.MIN_REVENUE_PER_CALL_USDC ?? "0");
+  if (minRevenuePerCall.gt(0)) {
+    const envFeeBps      = parseInt(process.env.PLATFORM_FEE_BPS ?? "1000", 10);
+    const effectiveFeeBps = service.platformFeeBps ?? envFeeBps;
+    const expectedRevenue = service.pricePerCallUsdc.mul(effectiveFeeBps).div(10000);
+    if (expectedRevenue.lt(minRevenuePerCall)) {
+      throw new HTTPException(422, {
+        message: `service_uneconomical: pricePerCall ${service.pricePerCallUsdc.toFixed(6)} × ${effectiveFeeBps}bps = ${expectedRevenue.toFixed(8)} USDC < min ${minRevenuePerCall.toFixed(8)} USDC. サービス単価の引き上げ、または手数料率の調整が必要です。`,
+      });
+    }
+  }
+
   // ── 4. DB の Token レコードを確認 ────────────────────────────
   const token = await prisma.token.findUnique({ where: { id: tokenId } });
   if (!token) throw new HTTPException(401, { message: "Token record not found" });

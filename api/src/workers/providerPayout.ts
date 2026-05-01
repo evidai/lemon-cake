@@ -41,11 +41,29 @@ function getMinPayout(): Decimal {
   return new Decimal(process.env.PROVIDER_MIN_PAYOUT_USDC ?? "1");
 }
 
+// 1 tx あたりの推定ガス代 (USDC換算)。Polygon USDC transfer は ~50k gas、
+// 30 gwei × $0.5/MATIC で ~$0.001、安全側に $0.005 を default
+function getGasEstimateUsdc(): Decimal {
+  return new Decimal(process.env.PAYOUT_GAS_ESTIMATE_USDC ?? "0.005");
+}
+
+// 「ガス代が payout の何%以下なら採算 OK か」のしきい値 (default 5%)
+// payout >= gas × (100 / MAX_GAS_PCT) なら通す
+function getMaxGasPct(): number {
+  const v = parseFloat(process.env.PAYOUT_MAX_GAS_PCT ?? "5");
+  return v > 0 && v < 100 ? v : 5;
+}
+
 // ─── 1プロバイダー分の送金処理 ───────────────────────────────
 async function payoutOne(providerId: string, periodFrom: Date, periodTo: Date): Promise<PayoutResult> {
   // トランザクションで pendingPayoutUsdc を 0 にしつつ ProviderPayout レコード作成
   // (二重送金防止: status=PENDING で予約 → 送金成功時に COMPLETED)
-  const minPayout = getMinPayout();
+  const minPayout    = getMinPayout();
+  const gasEstimate  = getGasEstimateUsdc();
+  const maxGasPct    = getMaxGasPct();
+  // 採算ガード: payout × maxGasPct/100 >= gas → ガス代が許容率を超える場合スキップ
+  const gasGuardMin  = gasEstimate.mul(100).div(maxGasPct);
+  const effectiveMin = minPayout.gt(gasGuardMin) ? minPayout : gasGuardMin;
 
   const reservation = await prisma.$transaction(async (tx) => {
     const p = await tx.provider.findUnique({
@@ -53,7 +71,10 @@ async function payoutOne(providerId: string, periodFrom: Date, periodTo: Date): 
       select: { id: true, name: true, walletAddress: true, pendingPayoutUsdc: true },
     });
     if (!p) throw new Error("Provider not found");
-    if (p.pendingPayoutUsdc.lt(minPayout)) return null;
+    if (p.pendingPayoutUsdc.lt(effectiveMin)) {
+      console.log(`[Payout] ⏭️  ${p.name} skipped: pending=${p.pendingPayoutUsdc.toFixed(6)} < ${effectiveMin.toFixed(6)} (gas guard ${maxGasPct}%)`);
+      return null;
+    }
 
     // 期間内に COMPLETED した Charge 数を数える (情報用)
     const chargeCount = await tx.charge.count({
@@ -144,19 +165,23 @@ async function payoutOne(providerId: string, periodFrom: Date, periodTo: Date): 
 
 // ─── 全 provider 走査 ─────────────────────────────────────────
 export async function runProviderPayouts(opts?: { manual?: boolean }): Promise<RunSummary> {
-  const startedAt = new Date();
-  const minPayout = getMinPayout();
+  const startedAt    = new Date();
+  const minPayout    = getMinPayout();
+  const gasEstimate  = getGasEstimateUsdc();
+  const maxGasPct    = getMaxGasPct();
+  const gasGuardMin  = gasEstimate.mul(100).div(maxGasPct);
+  const effectiveMin = minPayout.gt(gasGuardMin) ? minPayout : gasGuardMin;
 
   // 期間 = 前回 cron から今回まで (簡易版: 「直近24時間」)
   const periodTo   = new Date();
   const periodFrom = new Date(periodTo.getTime() - 24 * 60 * 60 * 1000);
 
   const candidates = await prisma.provider.findMany({
-    where:  { active: true, pendingPayoutUsdc: { gte: minPayout } },
+    where:  { active: true, pendingPayoutUsdc: { gte: effectiveMin } },
     select: { id: true, name: true, pendingPayoutUsdc: true, walletAddress: true },
   });
 
-  console.log(`[Payout] ${opts?.manual ? "🔧 manual" : "⏰ scheduled"} run @ ${startedAt.toISOString()} — ${candidates.length} provider(s) >= ${minPayout.toFixed(6)} USDC`);
+  console.log(`[Payout] ${opts?.manual ? "🔧 manual" : "⏰ scheduled"} run @ ${startedAt.toISOString()} — ${candidates.length} provider(s) >= ${effectiveMin.toFixed(6)} USDC (min=${minPayout.toFixed(6)}, gas guard=${maxGasPct}%)`);
 
   const results: PayoutResult[] = [];
   let totalSent = new Decimal(0);
