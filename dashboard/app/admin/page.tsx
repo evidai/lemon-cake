@@ -1342,6 +1342,36 @@ interface SettlementsResp { providers: ProviderSettlement[]; config: { minPayout
 interface WithdrawalRow { id:string; amountUsdc:string; toAddress:string; txHash:string|null; status:string; createdAt:string; failureReason?:string|null }
 interface RefillRow { id:string; amountUsdc:string; fromAddress:string; toAddress:string; txHash:string|null; status:string; createdAt:string; triggerBalanceUsdc:string|null; thresholdUsdc:string|null; failureReason?:string|null }
 interface PayoutRow { id:string; providerName:string; amountUsdc:string; txHash:string|null; status:string; chargeCount:number; periodFrom:string; periodTo:string; createdAt:string; failureReason?:string|null }
+interface DailyPoint { date:string; revenueUsdc:string; chargeCount:number }
+
+// ── Inline SVG sparkline (no chart lib dep) ─────────────────────────────
+function Sparkline({ data, width = 720, height = 80, color = "#0ea5e9" }:{ data: DailyPoint[]; width?:number; height?:number; color?:string }) {
+  if (data.length < 2) return <div className="text-xs text-gray-400 py-6 text-center">データ不足</div>;
+  const values = data.map(d => parseFloat(d.revenueUsdc));
+  const max = Math.max(...values, 0.0001);
+  const stepX = width / (data.length - 1);
+  const points = values.map((v, i) => `${i * stepX},${height - (v / max) * height}`).join(" ");
+  const lastV = values[values.length - 1];
+  return (
+    <div className="relative">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-20">
+        <defs>
+          <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={color} stopOpacity="0.3"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <polygon points={`0,${height} ${points} ${width},${height}`} fill="url(#sparkFill)" />
+        <polyline points={points} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>
+      </svg>
+      <div className="flex items-center justify-between mt-1 text-[10px] text-gray-400">
+        <span>{data[0].date}</span>
+        <span className="font-mono text-gray-700 font-semibold">最新: ${lastV.toFixed(6)} ({data[data.length-1].chargeCount}件)</span>
+        <span>{data[data.length-1].date}</span>
+      </div>
+    </div>
+  );
+}
 
 function FinancePage() {
   const [summary, setSummary] = useState<RevenueSummary|null>(null);
@@ -1350,6 +1380,7 @@ function FinancePage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
   const [refills, setRefills] = useState<RefillRow[]>([]);
   const [payouts, setPayouts] = useState<PayoutRow[]>([]);
+  const [daily,   setDaily]   = useState<DailyPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{msg:string;type:"success"|"error"|"info"}|null>(null);
   const [withdrawTo, setWithdrawTo] = useState("");
@@ -1370,18 +1401,20 @@ function FinancePage() {
   const loadAll = useCallback(async () => {
     try {
       const headers = authHeader();
-      const [s, p, w, r, po] = await Promise.all([
+      const [s, p, w, r, po, d] = await Promise.all([
         fetch(`${API_URL}/api/admin/revenue/summary`,             { headers }).then(r=>r.json()),
         fetch(`${API_URL}/api/admin/revenue/provider-settlements`, { headers }).then(r=>r.json()),
         fetch(`${API_URL}/api/admin/revenue/withdrawals`,         { headers }).then(r=>r.json()),
         fetch(`${API_URL}/api/admin/revenue/refills`,             { headers }).then(r=>r.json()),
         fetch(`${API_URL}/api/admin/revenue/provider-payouts`,    { headers }).then(r=>r.json()),
+        fetch(`${API_URL}/api/admin/revenue/daily?days=30`,        { headers }).then(r=>r.json()),
       ]);
       if (s?.revenue) setSummary(s);
       if (p?.providers) { setProviders(p.providers); setSettlementCfg(p.config ?? null); }
       if (w?.withdrawals) setWithdrawals(w.withdrawals);
       if (r?.refills) setRefills(r.refills);
       if (po?.payouts) setPayouts(po.payouts);
+      if (d?.series) setDaily(d.series);
     } catch (e) {
       console.error("[FinancePage] load failed:", e);
     } finally { setLoading(false); }
@@ -1447,6 +1480,15 @@ function FinancePage() {
         <KpiCard label="精算待ち総額" value={`$${pendingTot.toFixed(4)}`} color="amber" delta={`${summary?.providerPayouts.providerCount ?? 0}プロバイダー`}/>
         <KpiCard label="今月の手数料収益"  value={`$${thisMonth.toFixed(4)}`} color="green" delta={`累計 $${allTime.toFixed(4)}`}/>
         <KpiCard label="引き出し可能額" value={`$${available.toFixed(4)}`} color="blue" delta={`手数料率 ${feePercent}% · ${summary?.revenue.chargeCount ?? 0}件`}/>
+      </div>
+
+      {/* 日次収益チャート */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-gray-900">過去 30 日の手数料収益推移</h3>
+          <span className="text-[10px] text-gray-400">PlatformRevenue 集計</span>
+        </div>
+        <Sparkline data={daily} />
       </div>
 
       {/* ウォレット残高 + 手動補充 */}

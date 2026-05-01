@@ -44,7 +44,9 @@ async function main() {
       providerId: provider.id,
       name: "Coze Plugin Test Service",
       type: "API",
-      pricePerCallUsdc: "0.001",
+      pricePerCallUsdc: "0.005",
+      // テスト用 echo エンドポイント (httpbin) — 任意の path/method に 200 で応答
+      endpoint: "https://httpbin.org/anything",
       reviewStatus: "APPROVED",
       verified: true,
     },

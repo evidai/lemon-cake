@@ -20,6 +20,41 @@ export const adminRevenueRouter = new Hono();
 
 adminRevenueRouter.use("*", adminAuth);
 
+// ─── GET /daily ─── 過去 N 日の日次手数料収益 ─────────────────
+adminRevenueRouter.get("/daily", async (c) => {
+  const days = Math.min(parseInt(c.req.query("days") ?? "30", 10), 90);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  // PostgreSQL: date_trunc('day', "createdAt") でグループ化
+  // Prisma だと raw query が一番きれい
+  const rows = await prisma.$queryRaw<Array<{ day: Date; total: string; count: bigint }>>`
+    SELECT date_trunc('day', "createdAt") AS day,
+           SUM("amountUsdc")::text       AS total,
+           COUNT(*)::bigint              AS count
+    FROM platform_revenues
+    WHERE "createdAt" >= ${since}
+    GROUP BY day
+    ORDER BY day ASC
+  `;
+
+  // 0 日も埋めて連続させる
+  const series: Array<{ date: string; revenueUsdc: string; chargeCount: number }> = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(since);
+    d.setUTCDate(d.getUTCDate() + i);
+    d.setUTCHours(0, 0, 0, 0);
+    const iso = d.toISOString().slice(0, 10);
+    const row = rows.find(r => r.day.toISOString().slice(0, 10) === iso);
+    series.push({
+      date:        iso,
+      revenueUsdc: row ? row.total : "0",
+      chargeCount: row ? Number(row.count) : 0,
+    });
+  }
+
+  return c.json({ days, series });
+});
+
 // ─── GET /summary ─────────────────────────────────────────────
 adminRevenueRouter.get("/summary", async (c) => {
   // 全期間 / 今月 / 今日 の手数料合計
