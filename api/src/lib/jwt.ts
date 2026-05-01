@@ -4,7 +4,8 @@
  * ペイロード仕様:
  *   sub       : buyerId
  *   jti       : tokenId (DB Token.id と一致)
- *   serviceId : 対象サービスID
+ *   scope     : "SINGLE" | "ALL" (省略時は SINGLE — 後方互換)
+ *   serviceId : 対象サービスID（scope=SINGLE のみ必須）
  *   limitUsdc : 利用上限額（文字列: Decimalの精度を保つため）
  *   buyerTag  : バイヤータグ（任意）
  *   exp       : 有効期限 (Unix timestamp)
@@ -21,12 +22,15 @@ function getSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
+export type PayTokenScope = "SINGLE" | "ALL";
+
 // ─── Pay Token のペイロード型 ────────────────────────────────
 export interface PayTokenPayload extends JWTPayload {
-  sub:        string;   // buyerId
-  jti:        string;   // tokenId
-  serviceId:  string;
-  limitUsdc:  string;   // Decimal文字列 ("5.000000000000000000")
+  sub:        string;        // buyerId
+  jti:        string;        // tokenId
+  scope?:     PayTokenScope; // 省略時は SINGLE（後方互換）
+  serviceId?: string;        // scope=SINGLE のみ必須
+  limitUsdc:  string;        // Decimal文字列 ("5.000000000000000000")
   buyerTag?:  string;
 }
 
@@ -34,15 +38,21 @@ export interface PayTokenPayload extends JWTPayload {
 export async function signPayToken(params: {
   tokenId:    string;
   buyerId:    string;
-  serviceId:  string;
+  scope?:     PayTokenScope;  // 省略時は SINGLE
+  serviceId?: string;         // scope=SINGLE では必須、ALL では無視
   limitUsdc:  string;
   buyerTag?:  string;
   expiresAt:  Date;
 }): Promise<string> {
-  const { tokenId, buyerId, serviceId, limitUsdc, buyerTag, expiresAt } = params;
+  const { tokenId, buyerId, scope = "SINGLE", serviceId, limitUsdc, buyerTag, expiresAt } = params;
+
+  if (scope === "SINGLE" && !serviceId) {
+    throw new Error("signPayToken: serviceId is required for scope=SINGLE");
+  }
 
   return new SignJWT({
-    serviceId,
+    scope,
+    ...(scope === "SINGLE" && serviceId ? { serviceId } : {}),
     limitUsdc,
     ...(buyerTag ? { buyerTag } : {}),
   } satisfies Omit<PayTokenPayload, keyof JWTPayload>)
@@ -162,10 +172,15 @@ export async function verifyPayToken(token: string): Promise<PayTokenPayload> {
     audience: "kyapay-service",
   });
 
-  // 必須クレームの存在チェック
-  if (!payload.jti || !payload.sub || !payload.serviceId || !payload.limitUsdc) {
+  // 必須クレームの存在チェック（scope は省略時 SINGLE 扱い）
+  if (!payload.jti || !payload.sub || !payload.limitUsdc) {
     throw new Error("Invalid Pay Token: missing required claims");
   }
 
-  return payload as PayTokenPayload;
+  const scope: PayTokenScope = payload.scope === "ALL" ? "ALL" : "SINGLE";
+  if (scope === "SINGLE" && !payload.serviceId) {
+    throw new Error("Invalid Pay Token: serviceId required for scope=SINGLE");
+  }
+
+  return { ...payload, scope } as PayTokenPayload;
 }

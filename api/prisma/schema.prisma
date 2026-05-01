@@ -142,8 +142,12 @@ model Token {
   buyerId       String
   buyer         Buyer       @relation(fields: [buyerId], references: [id])
 
-  serviceId     String
-  service       Service     @relation(fields: [serviceId], references: [id])
+  // 単一サービス用のスコープ。ALL スコープでは null 可。
+  serviceId     String?
+  service       Service?    @relation(fields: [serviceId], references: [id])
+
+  // 発行スコープ。SINGLE = serviceId 必須、ALL = 全 APPROVED サービス使用可
+  scope         TokenScope  @default(SINGLE)
 
   // 利用上限額 (USDC)
   limitUsdc     Decimal     @db.Decimal(38, 18)
@@ -341,6 +345,11 @@ enum KycTier {
 enum ServiceType {
   API
   MCP
+}
+
+enum TokenScope {
+  SINGLE  // 既存挙動: serviceId に紐づく1サービスのみ叩ける
+  ALL     // 全 APPROVED サービスを叩ける（limitUsdc が予算上限）
 }
 
 enum ReviewStatus {
