@@ -39,14 +39,18 @@ proxyRouter.all("/:serviceId/*", async (c) => {
     });
   }
 
-  const { jti: tokenId, sub: buyerId, serviceId: tokenServiceId } = tokenPayload;
+  const { jti: tokenId, sub: buyerId, serviceId: tokenServiceId, scope: tokenScope } = tokenPayload;
 
-  // ── 2. パスの serviceId と Token の serviceId が一致することを確認 ─
+  // ── 2. スコープに応じた serviceId 一致確認 ──────────────────
+  // - SINGLE (デフォルト): トークンに紐づく serviceId とリクエストパスが一致必須
+  // - ALL:                 任意の APPROVED サービスを叩ける
   const serviceId = c.req.param("serviceId");
-  if (tokenServiceId !== serviceId) {
-    throw new HTTPException(403, {
-      message: `このトークンはサービス ${tokenServiceId} 用です。${serviceId} へのアクセスは許可されていません。`,
-    });
+  if (tokenScope !== "ALL") {
+    if (tokenServiceId !== serviceId) {
+      throw new HTTPException(403, {
+        message: `このトークンはサービス ${tokenServiceId} 用です。${serviceId} へのアクセスは許可されていません。`,
+      });
+    }
   }
 
   // ── 3. サービスレコードを取得 ────────────────────────────────

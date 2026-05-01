@@ -16,7 +16,12 @@ export const tokensRouter = new OpenAPIHono();
 const IssueTokenBody = z.object({
   // buyerId は JWT から自動取得。後方互換のため残すが無視される
   buyerId:    z.string().optional(),
-  serviceId:  z.string().min(1, "serviceId is required"),
+  // scope=SINGLE（既存挙動）では必須、scope=ALL では無視される
+  serviceId:  z.string().min(1).optional(),
+  // トークンのスコープ。省略時は SINGLE（後方互換）。
+  // - SINGLE: serviceId に紐づく1サービスのみ叩ける
+  // - ALL:    全 APPROVED サービスを叩ける（limitUsdc が予算上限）
+  scope:      z.enum(["SINGLE", "ALL"]).optional().default("SINGLE"),
   limitUsdc:  z
     .string()
     .regex(/^\d+(\.\d+)?$/, "limitUsdc must be a positive decimal string")
@@ -33,13 +38,17 @@ const IssueTokenBody = z.object({
   allowedUpstreams: z.array(z.string().max(256)).max(32).optional(),
   retryPolicy:      z.record(z.unknown()).optional(),
   replaySafe:       z.boolean().optional().default(false),
-});
+}).refine(
+  (v) => v.scope === "ALL" || (v.serviceId && v.serviceId.length > 0),
+  { message: "serviceId is required when scope=SINGLE", path: ["serviceId"] },
+);
 
 const TokenResponse = z.object({
   tokenId:   z.string(),
   jwt:       z.string(),
   buyerId:   z.string(),
-  serviceId: z.string(),
+  scope:     z.enum(["SINGLE", "ALL"]),
+  serviceId: z.string().nullable(),  // ALL では null
   limitUsdc: z.string(),
   expiresAt: z.string(),
   sandbox:   z.boolean(),
@@ -48,7 +57,8 @@ const TokenResponse = z.object({
 
 const TokenListItem = z.object({
   id:        z.string(),
-  serviceId: z.string(),
+  scope:     z.enum(["SINGLE", "ALL"]),
+  serviceId: z.string().nullable(),
   limitUsdc: z.string(),
   usedUsdc:  z.string(),
   buyerTag:  z.string().nullable(),
@@ -102,17 +112,22 @@ tokensRouter.openapi(issueRoute, async (c) => {
 
   const body = c.req.valid("json");
   const buyerId = buyerPayload.buyerId; // JWTから取得（bodyのbuyerIdは無視）
+  const scope = body.scope; // refine() で SINGLE 時の serviceId 必須はバリデーション済み
 
   // ── バイヤーの存在・停止確認 ──────────────────────────────
   const buyer = await prisma.buyer.findUnique({ where: { id: buyerId } });
   if (!buyer) throw new HTTPException(404, { message: "Buyer not found" });
   if (buyer.suspended) throw new HTTPException(403, { message: "Buyer is suspended" });
 
-  // ── サービスの存在・承認確認 ──────────────────────────────
-  const service = await prisma.service.findUnique({ where: { id: body.serviceId } });
-  if (!service) throw new HTTPException(404, { message: "Service not found" });
-  if (service.reviewStatus !== "APPROVED") {
-    throw new HTTPException(403, { message: `Service is not approved (status: ${service.reviewStatus})` });
+  // ── サービスの存在・承認確認（SINGLE のみ） ─────────────────
+  // ALL スコープでは特定サービスを縛らないので、proxy 側で都度
+  // service.reviewStatus を確認する。
+  if (scope === "SINGLE") {
+    const service = await prisma.service.findUnique({ where: { id: body.serviceId! } });
+    if (!service) throw new HTTPException(404, { message: "Service not found" });
+    if (service.reviewStatus !== "APPROVED") {
+      throw new HTTPException(403, { message: `Service is not approved (status: ${service.reviewStatus})` });
+    }
   }
 
   // ── 残高確認（上限額がバイヤー残高を超えていないか）────────
@@ -143,7 +158,8 @@ tokensRouter.openapi(issueRoute, async (c) => {
   const token = await prisma.token.create({
     data: {
       buyerId:   buyerId,
-      serviceId: body.serviceId,
+      scope,
+      serviceId: scope === "SINGLE" ? body.serviceId! : null,
       limitUsdc: limitDecimal,
       buyerTag:  body.buyerTag ?? null,
       expiresAt,
@@ -162,7 +178,8 @@ tokensRouter.openapi(issueRoute, async (c) => {
   const jwt = await signPayToken({
     tokenId:   token.id,
     buyerId:   buyerId,
-    serviceId: body.serviceId,
+    scope,
+    serviceId: scope === "SINGLE" ? body.serviceId : undefined,
     limitUsdc: limitDecimal.toFixed(18),
     buyerTag:  body.buyerTag,
     expiresAt,
@@ -173,6 +190,7 @@ tokensRouter.openapi(issueRoute, async (c) => {
       tokenId:   token.id,
       jwt,
       buyerId:   token.buyerId,
+      scope:     token.scope,
       serviceId: token.serviceId,
       limitUsdc: token.limitUsdc.toFixed(6),
       expiresAt: token.expiresAt.toISOString(),
@@ -448,6 +466,7 @@ tokensRouter.openapi(listRoute, async (c) => {
   return c.json({
     data: tokens.map((t) => ({
       id:        t.id,
+      scope:     t.scope,
       serviceId: t.serviceId,
       limitUsdc: t.limitUsdc.toFixed(6),
       usedUsdc:  t.usedUsdc.toFixed(6),

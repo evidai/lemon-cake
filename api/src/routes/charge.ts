@@ -141,7 +141,15 @@ chargeRouter.openapi(chargeRoute, async (c) => {
     });
   }
 
-  const { jti: tokenId, sub: buyerId, serviceId } = tokenPayload;
+  const { jti: tokenId, sub: buyerId, serviceId, scope } = tokenPayload;
+
+  // ALL スコープのトークンは /api/proxy 経由でのみ利用可能。
+  // /api/charge は直接課金 API なので、対象サービスを明示する SINGLE トークンが必要。
+  if (scope === "ALL" || !serviceId) {
+    throw new HTTPException(400, {
+      message: "/api/charge requires a SINGLE-scope Pay Token. Use /api/proxy/:serviceId for ALL-scope tokens.",
+    });
+  }
 
   // ── DBのTokenレコードを確認 ───────────────────────────────
   const token = await prisma.token.findUnique({ where: { id: tokenId } });
