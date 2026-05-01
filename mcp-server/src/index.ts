@@ -99,6 +99,28 @@ function json(data: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
 }
 
+/**
+ * サービス名から呼び方ヒントを返す。
+ * エージェントが call_service で正しい path/method/body を即座に推測できるよう
+ * 既知の人気サービスについて推奨呼び出しを示す。
+ */
+function usageHintFor(name: string): { path: string; method: string; body?: unknown; description: string } | undefined {
+  const n = name.toLowerCase();
+  if (n.includes("serper"))           return { path: "/search",       method: "POST", body: { q: "<query>", num: 5 },               description: "Google検索 (organic, news, images, knowledge graph)" };
+  if (n.includes("hunter"))           return { path: "/domain-search?domain=<domain>&limit=5", method: "GET",                       description: "ドメインから企業の連絡先メール一覧 (役職・信頼度付き)" };
+  if (n.includes("jina"))             return { path: "/?url=<url>",   method: "GET",                                                 description: "Webページを LLM-ready Markdown に変換" };
+  if (n.includes("firecrawl"))        return { path: "/scrape",       method: "POST", body: { url: "<url>" },                       description: "JS実行ありのWebスクレイピング → Markdown" };
+  if (n.includes("ipinfo"))           return { path: "/<ip>",         method: "GET",                                                 description: "IP geolocation・ISP・ASN・risk score" };
+  if (n.includes("exchange") || n.includes("為替")) return { path: "/latest.json", method: "GET",                                    description: "USD基準の170+通貨レート (1日1回更新)" };
+  if (n.includes("slack"))            return { path: "/chat.postMessage", method: "POST", body: { channel: "<id>", text: "<msg>" }, description: "Slackメッセージ送信、人間の判断仰ぎに最適" };
+  if (n.includes("gbiz") || n.includes("法人")) return { path: "/hojin/<corporate_number>", method: "GET",                            description: "経産省 gBizINFO 法人情報 (法人番号13桁)" };
+  if (n.includes("インボイス") || n.includes("invoice")) return { path: "/check?id=T<13桁>", method: "GET",                            description: "国税庁 適格請求書発行事業者番号の照合" };
+  if (n.includes("e-gov") || n.includes("法令")) return { path: "/keyword?keyword=<語>", method: "GET",                                description: "日本の法律・政令・省令を全文検索" };
+  if (n.includes("vat") || n.includes("abstract")) return { path: "/validate?vat_number=<vat>", method: "GET",                        description: "EU VAT番号有効性検証" };
+  if (n.includes("coze") || n.includes("test")) return { path: "/anything", method: "POST", body: { test: "any" },                   description: "Echoサーバ (リクエストをそのまま200で返す、デバッグ用)" };
+  return undefined;
+}
+
 /** 未設定の認証情報に対して、取得方法を含む分かりやすいエラーを返す */
 function credentialError(envVar: string, toolName: string) {
   return {
@@ -439,14 +461,17 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       case "list_services": {
         const limit = (args.limit as number | undefined) ?? 50;
         const services = await apiGet(`/api/services?reviewStatus=APPROVED&limit=${limit}`) as any[];
-        return json(services.map((s: any) => ({
-          id:           s.id,
-          name:         s.name,
-          provider:     s.providerName,
-          type:         s.type,
-          pricePerCall: `${s.pricePerCallUsdc} USDC`,
-          endpoint:     s.endpoint ?? "(proxied)",
-        })));
+        return json(services
+          .filter((s: any) => s.verified)
+          .map((s: any) => ({
+            id:           s.id,
+            name:         s.name,
+            provider:     s.providerName,
+            type:         s.type,
+            pricePerCall: `${s.pricePerCallUsdc} USDC`,
+            usage:        usageHintFor(s.name),
+          }))
+        );
       }
 
       // ─── call_service ────────────────────────────────────────────────────
@@ -488,7 +513,24 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 
         // 402 の場合もエラーではなく構造化レスポンスとして返す
         // （エージェントが自律的に停止判断できるように）
-        return json({ status: res.status, chargeId, amountUsdc, response: responseBody });
+        const result: Record<string, unknown> = { status: res.status, chargeId, amountUsdc, response: responseBody };
+
+        // よくある 4xx に対するエージェント向けヒントを付与
+        if (res.status >= 400) {
+          let hint: string | undefined;
+          const bodyStr = typeof responseBody === "string" ? responseBody : JSON.stringify(responseBody ?? "");
+          if (res.status === 401)                               hint = "Upstream authentication failed. The service's API key may be invalid or expired. Try a different service.";
+          else if (res.status === 402)                          hint = "Pay Token limit exhausted or buyer balance insufficient. Stop further calls and notify the user to top up.";
+          else if (res.status === 403)                          hint = "Forbidden. Token scope may not match this serviceId, or service is not approved.";
+          else if (res.status === 404)                          hint = "Path not found on upstream. Re-check the `path` argument — common shapes vary by service.";
+          else if (res.status === 422 && bodyStr.includes("service_uneconomical")) hint = "This service is below the platform's minimum revenue floor. Cannot be called regardless of buyer balance.";
+          else if (res.status === 429)                          hint = "Upstream rate-limited. Retry after backoff or pick a different service.";
+          else if (res.status === 501)                          hint = "Service has no proxy endpoint configured. Pick a different service from list_services.";
+          else if (res.status >= 500)                           hint = "Upstream server error. Retry once with the same idempotencyKey, then escalate or switch service.";
+          if (hint) result.hint = hint;
+        }
+
+        return json(result);
       }
 
       // ─── check_balance ───────────────────────────────────────────────────

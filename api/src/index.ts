@@ -43,6 +43,7 @@ import { adminRevenueRouter }       from "./routes/admin-revenue.js";
 import { coinbaseRouter }           from "./routes/coinbase.js";
 import { startUsdcTransferWorker, handleFailedJob } from "./workers/usdcTransfer.js";
 import { startProviderPayoutCron, stopProviderPayoutCron } from "./workers/providerPayout.js";
+import { startServiceHealthCron, stopServiceHealthCron } from "./workers/serviceHealth.js";
 import { startWorkflowWorker }      from "./workers/workflowStep.js";
 import { startWebhookDeliveryWorker } from "./workers/webhookDelivery.js";
 
@@ -197,11 +198,15 @@ async function main(): Promise<void> {
     // ─── Provider 日次バッチ送金 cron ────────────────────────
     startProviderPayoutCron();
 
+    // ─── Service health 1時間 cron ───────────────────────────
+    startServiceHealthCron();
+
     // グレースフルシャットダウン
     const shutdown = async (): Promise<void> => {
       console.log("\n[Shutdown] Closing workers...");
       clearInterval(refillTimer);
       stopProviderPayoutCron();
+      stopServiceHealthCron();
       await Promise.allSettled([worker.close(), workflowWorker.close(), webhookWorker.close()]);
       process.exit(0);
     };

@@ -9,7 +9,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "test": "node --import tsx --test src/__tests__/*.test.ts"
   },
   "dependencies": {
     "@google-cloud/secret-manager": "^6.1.1",

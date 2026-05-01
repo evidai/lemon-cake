@@ -1289,9 +1289,50 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
         ) : error ? (
           <div className="flex items-center justify-center py-16 text-red-500 text-sm">{error}</div>
         ) : tokens.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400 text-sm">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="16" cy="16" r="6"/><circle cx="16" cy="16" r="12" strokeDasharray="4 4"/></svg>
-            {t("発行済みトークンはありません", "No issued tokens")}
+          <div className="px-6 py-10">
+            <div className="max-w-2xl mx-auto">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-yellow-50 border border-yellow-200 mb-3">
+                  <span className="text-2xl">🍋</span>
+                </div>
+                <p className="text-base font-semibold text-gray-900 mb-1">{t("ようこそ LemonCake へ", "Welcome to LemonCake")}</p>
+                <p className="text-sm text-gray-500 max-w-md mx-auto">
+                  {t("AI エージェントが有料 API を自動で課金できる Pay Token を発行しましょう。", "Issue a Pay Token your AI agent can use to autonomously bill paid APIs.")}
+                </p>
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-3 mb-6">
+                {[
+                  { num: "1", label: t("USDC残高をチャージ","Top up USDC balance"), hint: t("カード/銀行/暗号資産対応","Card / bank / crypto") },
+                  { num: "2", label: t("Pay Tokenを発行","Issue a Pay Token"),     hint: t("ALLスコープ推奨","ALL scope recommended") },
+                  { num: "3", label: t("エージェントから利用","Use from your agent"), hint: t("npx create-lemon-agent","npx create-lemon-agent") },
+                ].map(({ num, label, hint }) => (
+                  <div key={num} className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                    <div className="text-[10px] text-gray-400 font-mono mb-1">STEP {num}</div>
+                    <div className="text-xs font-semibold text-gray-900 mb-0.5">{label}</div>
+                    <div className="text-[11px] text-gray-500">{hint}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-gray-900 rounded-xl p-4 mb-4">
+                <div className="text-[10px] text-gray-400 mb-2 font-semibold tracking-wider">{t("90秒で始める","START IN 90 SECONDS")}</div>
+                <code className="block text-xs font-mono text-emerald-300 leading-relaxed">
+                  $ npx create-lemon-agent my-agent<br/>
+                  $ cd my-agent && npm install<br/>
+                  $ npm start &quot;anthropic.com の連絡先メールを取得して&quot;
+                </code>
+              </div>
+
+              <div className="flex gap-2 justify-center flex-wrap">
+                <button onClick={() => { const el = document.querySelector('input[type="number"]') as HTMLElement | null; el?.scrollIntoView({ behavior: "smooth", block: "center" }); el?.focus(); }} className="px-4 py-2 bg-yellow-300 text-gray-900 text-sm font-semibold rounded-xl hover:bg-yellow-400 transition-colors">
+                  {t("発行フォームに移動","Go to issue form")} ↓
+                </button>
+                <a href="/services" className="px-4 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:border-gray-400 transition-colors">
+                  {t("使えるサービスを見る","Browse services")}
+                </a>
+              </div>
+            </div>
           </div>
         ) : (
           <>

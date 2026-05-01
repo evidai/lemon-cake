@@ -534,6 +534,78 @@ export default function AboutPage() {
         </p>
       </section>
 
+      {/* ── Live demo GIF section ── */}
+      <div id="demo" className="bg-gradient-to-b from-gray-50 to-white w-full mt-28">
+        <section className="max-w-5xl mx-auto px-6 py-20">
+          <p className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">90 SECOND DEMO</p>
+          <h2 className="text-center text-3xl md:text-4xl font-black text-gray-900 mb-4 leading-tight">
+            ChatGPT には絶対できない、<br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c8b800] to-[#a89400]">有料 API を AI が自律で叩く</span>
+          </h2>
+          <p className="text-center text-[14px] text-gray-500 max-w-2xl mx-auto mb-10">
+            LemonCake のマーケットプレイス API を <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">npx create-lemon-agent</code> で 90 秒で組み込む。
+            ↓ 実際の動作 (Hunter.io から Anthropic 社員のメール発掘):
+          </p>
+          <div className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-900 shadow-2xl">
+            <img src="https://raw.githubusercontent.com/evidai/create-lemon-agent/main/demo.gif" alt="LemonCake demo: agent autonomously calls Hunter.io paid API"
+                 className="w-full" />
+          </div>
+          <p className="text-center text-[11px] text-gray-400 mt-3">
+            このデモで agent が叩いた Hunter.io は要 API キー (月 $49)。LemonCake 経由なら $0.005 から従量課金。
+          </p>
+        </section>
+      </div>
+
+      {/* ── 「他 AI では無理」 3 use cases ── */}
+      <div id="why-lemoncake" className="bg-white w-full">
+        <section className="max-w-6xl mx-auto px-6 py-20">
+          <p className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">WHY LEMONCAKE</p>
+          <h2 className="text-center text-3xl md:text-4xl font-black text-gray-900 mb-12 leading-tight">
+            汎用 AI に投げて返ってこない<br/>仕事だけ、ここで解ける
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {[
+              {
+                icon: "🔍",
+                title: "B2B 営業リサーチ",
+                example: '"anthropic.com の主要連絡先メールを5件取得して"',
+                why: "Hunter.io API は要 API キー + 月 $49。ChatGPT には叩けない。LemonCake なら $0.005/call で agent が直接呼ぶ。",
+                api: "Hunter.io",
+              },
+              {
+                icon: "📊",
+                title: "金融・市場データ",
+                example: '"USD/JPY の最新レートを取得し、過去 30 日の推移と比較して"',
+                why: "Open Exchange Rates / Polygon.io は商用利用要 paid plan。ChatGPT は学習データ時点の値しか知らない。",
+                api: "Open Exchange Rates",
+              },
+              {
+                icon: "🇯🇵",
+                title: "日本コンプライアンス",
+                example: '"インボイス番号 T1234567890123 が有効か照合して"',
+                why: "国税庁・gBizINFO・e-Gov は政府 API でキー登録要。日本の税務 / KYB ワークフロー必須。",
+                api: "国税庁 invoice / gBizINFO",
+              },
+            ].map((u, i) => (
+              <div key={i} className="rounded-2xl bg-gray-50 border border-gray-200 p-6 flex flex-col">
+                <div className="text-3xl mb-3">{u.icon}</div>
+                <h3 className="text-lg font-black text-gray-900 mb-2">{u.title}</h3>
+                <code className="block text-xs bg-gray-900 text-emerald-300 p-3 rounded-lg font-mono mb-3 break-words">
+                  {u.example}
+                </code>
+                <p className="text-[12px] text-gray-600 leading-relaxed mb-3 flex-1">{u.why}</p>
+                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">使う API: <span className="text-gray-700">{u.api}</span></div>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <a href="/services" className="inline-block px-6 py-3 bg-yellow-300 text-gray-900 text-sm font-bold rounded-xl hover:bg-yellow-400 transition-colors">
+              16 個の稼働中 API を見る →
+            </a>
+          </div>
+        </section>
+      </div>
+
       {/* ── Buyer / Seller 2-column ── */}
       <div id="use-cases" className="bg-white w-full mt-28">
         <section className="max-w-6xl mx-auto px-6 py-28">

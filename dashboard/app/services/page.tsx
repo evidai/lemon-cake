@@ -176,7 +176,7 @@ export default function ServicesPage() {
             <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">{cat}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               {services.map((svc) => (
-                <div key={svc.id} className="bg-white rounded-2xl border border-gray-200 p-6 hover:border-gray-300 transition-colors">
+                <Link key={svc.id} href={`/services/${svc.id}`} className="bg-white rounded-2xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-md transition-all block">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
                       <p className="font-semibold text-gray-900">{svc.name}</p>
@@ -197,7 +197,7 @@ export default function ServicesPage() {
                       ${parseFloat(svc.pricePerCallUsdc).toFixed(4)}<span className="text-gray-400 font-normal text-xs">/call</span>
                     </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </section>

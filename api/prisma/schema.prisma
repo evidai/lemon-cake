@@ -160,6 +160,13 @@ model Service {
   reviewStatus ReviewStatus @default(PENDING)
   verified     Boolean      @default(false)
 
+  // ─── Health monitoring (Phase 2) ─────────────────────────────────
+  // 定期 cron で endpoint を smoke-test し、最終結果を記録
+  lastHealthCheckAt   DateTime?
+  lastHealthStatus    Int? // HTTP status code (200, 401, 500 等)
+  lastHealthOk        Boolean? // true = 200-499 で生存とみなす
+  consecutiveFailures Int       @default(0) // 連続 5xx 失敗カウント (3 で auto-hide 候補)
+
   tokens           Token[]
   charges          Charge[]
   platformRevenues PlatformRevenue[]
