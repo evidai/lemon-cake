@@ -12,6 +12,8 @@
 [![npm: lemon-cake-mcp](https://img.shields.io/npm/v/lemon-cake-mcp?label=lemon-cake-mcp)](https://www.npmjs.com/package/lemon-cake-mcp)
 [![npm: eliza-plugin-lemoncake](https://img.shields.io/npm/v/eliza-plugin-lemoncake?label=eliza-plugin-lemoncake)](https://www.npmjs.com/package/eliza-plugin-lemoncake)
 [![Status](https://img.shields.io/badge/status-private%20beta-fffd43)](https://lemoncake.xyz)
+[![Glama MCP Quality Score](https://glama.ai/mcp/servers/evidai/lemon-cake/badge)](https://glama.ai/mcp/servers/evidai/lemon-cake)
+<!-- Glama verification: PASTE_TOKEN_HERE_AFTER_CLAIMING_ON_GLAMA -->
 
 **[📚 Docs](https://lemoncake.xyz/about) · [🚀 Quickstart](#quickstart) · [📧 Contact](mailto:contact@aievid.com)**
 
