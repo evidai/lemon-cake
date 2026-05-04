@@ -32,8 +32,59 @@ const PAY_TOKEN = process.env.LEMON_CAKE_PAY_TOKEN ?? "";
 const BUYER_JWT = process.env.LEMON_CAKE_BUYER_JWT ?? "";
 
 // ── バージョン・ユーザーエージェント ─────────────────────────────────────
-const MCP_VERSION = "0.3.0";
+const MCP_VERSION = "0.4.0";
 const USER_AGENT  = `lemon-cake-mcp/${MCP_VERSION} (node/${process.versions.node}; ${process.platform} ${process.arch})`;
+
+// ── デモモード（認証情報なしで Glama Inspector / 新規ユーザーが試せるように） ──
+const DEMO_MODE = !PAY_TOKEN && !BUYER_JWT;
+
+type DemoHandler = (path: string, body: Record<string, unknown> | undefined) => unknown;
+
+const DEMO_SERVICES: Array<{ id: string; name: string; provider: string; type: "API"; pricePerCall: string; description: string; example: { path: string; method: string; body?: unknown }; handler: DemoHandler }> = [
+  {
+    id:           "demo_search",
+    name:         "Demo Search (mock)",
+    provider:     "LemonCake DEMO",
+    type:         "API",
+    pricePerCall: "0.01 USDC (simulated)",
+    description:  "Mock Google search. Returns 3 canned results — useful to verify your agent's call_service plumbing without spending real USDC.",
+    example:      { path: "/search", method: "POST", body: { q: "AI agent payments", num: 3 } },
+    handler: (_path, body) => ({
+      query: body?.q ?? "(no query)",
+      results: [
+        { title: "LemonCake — Give your AI agent a wallet",  url: "https://lemoncake.xyz",                snippet: "Pay-per-call USDC payments for any HTTP API, straight from MCP clients." },
+        { title: "Model Context Protocol",                    url: "https://modelcontextprotocol.io",      snippet: "Open standard for connecting AI agents to tools and data." },
+        { title: "Glama MCP server directory",                url: "https://glama.ai/mcp/servers",         snippet: "Discover, inspect, and try MCP servers in your browser." },
+      ],
+    }),
+  },
+  {
+    id:           "demo_echo",
+    name:         "Demo Echo (mock)",
+    provider:     "LemonCake DEMO",
+    type:         "API",
+    pricePerCall: "0.001 USDC (simulated)",
+    description:  "Echoes back whatever you send. Useful to verify request body shape before hitting a real upstream service.",
+    example:      { path: "/echo", method: "POST", body: { hello: "world" } },
+    handler: (path, body) => ({ receivedPath: path, receivedBody: body ?? null, timestamp: new Date().toISOString() }),
+  },
+  {
+    id:           "demo_fx",
+    name:         "Demo FX rates (mock)",
+    provider:     "LemonCake DEMO",
+    type:         "API",
+    pricePerCall: "0.005 USDC (simulated)",
+    description:  "Mock USD/JPY/EUR/GBP exchange rates. Does not call any real upstream — values are static.",
+    example:      { path: "/latest", method: "GET" },
+    handler: () => ({ base: "USD", rates: { JPY: 150.42, EUR: 0.92, GBP: 0.79, CNY: 7.12 }, asOf: new Date().toISOString().slice(0, 10), source: "DEMO (static)" }),
+  },
+];
+
+function findDemoService(id: string) {
+  return DEMO_SERVICES.find((s) => s.id === id);
+}
+
+const DEMO_NOTICE = "🎮 DEMO MODE — no real charge, no real upstream. Set LEMON_CAKE_PAY_TOKEN / LEMON_CAKE_BUYER_JWT to call real services. Run the `setup` tool for instructions.";
 
 // ── 登録/入金/ダッシュボード URL（UTM 付きで経由クライアントを区別） ──
 const UTM            = "utm_source=mcp-server&utm_medium=cli";
@@ -51,8 +102,18 @@ console.error("[LemonCake MCP] Starting...");
 console.error(`[LemonCake MCP]   API URL     : ${API_URL}`);
 console.error(`[LemonCake MCP]   PAY_TOKEN   : ${hasPayToken ? "✓ set" : "✗ NOT SET — call_service will be unavailable"}`);
 console.error(`[LemonCake MCP]   BUYER_JWT   : ${hasBuyerJwt ? "✓ set" : "✗ NOT SET — check_balance will be unavailable"}`);
+console.error(`[LemonCake MCP]   MODE        : ${DEMO_MODE ? "🎮 DEMO (try-without-signup; demo_* services + mock balance)" : "LIVE"}`);
 
-if (!hasPayToken || !hasBuyerJwt) {
+if (DEMO_MODE) {
+  console.error("[LemonCake MCP]");
+  console.error("[LemonCake MCP]   🎮 Demo mode active — you can try these without any signup:");
+  console.error("[LemonCake MCP]     • list_services      → see real marketplace + 3 demo services");
+  console.error("[LemonCake MCP]     • call_service       → demo_search / demo_echo / demo_fx return canned data");
+  console.error("[LemonCake MCP]     • check_balance      → returns a mock $1.00 demo balance");
+  console.error("[LemonCake MCP]     • check_tax / get_service_stats → real (no auth needed)");
+  console.error("[LemonCake MCP]");
+  console.error(`[LemonCake MCP]   For real calls, create a free account → ${REGISTER_URL}`);
+} else if (!hasPayToken || !hasBuyerJwt) {
   console.error("[LemonCake MCP]");
   console.error("[LemonCake MCP]   🚀 Get started in 3 minutes:");
   console.error(`[LemonCake MCP]     1. Create a free account  →  ${REGISTER_URL}`);
@@ -166,11 +227,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "Show the LemonCake MCP first-run setup guide. No authentication required.",
         "Call this tool FIRST to learn what credentials are missing and how to obtain them.",
         "",
-        "Returns the current credential status (Pay Token / Buyer JWT) and step-by-step",
-        "instructions to obtain anything that is missing, including a sample MCP client",
-        "config snippet ready to paste.",
+        "If no auth env vars are set, the server is in DEMO MODE: list_services returns",
+        "three demo services (demo_search / demo_echo / demo_fx) and call_service / check_balance",
+        "respond with mock data so you can verify integration before signing up.",
         "",
-        "Returns: { version, apiUrl, credentials, availableTools, setupSteps, register, dashboard, docs }",
+        "Returns the current credential status (Pay Token / Buyer JWT), demo-mode flag, and",
+        "step-by-step instructions to obtain anything that is missing, including a sample MCP",
+        "client config snippet ready to paste.",
+        "",
+        "Returns: { version, apiUrl, mode, credentials, availableTools, setupSteps, register, dashboard, docs }",
         "Errors: none — this tool always succeeds.",
       ].join("\n"),
       annotations: {
@@ -191,7 +256,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "",
         "Use this BEFORE call_service to discover serviceId values and per-call USDC pricing.",
         "",
-        "Each item: { id, name, provider, type ('API' | 'MCP'), pricePerCall, endpoint }.",
+        "DEMO MODE: when no auth env vars are set, three demo services are prepended",
+        "(demo_search, demo_echo, demo_fx) so you can try call_service without signing up.",
+        "",
+        "Each item: { id, name, provider, type ('API' | 'MCP'), pricePerCall, [usage], [mode] }.",
         "Errors: HTTP-level errors are returned as `Error: API <status>: <body>`.",
       ].join("\n"),
       annotations: {
@@ -216,7 +284,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ─── call_service（PAY_TOKEN 必須） ──────────────────────────────────
+    // ─── call_service（PAY_TOKEN 必須 / demo_* は不要） ─────────────────
     {
       name: "call_service",
       description: [
@@ -224,8 +292,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "Each successful call automatically charges USDC against your configured Pay Token.",
         "",
         "PRECONDITIONS:",
-        "  • LEMON_CAKE_PAY_TOKEN env var must be set. If missing, the tool returns a",
-        "    structured CREDENTIAL_MISSING error (not a thrown exception) with how-to-fix steps.",
+        "  • LEMON_CAKE_PAY_TOKEN env var must be set for real services. If missing, the tool",
+        "    returns a structured CREDENTIAL_MISSING error with how-to-fix steps.",
+        "  • DEMO MODE: serviceId values starting with `demo_` (demo_search / demo_echo / demo_fx)",
+        "    work WITHOUT any auth and return canned responses — useful for Glama Inspector",
+        "    or new-user trial. They are clearly marked with `mode: \"demo\"` and incur no charge.",
         "  • serviceId must come from list_services.",
         "",
         "BEHAVIOR:",
@@ -282,19 +353,21 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ─── check_balance（BUYER_JWT 必須） ─────────────────────────────────
+    // ─── check_balance（BUYER_JWT 必須 / DEMO_MODE 時は mock） ───────────
     {
       name: "check_balance",
       description: [
         "Check the current USDC balance, KYC tier, and account info of the configured buyer.",
         "",
         "PRECONDITIONS:",
-        "  • LEMON_CAKE_BUYER_JWT env var must be set. If missing, returns a structured",
-        "    CREDENTIAL_MISSING error with how-to-fix steps (no exception thrown).",
+        "  • LEMON_CAKE_BUYER_JWT env var must be set. If missing AND no PAY_TOKEN is set,",
+        "    DEMO MODE returns a canned $1.00 demo balance with kycTier=\"DEMO\" so trial users",
+        "    see something instead of an error. With PAY_TOKEN set but no BUYER_JWT, returns",
+        "    a structured CREDENTIAL_MISSING error.",
         "",
         "Use BEFORE call_service to confirm sufficient funds, especially before a long batch.",
         "",
-        "Returns: { balanceUsdc, kycTier, email, name }",
+        "Returns: { balanceUsdc, kycTier, email, name, [mode], [note] }",
       ].join("\n"),
       annotations: {
         title:           "Check USDC balance",
@@ -444,12 +517,19 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         return json({
           version:       MCP_VERSION,
           apiUrl:        API_URL,
+          mode:          DEMO_MODE ? "demo" : "live",
           credentials:   status,
-          availableTools: {
-            noAuth:       ["setup", "list_services", "get_service_stats", "check_tax"],
-            needPayToken: ["call_service"],
-            needBuyerJwt: ["check_balance"],
-          },
+          availableTools: DEMO_MODE
+            ? {
+                noAuth:        ["setup", "list_services", "get_service_stats", "check_tax", "check_balance (mock)", "call_service (demo_* only)"],
+                demoServices:  DEMO_SERVICES.map((d) => d.id),
+                upgradeHint:   "Set LEMON_CAKE_PAY_TOKEN to call real services; set LEMON_CAKE_BUYER_JWT for real balance.",
+              }
+            : {
+                noAuth:       ["setup", "list_services", "get_service_stats", "check_tax"],
+                needPayToken: ["call_service"],
+                needBuyerJwt: ["check_balance"],
+              },
           setupSteps: steps.length > 0 ? steps.join("\n") : "✅ 全ての認証情報が設定されています。",
           register:   REGISTER_URL,
           dashboard:  DASHBOARD_URL,
@@ -461,7 +541,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       case "list_services": {
         const limit = (args.limit as number | undefined) ?? 50;
         const services = await apiGet(`/api/services?reviewStatus=APPROVED&limit=${limit}`) as any[];
-        return json(services
+        const real = services
           .filter((s: any) => s.verified)
           .map((s: any) => ({
             id:           s.id,
@@ -470,14 +550,27 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
             type:         s.type,
             pricePerCall: `${s.pricePerCallUsdc} USDC`,
             usage:        usageHintFor(s.name),
-          }))
-        );
+          }));
+        // Demo mode: surface demo services first so Glama Inspector users
+        // can try call_service without auth.
+        if (DEMO_MODE) {
+          const demos = DEMO_SERVICES.map((d) => ({
+            id:           d.id,
+            name:         d.name,
+            provider:     d.provider,
+            type:         d.type,
+            pricePerCall: d.pricePerCall,
+            description:  d.description,
+            usage:        d.example,
+            mode:         "demo",
+          }));
+          return json([...demos, ...real]);
+        }
+        return json(real);
       }
 
       // ─── call_service ────────────────────────────────────────────────────
       case "call_service": {
-        if (!PAY_TOKEN) return credentialError("LEMON_CAKE_PAY_TOKEN", "call_service");
-
         const serviceId      = args.serviceId as string;
         const subPath        = (args.path as string | undefined) ?? "/";
         const method         = (args.method as string | undefined) ?? "GET";
@@ -485,6 +578,22 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         const idempotencyKey = args.idempotencyKey as string | undefined;
 
         const normalizedPath = subPath.startsWith("/") ? subPath : `/${subPath}`;
+
+        // Demo mode: handle demo_* services without auth so Glama Inspector
+        // and new users can verify the call shape before signing up.
+        const demoSvc = findDemoService(serviceId);
+        if (demoSvc) {
+          return json({
+            status:     200,
+            chargeId:   `demo_${Date.now().toString(36)}`,
+            amountUsdc: demoSvc.pricePerCall.split(" ")[0],
+            response:   demoSvc.handler(normalizedPath, body),
+            mode:       "demo",
+            note:       DEMO_NOTICE,
+          });
+        }
+
+        if (!PAY_TOKEN) return credentialError("LEMON_CAKE_PAY_TOKEN", "call_service");
         const url = `${API_URL}/api/proxy/${serviceId}${normalizedPath}`;
 
         const headers: Record<string, string> = {
@@ -535,7 +644,17 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 
       // ─── check_balance ───────────────────────────────────────────────────
       case "check_balance": {
-        if (!BUYER_JWT) return credentialError("LEMON_CAKE_BUYER_JWT", "check_balance");
+        if (!BUYER_JWT) {
+          if (DEMO_MODE) return json({
+            balanceUsdc: "1.00",
+            kycTier:     "DEMO",
+            email:       "demo@lemoncake.xyz",
+            name:        "Demo Buyer",
+            mode:        "demo",
+            note:        DEMO_NOTICE,
+          });
+          return credentialError("LEMON_CAKE_BUYER_JWT", "check_balance");
+        }
         const me = await apiGet("/api/auth/me", BUYER_JWT) as any;
         return json({
           balanceUsdc: me.buyer?.balanceUsdc ?? me.balanceUsdc,
