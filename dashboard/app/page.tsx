@@ -504,6 +504,8 @@ function TxTable({ logs, isDemoMode }: { logs: LogEntry[]; isDemoMode: boolean }
         </div>
         <span className="text-xs text-text-muted">{logs.length} {t("件", "items")}</span>
       </div>
+      <div className="flex-1 overflow-x-auto overflow-y-hidden flex flex-col min-h-0">
+      <div className="min-w-[680px] flex-1 flex flex-col min-h-0">
       <div className="px-5 py-2 border-b border-border grid grid-cols-12 gap-2 flex-shrink-0 bg-canvas">
         {([t("時刻","Time"), t("送信元","From"), t("送信先","To"), t("通貨","Currency"), t("金額","Amount"), "Risk", "Tx Hash", t("状態","Status")] as const).map((h) => (
           <span key={h} className={`text-[10px] font-semibold uppercase tracking-wider text-text-muted ${h === t("状態","Status") ? "col-span-1 text-right" : h === "Tx Hash" ? "col-span-2" : h === t("金額","Amount") || h === "Risk" ? "col-span-1" : "col-span-2"}`}>{h}</span>
@@ -527,6 +529,8 @@ function TxTable({ logs, isDemoMode }: { logs: LogEntry[]; isDemoMode: boolean }
             </div>
           ))
         }
+      </div>
+      </div>
       </div>
     </div>
   );
@@ -607,7 +611,7 @@ function OnboardingChecklist({ onDismiss }: { onDismiss: () => void }) {
         </div>
       </div>
       {/* Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {ONBOARDING_ITEMS.map((item) => {
           const isDone = checked.has(item.key);
           return (
@@ -942,7 +946,7 @@ function BuyerOverviewCard({ buyerToken, onNavigate, refreshKey }: { buyerToken:
   if (!profile) return (
     <div className="bg-white border border-gray-200 rounded-2xl p-6 animate-pulse">
       <div className="h-4 bg-gray-100 rounded w-32 mb-4"/>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-xl"/>)}
       </div>
     </div>
@@ -981,7 +985,7 @@ function BuyerOverviewCard({ buyerToken, onNavigate, refreshKey }: { buyerToken:
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: t("USDC 残高", "USDC Balance"),       value: profile.buyer ? parseFloat(profile.buyer.balanceUsdc).toFixed(4) : "—",  unit: "USDC", action: null },
             { label: t("発行済みトークン", "Issued Tokens"),  value: tokenCount !== null ? String(tokenCount) : "—",                          unit: t("件","items"),   action: () => onNavigate("transactions") },
@@ -1153,7 +1157,7 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
   return (
     <div className="flex flex-col gap-5">
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
           <p className="text-xs text-gray-400 mb-1">{t("有効なトークン", "Active Tokens")}</p>
           <p className="text-2xl font-bold font-mono text-gray-900">{activeCount}</p>
@@ -1335,7 +1339,8 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
             </div>
           </div>
         ) : (
-          <>
+          <div className="overflow-x-auto">
+            <div className="min-w-[760px]">
             {/* Header */}
             <div className="px-6 py-2.5 border-b border-gray-100 grid grid-cols-12 gap-2 bg-gray-50">
               {[t("トークンID","Token ID"),t("サービス","Service"),t("上限額","Limit"),t("使用済","Used"),"Buyer Tag",t("有効期限","Expires"),t("状態","Status"),""].map((h,i) => (
@@ -1385,7 +1390,8 @@ function TokensPage({ buyerToken, onTokenIssued }: { buyerToken: string; onToken
                 );
               })}
             </div>
-          </>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -1426,7 +1432,7 @@ function ChargesPage({ buyerToken }: { buyerToken: string }) {
   return (
     <div className="flex flex-col gap-5">
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
           <p className="text-xs text-gray-400 mb-1">{t("合計支払い額", "Total Spend")}</p>
           <p className="text-2xl font-bold font-mono text-gray-900">{totalSpend.toFixed(6)}</p>
@@ -1469,7 +1475,8 @@ function ChargesPage({ buyerToken }: { buyerToken: string }) {
             {t("課金履歴はありません", "No charges")}
           </div>
         ) : (
-          <>
+          <div className="overflow-x-auto">
+            <div className="min-w-[760px]">
             {/* Header */}
             <div className="px-6 py-2.5 border-b border-gray-100 grid grid-cols-12 gap-2 bg-gray-50">
               {[t("日時","Date"),t("Buyer","Buyer"),t("Service","Service"),t("金額","Amount"),t("ステータス","Status"),t("トークンID","Token ID"),"TxHash"].map((h,i) => (
@@ -1494,7 +1501,8 @@ function ChargesPage({ buyerToken }: { buyerToken: string }) {
                 );
               })}
             </div>
-          </>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -1505,7 +1513,7 @@ function AgentsPage() {
   const t = useT();
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {(["none", "kya", "kyc"] as const).map((tier) => {
           const c = TIER_CFG[tier];
           const count = DEMO_AGENTS.filter((a) => a.tier === tier).length;
@@ -1558,7 +1566,7 @@ function FraudPage({ blockedTx, avgRisk }: { blockedTx: number; avgRisk: number 
   const open = DEMO_FLAGS.filter((f) => !f.resolved);
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label={t("未解決フラグ","Open Flags")} value={open.length} sub={t("要対応","Action required")} color={open.length > 0 ? "red" : "green"} />
         <KpiCard label={t("ブロック TX","Blocked TX")} value={blockedTx.toLocaleString()} unit={t("件","items")} sub={t("不正検知によりブロック","Blocked by fraud detection")} />
         <KpiCard label={t("平均リスクスコア","Avg Risk Score")} value={avgRisk.toFixed(1)} sub={t("直近100件の平均","Average of last 100")} />
@@ -3389,7 +3397,7 @@ function SellerStatsPage({ services }: { services: MyServiceEntry[] }) {
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
       {/* サマリーカード */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: t("サービス数","Services"),       value: services.length.toString(), sub: t("掲載中","listed") },
           { label: t("累計課金回数","Total Charges"), value: totalCharges.toLocaleString(), sub: "charges" },
@@ -4101,7 +4109,7 @@ function AccountSettingsPage({ token, onLogout, onProfileUpdated }: { token: str
         const bal    = Number.isFinite(balNum) ? balNum.toFixed(4) : "0.0000";
         const idShort = b.id ? (b.id.length > 12 ? b.id.slice(0, 12) + "…" : b.id) : "—";
         return (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: t("USDC 残高","USDC Balance"),  value: bal,                 unit: "USDC" },
             { label: t("KYC ティア","KYC Tier"),     value: b.kycTier ?? "NONE", unit: "" },
@@ -4271,6 +4279,7 @@ export default function Dashboard() {
   const [role,        setRole]       = useState<Role>("buyer");
   const [buyerToken,  setBuyerToken] = useState<string>("");
   const [authReady,   setAuthReady]  = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
   const [isDemoMode,  setIsDemoMode] = useState(true);
   const [lang,        setLang]       = useState<"ja"|"en">("ja");
@@ -4458,6 +4467,8 @@ export default function Dashboard() {
 
   // PAGE_TITLES unused in render — kept for reference only
 
+  const navigateAndClose = (p: Page) => { navigateTo(p); setMobileNavOpen(false); };
+
   return (
     <LangContext.Provider value={lang}>
     <div className="flex h-screen overflow-hidden bg-canvas">
@@ -4468,20 +4479,37 @@ export default function Dashboard() {
         </div>
       )}
 
-      <Sidebar
-        page={page} setPage={navigateTo}
-        role={role} setRole={setRole}
-        isDemoMode={isDemoMode} onModeToggle={() => switchMode(!isDemoMode)}
-        isHalted={isHalted} connStatus={connStatus}
-        clock={clock} uptime={uptime} openFlags={openFlags}
-        sellerProfile={sellerProfile}
-        onSellerSetup={() => sellerProfile ? setSellerView("myservices") : setSellerView("onboarding")}
-        lang={lang} setLang={setLang}
-      />
+      {/* Mobile hamburger */}
+      <button
+        type="button"
+        aria-label="Open navigation"
+        onClick={() => setMobileNavOpen(true)}
+        className="md:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-700 active:bg-gray-100"
+      >
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
+      </button>
+
+      {/* Mobile backdrop */}
+      {mobileNavOpen && (
+        <div onClick={() => setMobileNavOpen(false)} className="md:hidden fixed inset-0 bg-black/40 z-40" aria-hidden="true" />
+      )}
+
+      <div className={`fixed md:static inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-out ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 flex`}>
+        <Sidebar
+          page={page} setPage={navigateAndClose}
+          role={role} setRole={setRole}
+          isDemoMode={isDemoMode} onModeToggle={() => switchMode(!isDemoMode)}
+          isHalted={isHalted} connStatus={connStatus}
+          clock={clock} uptime={uptime} openFlags={openFlags}
+          sellerProfile={sellerProfile}
+          onSellerSetup={() => sellerProfile ? setSellerView("myservices") : setSellerView("onboarding")}
+          lang={lang} setLang={setLang}
+        />
+      </div>
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-7 pt-8 pb-5">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-7 pt-16 md:pt-8 pb-5">
           {/* ── バイヤーページ ── */}
           {page === "home"         && <HomePage buyerToken={buyerToken} onNavigate={navigateTo} refreshKey={homeRefreshKey} />}
           {page === "transactions" && <TokensPage buyerToken={buyerToken} onTokenIssued={() => setHomeRefreshKey(k => k + 1)} />}

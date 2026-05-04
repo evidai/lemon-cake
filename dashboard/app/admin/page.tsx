@@ -399,7 +399,7 @@ function ServiceDetailModal({svc, onClose, onApprove, onReject, onVerify}: {
             {svc.reviewStatus==="rejected" && <Pill label="却下"    variant="red"/>}
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             ["単価",         `$${svc.pricePerCall.toFixed(4)}`],
             ["月間コール数", svc.calls30d.toLocaleString()],
@@ -462,7 +462,7 @@ function AccountDetailModal({acc, onClose, onToggle}: {
             <p className="text-xs text-gray-500">{acc.email}</p>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {([
             ["エージェント数", String(acc.agentCount)],
             ["累計支出",       `$${acc.totalSpend.toFixed(2)}`],
@@ -1741,6 +1741,7 @@ function load<T>(key: string, fallback: T): T {
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function AdminRoot() {
   const [nav, setNav] = useState<NavSection>("overview");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [clock, setClock] = useState("--:--:--");
   const [services,  setServices]  = useState<ServiceType[]>([]);
   const [accounts,  setAccounts]  = useState<AccountType[]>([]);
@@ -1795,28 +1796,48 @@ export default function AdminRoot() {
   const pendingSvc = services.filter(s=>s.reviewStatus==="pending").length;
   const meta = PAGE_META[nav];
 
+  const setNavAndClose = (n: NavSection) => { setNav(n); setMobileNavOpen(false); };
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      <AdminSidebar nav={nav} setNav={setNav} openFlags={openFlags} pendingSvc={pendingSvc}/>
+      {/* Mobile backdrop */}
+      {mobileNavOpen && (
+        <div onClick={() => setMobileNavOpen(false)} className="md:hidden fixed inset-0 bg-black/40 z-40" aria-hidden="true" />
+      )}
+
+      <div className={`fixed md:static inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-out ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 flex`}>
+        <AdminSidebar nav={nav} setNav={setNavAndClose} openFlags={openFlags} pendingSvc={pendingSvc}/>
+      </div>
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <div className="bg-white border-b border-gray-200 px-7 py-4 flex-shrink-0 flex items-center justify-between">
-          <div>
-            <h1 className="text-base font-bold text-gray-900">{meta.title}</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{meta.desc}</p>
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-7 py-3 sm:py-4 flex-shrink-0 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              aria-label="Open navigation"
+              onClick={() => setMobileNavOpen(true)}
+              className="md:hidden w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-gray-700 active:bg-gray-100 flex-shrink-0"
+            >
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-base font-bold text-gray-900 truncate">{meta.title}</h1>
+              <p className="text-xs text-gray-400 mt-0.5 truncate hidden sm:block">{meta.desc}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
             {openFlags > 0 && (
-              <button onClick={()=>setNav("monitoring")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors">
+              <button onClick={()=>setNav("monitoring")} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors">
                 <Ico.Alert cls="w-3.5 h-3.5"/>
-                {openFlags}件のアラート
+                <span className="hidden sm:inline">{openFlags}件のアラート</span>
+                <span className="sm:hidden">{openFlags}</span>
               </button>
             )}
-            <span className="font-mono text-xs text-gray-400 tabular-nums">{clock}</span>
+            <span className="font-mono text-xs text-gray-400 tabular-nums hidden sm:inline">{clock}</span>
             <button
               onClick={() => { localStorage.removeItem("admin_token"); window.location.href = "/admin/login"; }}
-              className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+              className="px-2 sm:px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
             >
               ログアウト
             </button>
@@ -1824,7 +1845,7 @@ export default function AdminRoot() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-7 py-6">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
           {nav === "overview"    && <OverviewPage setNav={setNav} services={services} logs={logs} circuits={circuits} accounts={accounts} token={token}/>}
           {nav === "marketplace" && <MarketplacePage services={services} setServices={setServices} accounts={accounts} setAccounts={setAccounts} token={token}/>}
           {nav === "buyers"      && <BuyersManagePage token={token}/>}
