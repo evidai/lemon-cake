@@ -38,45 +38,99 @@ const USER_AGENT  = `lemon-cake-mcp/${MCP_VERSION} (node/${process.versions.node
 // ── デモモード（認証情報なしで Glama Inspector / 新規ユーザーが試せるように） ──
 const DEMO_MODE = !PAY_TOKEN && !BUYER_JWT;
 
-type DemoHandler = (path: string, body: Record<string, unknown> | undefined) => unknown;
+type DemoHandler = (path: string, body: Record<string, unknown> | undefined) => Promise<unknown> | unknown;
+
+/**
+ * Fire-and-forget fetch with a hard timeout. Returns null on any failure
+ * so demo handlers can fall back to canned data without blocking the user.
+ */
+async function tryFetch(url: string, init?: RequestInit, timeoutMs = 4000): Promise<unknown | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...init, signal: ctrl.signal, headers: { "User-Agent": USER_AGENT, ...(init?.headers ?? {}) } });
+    if (!res.ok) return null;
+    const ct = res.headers.get("content-type") ?? "";
+    return ct.includes("application/json") ? await res.json() : await res.text();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 const DEMO_SERVICES: Array<{ id: string; name: string; provider: string; type: "API"; pricePerCall: string; description: string; example: { path: string; method: string; body?: unknown }; handler: DemoHandler }> = [
   {
     id:           "demo_search",
-    name:         "Demo Search (mock)",
-    provider:     "LemonCake DEMO",
+    name:         "Demo Search (DuckDuckGo Instant Answer, free)",
+    provider:     "LemonCake DEMO → DuckDuckGo",
     type:         "API",
-    pricePerCall: "0.01 USDC (simulated)",
-    description:  "Mock Google search. Returns 3 canned results — useful to verify your agent's call_service plumbing without spending real USDC.",
-    example:      { path: "/search", method: "POST", body: { q: "AI agent payments", num: 3 } },
-    handler: (_path, body) => ({
-      query: body?.q ?? "(no query)",
-      results: [
-        { title: "LemonCake — Give your AI agent a wallet",  url: "https://lemoncake.xyz",                snippet: "Pay-per-call USDC payments for any HTTP API, straight from MCP clients." },
-        { title: "Model Context Protocol",                    url: "https://modelcontextprotocol.io",      snippet: "Open standard for connecting AI agents to tools and data." },
-        { title: "Glama MCP server directory",                url: "https://glama.ai/mcp/servers",         snippet: "Discover, inspect, and try MCP servers in your browser." },
-      ],
-    }),
+    pricePerCall: "0.00 USDC (free demo, real upstream)",
+    description:  "Hits DuckDuckGo's free Instant Answer API in real time. Returns abstract, related topics, and definition for any query. No auth required.",
+    example:      { path: "/search", method: "POST", body: { q: "Model Context Protocol" } },
+    handler: async (_path, body) => {
+      const q = (body?.q as string | undefined) ?? "Model Context Protocol";
+      const data = await tryFetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json&no_html=1&skip_disambig=1`) as any;
+      if (data) {
+        return {
+          query:    q,
+          abstract: data.AbstractText || data.Abstract || null,
+          source:   data.AbstractSource || null,
+          url:      data.AbstractURL || null,
+          related:  Array.isArray(data.RelatedTopics) ? data.RelatedTopics.slice(0, 5).map((r: any) => ({ text: r.Text, url: r.FirstURL })).filter((r: any) => r.text) : [],
+          upstream: "duckduckgo.com (real)",
+        };
+      }
+      // Fallback if upstream is down
+      return {
+        query: q,
+        abstract: "(upstream unavailable — showing canned demo)",
+        related: [
+          { text: "LemonCake — Give your AI agent a wallet", url: "https://lemoncake.xyz" },
+          { text: "Model Context Protocol",                  url: "https://modelcontextprotocol.io" },
+        ],
+        upstream: "canned (DuckDuckGo unreachable)",
+      };
+    },
   },
   {
     id:           "demo_echo",
-    name:         "Demo Echo (mock)",
-    provider:     "LemonCake DEMO",
+    name:         "Demo Echo (httpbin.org, free)",
+    provider:     "LemonCake DEMO → httpbin.org",
     type:         "API",
-    pricePerCall: "0.001 USDC (simulated)",
-    description:  "Echoes back whatever you send. Useful to verify request body shape before hitting a real upstream service.",
-    example:      { path: "/echo", method: "POST", body: { hello: "world" } },
-    handler: (path, body) => ({ receivedPath: path, receivedBody: body ?? null, timestamp: new Date().toISOString() }),
+    pricePerCall: "0.00 USDC (free demo, real upstream)",
+    description:  "Echoes your request via httpbin.org/anything. Returns headers, query params, and body — useful to verify your call_service request shape against a real HTTP server.",
+    example:      { path: "/anything", method: "POST", body: { hello: "world" } },
+    handler: async (path, body) => {
+      const data = await tryFetch(`https://httpbin.org/anything${path}`, {
+        method:  body ? "POST" : "GET",
+        headers: { "Content-Type": "application/json" },
+        body:    body ? JSON.stringify(body) : undefined,
+      });
+      if (data) return { ...(data as object), upstream: "httpbin.org (real)" };
+      return { receivedPath: path, receivedBody: body ?? null, timestamp: new Date().toISOString(), upstream: "canned (httpbin unreachable)" };
+    },
   },
   {
     id:           "demo_fx",
-    name:         "Demo FX rates (mock)",
-    provider:     "LemonCake DEMO",
+    name:         "Demo FX rates (open.er-api.com, free)",
+    provider:     "LemonCake DEMO → open.er-api.com",
     type:         "API",
-    pricePerCall: "0.005 USDC (simulated)",
-    description:  "Mock USD/JPY/EUR/GBP exchange rates. Does not call any real upstream — values are static.",
+    pricePerCall: "0.00 USDC (free demo, real upstream)",
+    description:  "Real USD-base FX rates from open.er-api.com (free, no auth). Returns 160+ currencies updated daily.",
     example:      { path: "/latest", method: "GET" },
-    handler: () => ({ base: "USD", rates: { JPY: 150.42, EUR: 0.92, GBP: 0.79, CNY: 7.12 }, asOf: new Date().toISOString().slice(0, 10), source: "DEMO (static)" }),
+    handler: async () => {
+      const data = await tryFetch("https://open.er-api.com/v6/latest/USD") as any;
+      if (data && data.rates) {
+        return {
+          base:    data.base_code ?? "USD",
+          rates:   { JPY: data.rates.JPY, EUR: data.rates.EUR, GBP: data.rates.GBP, CNY: data.rates.CNY, KRW: data.rates.KRW },
+          asOf:    data.time_last_update_utc ?? null,
+          upstream: "open.er-api.com (real)",
+        };
+      }
+      return { base: "USD", rates: { JPY: 150.42, EUR: 0.92, GBP: 0.79, CNY: 7.12 }, asOf: new Date().toISOString().slice(0, 10), upstream: "canned (er-api unreachable)" };
+    },
   },
 ];
 
@@ -108,7 +162,7 @@ if (DEMO_MODE) {
   console.error("[LemonCake MCP]");
   console.error("[LemonCake MCP]   🎮 Demo mode active — you can try these without any signup:");
   console.error("[LemonCake MCP]     • list_services      → see real marketplace + 3 demo services");
-  console.error("[LemonCake MCP]     • call_service       → demo_search / demo_echo / demo_fx return canned data");
+  console.error("[LemonCake MCP]     • call_service       → demo_search (DuckDuckGo) / demo_echo (httpbin) / demo_fx (open.er-api) — real upstreams, no auth");
   console.error("[LemonCake MCP]     • check_balance      → returns a mock $1.00 demo balance");
   console.error("[LemonCake MCP]     • check_tax / get_service_stats → real (no auth needed)");
   console.error("[LemonCake MCP]");
@@ -587,7 +641,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
             status:     200,
             chargeId:   `demo_${Date.now().toString(36)}`,
             amountUsdc: demoSvc.pricePerCall.split(" ")[0],
-            response:   demoSvc.handler(normalizedPath, body),
+            response:   await demoSvc.handler(normalizedPath, body),
             mode:       "demo",
             note:       DEMO_NOTICE,
           });

@@ -1,6 +1,6 @@
 {
   "name": "lemon-cake-mcp",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "LemonCake MCP Server — Give your AI agent a wallet. Pay-per-call M2M payment infrastructure.",
   "type": "module",
   "main": "dist/index.js",
