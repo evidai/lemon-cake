@@ -62,34 +62,34 @@ async function tryFetch(url: string, init?: RequestInit, timeoutMs = 4000): Prom
 const DEMO_SERVICES: Array<{ id: string; name: string; provider: string; type: "API"; pricePerCall: string; description: string; example: { path: string; method: string; body?: unknown }; handler: DemoHandler }> = [
   {
     id:           "demo_search",
-    name:         "Demo Search (DuckDuckGo Instant Answer, free)",
-    provider:     "LemonCake DEMO → DuckDuckGo",
+    name:         "Demo Search (Wikipedia, free)",
+    provider:     "LemonCake DEMO → Wikipedia",
     type:         "API",
     pricePerCall: "0.00 USDC (free demo, real upstream)",
-    description:  "Hits DuckDuckGo's free Instant Answer API in real time. Returns abstract, related topics, and definition for any query. No auth required.",
+    description:  "Searches English Wikipedia via opensearch API. Returns up to 5 matching titles with snippets and URLs for any query. No auth required.",
     example:      { path: "/search", method: "POST", body: { q: "Model Context Protocol" } },
     handler: async (_path, body) => {
       const q = (body?.q as string | undefined) ?? "Model Context Protocol";
-      const data = await tryFetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json&no_html=1&skip_disambig=1`) as any;
-      if (data) {
+      const data = await tryFetch(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(q)}&limit=5&format=json&namespace=0&origin=*`) as unknown[];
+      // opensearch returns [query, titles[], descriptions[], urls[]]
+      if (Array.isArray(data) && data.length === 4 && Array.isArray(data[1])) {
+        const titles       = data[1] as string[];
+        const descriptions = (data[2] as string[]) ?? [];
+        const urls         = (data[3] as string[]) ?? [];
         return {
           query:    q,
-          abstract: data.AbstractText || data.Abstract || null,
-          source:   data.AbstractSource || null,
-          url:      data.AbstractURL || null,
-          related:  Array.isArray(data.RelatedTopics) ? data.RelatedTopics.slice(0, 5).map((r: any) => ({ text: r.Text, url: r.FirstURL })).filter((r: any) => r.text) : [],
-          upstream: "duckduckgo.com (real)",
+          results:  titles.map((title, i) => ({ title, snippet: descriptions[i] ?? "", url: urls[i] ?? "" })),
+          upstream: "en.wikipedia.org/opensearch (real)",
         };
       }
       // Fallback if upstream is down
       return {
         query: q,
-        abstract: "(upstream unavailable — showing canned demo)",
-        related: [
-          { text: "LemonCake — Give your AI agent a wallet", url: "https://lemoncake.xyz" },
-          { text: "Model Context Protocol",                  url: "https://modelcontextprotocol.io" },
+        results: [
+          { title: "LemonCake — Give your AI agent a wallet", url: "https://lemoncake.xyz",           snippet: "Pay-per-call USDC payments for any HTTP API." },
+          { title: "Model Context Protocol",                  url: "https://modelcontextprotocol.io", snippet: "Open standard for connecting AI agents to tools." },
         ],
-        upstream: "canned (DuckDuckGo unreachable)",
+        upstream: "canned (Wikipedia unreachable)",
       };
     },
   },
@@ -310,8 +310,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "",
         "Use this BEFORE call_service to discover serviceId values and per-call USDC pricing.",
         "",
-        "DEMO MODE: when no auth env vars are set, three demo services are prepended",
-        "(demo_search, demo_echo, demo_fx) so you can try call_service without signing up.",
+        "When LEMON_CAKE_PAY_TOKEN is missing, three demo services are prepended",
+        "(demo_search → Wikipedia, demo_echo → httpbin, demo_fx → open.er-api) so you",
+        "can try call_service without signing up. Live users (PAY_TOKEN set) see only",
+        "real marketplace entries; demo_* IDs remain callable directly.",
         "",
         "Each item: { id, name, provider, type ('API' | 'MCP'), pricePerCall, [usage], [mode] }.",
         "Errors: HTTP-level errors are returned as `Error: API <status>: <body>`.",
@@ -605,9 +607,11 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
             pricePerCall: `${s.pricePerCallUsdc} USDC`,
             usage:        usageHintFor(s.name),
           }));
-        // Demo mode: surface demo services first so Glama Inspector users
-        // can try call_service without auth.
-        if (DEMO_MODE) {
+        // Surface demo services whenever PAY_TOKEN is missing (covers full
+        // DEMO_MODE and the partial-auth case where only BUYER_JWT is set).
+        // Live users with PAY_TOKEN see only real services to avoid clutter,
+        // but can still call demo_* serviceIds directly.
+        if (!PAY_TOKEN) {
           const demos = DEMO_SERVICES.map((d) => ({
             id:           d.id,
             name:         d.name,

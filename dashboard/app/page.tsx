@@ -373,7 +373,7 @@ function Sidebar({
     return (
       <button
         onClick={() => setPage(id)}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-left transition-colors focus:outline-none group ${
+        className={`w-full flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-xl text-sm text-left transition-colors focus:outline-none group ${
           active ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
         }`}
       >
@@ -386,9 +386,9 @@ function Sidebar({
   const nav = role === "buyer" ? navBuyer : navSeller;
 
   return (
-    <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-gray-200">
+    <aside className="w-[260px] sm:w-64 flex-shrink-0 flex flex-col bg-white border-r border-gray-200 h-full">
       {/* ── Header: ロゴ + 言語切り替え ── */}
-      <div className="px-4 pt-4 pb-3 flex items-center justify-between gap-2">
+      <div className="px-4 pt-4 pb-3 flex items-center justify-between gap-2 flex-shrink-0">
         <img src="/logo.png" alt="LemonCake" className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
         {/* 言語切り替えボタン */}
         <div className="flex rounded-md border border-gray-200 overflow-hidden text-[10px] font-semibold">
@@ -426,7 +426,7 @@ function Sidebar({
       </div>
 
       {/* ── ナビ ── */}
-      <nav className="px-3 flex flex-col gap-0.5 flex-1">
+      <nav className="px-3 flex flex-col gap-0.5 flex-1 overflow-y-auto min-h-0">
         {nav.map((item) => <NavBtn key={item.id} {...item} />)}
 
         {/* セラー: プロフィール未設定の場合はセットアップ誘導 */}

@@ -1675,9 +1675,9 @@ const NAV: {id:NavSection; label:string; sub:string; Icon: ({cls}:{cls?:string})
 
 function AdminSidebar({nav, setNav, openFlags, pendingSvc}: {nav:NavSection; setNav:(n:NavSection)=>void; openFlags:number; pendingSvc:number}) {
   return (
-    <aside className="w-60 h-screen flex flex-col bg-white border-r border-gray-200 flex-shrink-0">
+    <aside className="w-[260px] sm:w-60 h-full flex flex-col bg-white border-r border-gray-200 flex-shrink-0">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-gray-100">
+      <div className="px-5 py-5 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <img src="/logo.png" alt="LemonCake" className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
           <div>
@@ -1688,13 +1688,13 @@ function AdminSidebar({nav, setNav, openFlags, pendingSvc}: {nav:NavSection; set
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto min-h-0">
         {NAV.map(item => {
           const badge = item.id==="marketplace"?pendingSvc : item.id==="monitoring"?openFlags : 0;
           const active = nav === item.id;
           return (
             <button key={item.id} onClick={()=>setNav(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all group ${active?"bg-gray-100 text-gray-900":"text-gray-500 hover:bg-gray-50 hover:text-gray-800"}`}>
+              className={`w-full flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-xl text-left transition-all group ${active?"bg-gray-100 text-gray-900":"text-gray-500 hover:bg-gray-50 hover:text-gray-800"}`}>
               <item.Icon cls={`w-5 h-5 flex-shrink-0 ${active?"text-gray-900":"text-gray-400 group-hover:text-gray-600"}`}/>
               <div className="flex-1 min-w-0">
                 <p className={`text-[13px] font-semibold leading-tight ${active?"text-gray-900":"text-gray-600"}`}>{item.label}</p>
