@@ -1798,14 +1798,45 @@ export default function AdminRoot() {
 
   const setNavAndClose = (n: NavSection) => { setNav(n); setMobileNavOpen(false); };
 
+  // Lock body scroll when drawer open
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.style.overflow = mobileNavOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileNavOpen]);
+
+  // Close drawer on Escape
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileNavOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileNavOpen]);
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* Mobile backdrop */}
-      {mobileNavOpen && (
-        <div onClick={() => setMobileNavOpen(false)} className="md:hidden fixed inset-0 bg-black/40 z-40" aria-hidden="true" />
-      )}
+      {/* Mobile backdrop with fade */}
+      <div
+        onClick={() => setMobileNavOpen(false)}
+        className={`md:hidden fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 transition-opacity duration-300 ${mobileNavOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        aria-hidden="true"
+      />
 
-      <div className={`fixed md:static inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-out ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 flex`}>
+      <div
+        role={mobileNavOpen ? "dialog" : undefined}
+        aria-modal={mobileNavOpen || undefined}
+        aria-hidden={!mobileNavOpen ? undefined : false}
+        className={`fixed md:static inset-y-0 left-0 z-40 flex transform transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] shadow-2xl md:shadow-none ${mobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+      >
+        {/* Close button inside drawer (mobile only) */}
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setMobileNavOpen(false)}
+          className="md:hidden absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 active:scale-95 transition"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+        </button>
         <AdminSidebar nav={nav} setNav={setNavAndClose} openFlags={openFlags} pendingSvc={pendingSvc}/>
       </div>
 

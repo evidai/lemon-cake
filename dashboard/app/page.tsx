@@ -4469,6 +4469,32 @@ export default function Dashboard() {
 
   const navigateAndClose = (p: Page) => { navigateTo(p); setMobileNavOpen(false); };
 
+  // Lock body scroll when mobile drawer is open
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.style.overflow = mobileNavOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileNavOpen]);
+
+  // Close drawer on Escape
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileNavOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileNavOpen]);
+
+  // Page title for mobile top bar (local t — Dashboard is the LangContext provider so useT can't see it from here)
+  const _t = (ja: string, en: string) => lang === "en" ? en : ja;
+  const pageLabels: Record<string, string> = {
+    home: _t("ホーム","Home"), directory: _t("サービス","Services"), transactions: _t("トークン発行","Tokens"),
+    agents: _t("APIキー","API Keys"), fraud: _t("課金履歴","Charges"), usdc: _t("USDC","USDC"),
+    jpyc: _t("JPYC","JPYC"), accounting: _t("会計","Accounting"), account: _t("アカウント","Account"),
+    "seller-services": _t("マイサービス","My Services"), "seller-stats": _t("売上統計","Stats"),
+    "seller-directory": _t("ディレクトリ","Directory"), "seller-account": _t("アカウント","Account"),
+  };
+  const currentTitle = pageLabels[page as string] ?? "LemonCake";
+
   return (
     <LangContext.Provider value={lang}>
     <div className="flex h-screen overflow-hidden bg-canvas">
@@ -4479,22 +4505,29 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Mobile hamburger */}
-      <button
-        type="button"
-        aria-label="Open navigation"
-        onClick={() => setMobileNavOpen(true)}
-        className="md:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-700 active:bg-gray-100"
+      {/* Mobile backdrop with fade */}
+      <div
+        onClick={() => setMobileNavOpen(false)}
+        className={`md:hidden fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 transition-opacity duration-300 ${mobileNavOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        aria-hidden="true"
+      />
+
+      {/* Drawer wrapper — slides in on mobile, static on md+ */}
+      <div
+        role={mobileNavOpen ? "dialog" : undefined}
+        aria-modal={mobileNavOpen || undefined}
+        aria-hidden={!mobileNavOpen ? undefined : false}
+        className={`fixed md:static inset-y-0 left-0 z-40 flex transform transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] shadow-2xl md:shadow-none ${mobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
-      </button>
-
-      {/* Mobile backdrop */}
-      {mobileNavOpen && (
-        <div onClick={() => setMobileNavOpen(false)} className="md:hidden fixed inset-0 bg-black/40 z-40" aria-hidden="true" />
-      )}
-
-      <div className={`fixed md:static inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-out ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 flex`}>
+        {/* Close button inside drawer (mobile only) */}
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setMobileNavOpen(false)}
+          className="md:hidden absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 active:scale-95 transition"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+        </button>
         <Sidebar
           page={page} setPage={navigateAndClose}
           role={role} setRole={setRole}
@@ -4508,8 +4541,22 @@ export default function Dashboard() {
       </div>
 
       <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile top bar (replaces floating hamburger) */}
+        <div className="md:hidden flex items-center gap-2 px-3 py-2.5 bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-20">
+          <button
+            type="button"
+            aria-label="Open navigation"
+            onClick={() => setMobileNavOpen(true)}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-700 active:bg-gray-100 transition"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
+          </button>
+          <img src="/logo.png" alt="LemonCake" className="w-6 h-6 rounded-md object-cover flex-shrink-0" />
+          <span className="font-semibold text-sm text-gray-900 truncate">{currentTitle}</span>
+        </div>
+
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-7 pt-16 md:pt-8 pb-5">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-7 pt-4 md:pt-8 pb-5">
           {/* ── バイヤーページ ── */}
           {page === "home"         && <HomePage buyerToken={buyerToken} onNavigate={navigateTo} refreshKey={homeRefreshKey} />}
           {page === "transactions" && <TokensPage buyerToken={buyerToken} onTokenIssued={() => setHomeRefreshKey(k => k + 1)} />}
