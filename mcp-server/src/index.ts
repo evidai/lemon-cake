@@ -23,6 +23,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
 // ── 設定 ──────────────────────────────────────────────────────────────────────
@@ -32,7 +34,11 @@ const PAY_TOKEN = process.env.LEMON_CAKE_PAY_TOKEN ?? "";
 const BUYER_JWT = process.env.LEMON_CAKE_BUYER_JWT ?? "";
 
 // ── バージョン・ユーザーエージェント ─────────────────────────────────────
-const MCP_VERSION = "0.4.0";
+// 単一ソース化: package.json の version を読む。ESM の import attributes を
+// 使わずに createRequire 経由にすることで、バンドラなしで Node 22 でも動く。
+import { createRequire } from "node:module";
+const requireFromHere = createRequire(import.meta.url);
+const MCP_VERSION: string = (requireFromHere("../package.json") as { version: string }).version;
 const USER_AGENT  = `lemon-cake-mcp/${MCP_VERSION} (node/${process.versions.node}; ${process.platform} ${process.arch})`;
 
 // ── デモモード（認証情報なしで Glama Inspector / 新規ユーザーが試せるように） ──
@@ -266,7 +272,7 @@ function credentialError(envVar: string, toolName: string) {
 
 const server = new Server(
   { name: "lemon-cake-mcp", version: MCP_VERSION },
-  { capabilities: { tools: {} } },
+  { capabilities: { tools: {}, prompts: {} } },
 );
 
 // ── ツール定義 ────────────────────────────────────────────────────────────────
@@ -506,6 +512,134 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
   ],
 }));
+
+// ── プロンプト定義 ────────────────────────────────────────────────────────────
+// MCP Prompts: Glama Inspector / Claude Desktop / Cursor の prompt-picker に
+// 「Try this」ボタンとして表示される pre-written conversation starters。
+// Demo Mode（auth 不要）でもすぐ動くものを優先しているので、新規ユーザーが
+// click 1 つで実プロダクトの挙動を確認できる。
+
+const PROMPTS = [
+  {
+    name: "explore-demo",
+    title: "🎮 Try the demo (no signup)",
+    description: "Walk through demo_search → demo_fx → demo_echo with no auth required.",
+    template: [
+      "Use the lemon-cake MCP server in demo mode (no auth needed) to:",
+      "1. Run `setup` to confirm we're in demo mode.",
+      "2. Run `list_services` and tell me which entries are demos.",
+      "3. Call `call_service` with serviceId='demo_search' and body={\"q\":\"Model Context Protocol\"} — show me the Wikipedia results.",
+      "4. Call `call_service` with serviceId='demo_fx' and report current USD/JPY.",
+      "Then summarize what LemonCake is, in 2 sentences.",
+    ].join("\n"),
+  },
+  {
+    name: "discover-marketplace",
+    title: "🛍 Discover marketplace services",
+    description: "List approved services and pick one that matches a use case.",
+    template: [
+      "Using lemon-cake's `list_services`, list every approved service with its category and price.",
+      "Then recommend the top 3 for an AI agent that needs to: (a) find recent news, (b) verify a Japanese invoice number, (c) translate text.",
+      "For each recommendation, show the exact `call_service` arguments to invoke it.",
+    ].join("\n"),
+  },
+  {
+    name: "japan-tax-check",
+    title: "🇯🇵 Validate a Japanese invoice number",
+    description: "Use the check_tax tool to verify a 適格請求書発行事業者番号 against the NTA registry.",
+    arguments: [
+      { name: "registrationNumber", description: "T + 13 digit number (e.g. T1234567890123)", required: true },
+      { name: "amountJpy", description: "Gross amount in JPY", required: false },
+    ],
+    template: (args: Record<string, string | undefined>) => [
+      `Use lemon-cake's \`check_tax\` tool to validate registration number ${args.registrationNumber ?? "T1234567890123"}.`,
+      args.amountJpy ? `The transaction amount is ${args.amountJpy} JPY (tax-inclusive).` : "Use a sample amount of 110000 JPY.",
+      "Report: (1) is the number valid? (2) registered name and address. (3) does source-withholding (源泉徴収) apply, and how much?",
+    ].join("\n"),
+  },
+  {
+    name: "spend-with-budget",
+    title: "💰 Spend with a strict budget cap",
+    description: "Pattern: check_balance → call_service → check_balance again, demonstrating KYA/Pay-Token spending limits.",
+    arguments: [
+      { name: "serviceId", description: "Marketplace service ID (omit for demo_search)", required: false },
+      { name: "query", description: "Search query (for search/data services)", required: false },
+    ],
+    template: (args: Record<string, string | undefined>) => {
+      const sid = args.serviceId ?? "demo_search";
+      const q = args.query ?? "AI agent payments 2026";
+      return [
+        `Demonstrate the lemon-cake spending pattern with serviceId=\`${sid}\`:`,
+        "1. Call `check_balance` and report current USDC balance + KYA tier.",
+        `2. Call \`call_service\` with serviceId='${sid}', method='POST', path='/search', body={\"q\":\"${q}\"}.`,
+        "3. Call `check_balance` again and report the delta. If we're in demo mode, note that no real charge happened.",
+        "Throughout, mention any 4xx hints the proxy returns so I learn the failure modes.",
+      ].join("\n");
+    },
+  },
+  {
+    name: "real-vs-demo",
+    title: "🔄 Compare demo vs real upstream",
+    description: "Hit the same logical query against demo_search (Wikipedia) and a real marketplace search service to see the difference.",
+    template: [
+      "Compare lemon-cake's demo vs real search:",
+      "1. Call `call_service` with serviceId='demo_search', body={\"q\":\"Model Context Protocol\"}. Note the Wikipedia results.",
+      "2. From `list_services`, find a real Serper / search service (category='検索') and call it with the same query.",
+      "3. Tabulate: result count, top result title, latency feel (you'll see chargeId only for the real one).",
+      "If LEMON_CAKE_PAY_TOKEN isn't set, gracefully skip step 2 and explain how to set it.",
+    ].join("\n"),
+  },
+  {
+    name: "japan-finance-bundle",
+    title: "🏯 Japan finance research bundle",
+    description: "Combine gBizINFO 法人情報 + 国税庁 invoice check + e-Gov 法令 in one workflow.",
+    arguments: [
+      { name: "corporateNumber", description: "13-digit corporate number (法人番号)", required: false },
+    ],
+    template: (args: Record<string, string | undefined>) => {
+      const cn = args.corporateNumber ?? "3010001088782";
+      return [
+        `Run a Japan finance research workflow with 法人番号 ${cn}:`,
+        "1. `list_services` — confirm gBizINFO / 国税庁インボイス / e-Gov are available (category='日本特化').",
+        `2. Call gBizINFO with path='/hojin/${cn}'. Report company name, address, capital, representative.`,
+        `3. Call 国税庁インボイス with path='/check?id=T${cn}'. Verify if this corp is a registered invoice issuer.`,
+        "4. Call e-Gov with keyword='インボイス制度'. Find 1-2 relevant law articles.",
+        "Summarize all findings in a single executive briefing.",
+      ].join("\n");
+    },
+  },
+] as const;
+
+server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+  prompts: PROMPTS.map((p) => ({
+    name:        p.name,
+    title:       p.title,
+    description: p.description,
+    arguments:   "arguments" in p ? p.arguments : undefined,
+  })),
+}));
+
+server.setRequestHandler(GetPromptRequestSchema, async (req) => {
+  const name = req.params.name;
+  const args = (req.params.arguments ?? {}) as Record<string, string | undefined>;
+  const prompt = PROMPTS.find((p) => p.name === name);
+  if (!prompt) {
+    throw new Error(`Unknown prompt: ${name}`);
+  }
+  const text =
+    typeof prompt.template === "function"
+      ? prompt.template(args)
+      : prompt.template;
+  return {
+    description: prompt.description,
+    messages: [
+      {
+        role: "user",
+        content: { type: "text", text },
+      },
+    ],
+  };
+});
 
 // ── ツール実装 ────────────────────────────────────────────────────────────────
 
