@@ -71,7 +71,36 @@ interface Service {
   price: number; description: string; tags: string[];
   apiSpecUrl: string; tokenTypes: string[];
   tosUrl?: string; minTokenAmount?: number;
+  // ─── Marketplace meta（DB 由来） ───────────────────────────
+  longDescription?: string;
+  category?: string;
+  iconEmoji?: string;
+  useCases?: string[];
+  samplePath?: string;
+  sampleMethod?: string;
+  sampleBody?: unknown;
+  documentationUrl?: string;
 }
+
+const CATEGORY_FALLBACK_EMOJI: Record<string, string> = {
+  "検索": "🔍", "Web取得": "🕸️", "営業/B2B": "✉️", "金融": "💱",
+  "日本特化": "🇯🇵", "通知": "💬", "本人確認": "🪪", "ドキュメント": "📝",
+  "データ": "🌐", "テスト": "🧪", "その他": "📦",
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  "検索": "bg-blue-50 text-blue-700 border-blue-100",
+  "Web取得": "bg-purple-50 text-purple-700 border-purple-100",
+  "営業/B2B": "bg-pink-50 text-pink-700 border-pink-100",
+  "金融": "bg-green-50 text-green-700 border-green-100",
+  "日本特化": "bg-rose-50 text-rose-700 border-rose-100",
+  "通知": "bg-amber-50 text-amber-700 border-amber-100",
+  "本人確認": "bg-cyan-50 text-cyan-700 border-cyan-100",
+  "ドキュメント": "bg-indigo-50 text-indigo-700 border-indigo-100",
+  "データ": "bg-teal-50 text-teal-700 border-teal-100",
+  "テスト": "bg-gray-100 text-gray-600 border-gray-200",
+  "その他": "bg-gray-100 text-gray-600 border-gray-200",
+};
 
 // ── localStorage persistence ──────────────────────────────────────────────────
 function load<T>(key: string, fallback: T): T {
@@ -2203,6 +2232,17 @@ interface ApiService {
   name: string; type: "API" | "MCP";
   pricePerCallUsdc: string; reviewStatus: string;
   verified: boolean; createdAt: string; updatedAt: string;
+  // ─── Marketplace meta (optional; populated by seller via PATCH /:id) ──
+  description?: string | null;
+  longDescription?: string | null;
+  category?: string | null;
+  tags?: string[];
+  iconEmoji?: string | null;
+  useCases?: string[];
+  samplePath?: string | null;
+  sampleMethod?: string | null;
+  sampleBody?: unknown;
+  documentationUrl?: string | null;
 }
 
 function PlaygroundPage({ buyers, onKeyCreated }: { buyers: Buyer[]; onKeyCreated: (key: string) => void }) {
@@ -2526,77 +2566,145 @@ function ServiceDetail({ service, onBack }: { service: Service; onBack: () => vo
   const [buyerTag,  setBuyerTag]  = useState("");
   const [expiry,    setExpiry]    = useState("2026-12-31T23:59:59Z");
 
+  const category    = service.category ?? "その他";
+  const iconEmoji   = service.iconEmoji ?? CATEGORY_FALLBACK_EMOJI[category] ?? "📦";
+  const categoryCls = CATEGORY_COLORS[category] ?? CATEGORY_COLORS["その他"];
+  const useCases    = service.useCases ?? [];
+  const samplePath  = service.samplePath ?? "/";
+  const sampleMethod = service.sampleMethod ?? "GET";
+  const sampleBody  = (service.sampleBody as Record<string, unknown> | null | undefined) ?? null;
+
+  const sampleCurl = `curl -X ${sampleMethod} "https://api.lemoncake.xyz/api/proxy/${service.id}${samplePath}" \\
+  -H "Authorization: Bearer $LEMON_CAKE_PAY_TOKEN" \\
+  -H "Content-Type: application/json"${sampleBody ? ` \\\n  -d '${JSON.stringify(sampleBody)}'` : ""}`;
+
   return (
-    <div className="flex flex-col gap-6 max-w-5xl">
+    <div className="flex flex-col gap-4 sm:gap-6 max-w-5xl">
       {/* Back */}
       <button onClick={onBack} className="self-start flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 3L5 8l5 5"/></svg>
-        {t("ディレクトリに戻る","Back to Directory")}
+        {t("サービス一覧に戻る","Back to Directory")}
       </button>
 
-      {/* Header */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
+      {/* Hero — Glama-inspired */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6">
+        <div className="flex items-start gap-3 sm:gap-4">
+          {/* Icon */}
+          <div className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-3xl sm:text-4xl select-none">
+            {iconEmoji}
+          </div>
+          {/* Title block */}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-gray-400 mb-1 truncate">{service.provider}</p>
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{service.name}</h1>
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
               <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${service.type === "MCP" ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>{service.type}</span>
-              <span className="text-xs text-gray-400">{service.provider}</span>
-            </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">{service.name}</h1>
-            <p className="text-sm text-gray-600 leading-relaxed">{service.description}</p>
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {service.tags.map((t) => (
-                <span key={t} className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[11px] rounded-md">{t}</span>
+              <span className={`text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full border ${categoryCls}`}>{category}</span>
+              {service.tags.slice(0, 4).map((tg) => (
+                <span key={tg} className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] sm:text-[11px] rounded-md">{tg}</span>
               ))}
             </div>
           </div>
+          {/* Price */}
           <div className="text-right flex-shrink-0">
-            <p className="text-xs text-gray-400 mb-0.5">{t("1回あたり","Per call")}</p>
-            <p className="text-2xl font-bold font-mono text-gray-900">${service.price.toFixed(4)}</p>
-            <p className="text-xs text-gray-400">USDC</p>
+            <p className="text-[10px] text-gray-400 mb-0.5">{t("1回あたり","Per call")}</p>
+            <p className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tabular-nums">${service.price.toFixed(4)}</p>
+            <p className="text-[10px] text-gray-400">USDC</p>
           </div>
         </div>
+        {/* Tagline */}
+        {service.description && (
+          <p className="text-sm text-gray-600 leading-relaxed mt-4 sm:mt-5">{service.description}</p>
+        )}
       </div>
 
-      {/* Info table */}
+      {/* Long description */}
+      {service.longDescription && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm font-bold text-gray-900 mb-3">{t("概要","Overview")}</h2>
+          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{service.longDescription}</p>
+        </div>
+      )}
+
+      {/* Use cases — Glama style */}
+      {useCases.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm font-bold text-gray-900 mb-3">{t("こんな時に使える","Use Cases")}</h2>
+          <ul className="space-y-2">
+            {useCases.map((uc, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-gray-700 leading-relaxed">
+                <span className="text-gray-400 mt-0.5 flex-shrink-0">▸</span>
+                <span>{uc}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Service info */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
+        <div className="px-5 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
           <h2 className="text-sm font-bold text-gray-900">{t("サービス情報","Service Info")}</h2>
         </div>
         <table className="w-full text-sm">
           <tbody className="divide-y divide-gray-100">
             {[
-              [t("サービスID","Service ID"),         <span className="font-mono text-gray-700">{service.id}</span>],
+              [t("サービスID","Service ID"),         <span className="font-mono text-gray-700 break-all">{service.id}</span>],
               [t("最低トークン額","Min Token Amount"), <span className="font-mono">${(service.minTokenAmount ?? service.price).toFixed(4)} USDC</span>],
-              [t("対応トークンタイプ","Token Types"),  <div className="flex gap-1.5">{service.tokenTypes.map((tt) => <span key={tt} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[11px] rounded font-mono">{tt}</span>)}</div>],
-              ["OpenAPI",                              <a href={service.apiSpecUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{service.apiSpecUrl}</a>],
-              [t("利用規約","Terms of Service"),       service.tosUrl ? <a href={service.tosUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{service.tosUrl}</a> : <span className="text-gray-400">—</span>],
+              [t("対応トークンタイプ","Token Types"),  <div className="flex gap-1.5 flex-wrap">{service.tokenTypes.map((tt) => <span key={tt} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[11px] rounded font-mono">{tt}</span>)}</div>],
+              ...(service.documentationUrl ? [[t("公式ドキュメント","Documentation"), <a href={service.documentationUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{service.documentationUrl}</a>]] : []),
+              ...(service.tosUrl ? [[t("利用規約","Terms"), <a href={service.tosUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{service.tosUrl}</a>]] : []),
             ].map(([label, value], i) => (
               <tr key={i} className="hover:bg-gray-50">
-                <td className="px-6 py-3.5 w-44 text-gray-500 font-medium">{label as string}</td>
-                <td className="px-6 py-3.5 text-gray-800">{value as React.ReactNode}</td>
+                <td className="px-5 sm:px-6 py-3 sm:py-3.5 w-32 sm:w-44 text-gray-500 font-medium align-top">{label as string}</td>
+                <td className="px-5 sm:px-6 py-3 sm:py-3.5 text-gray-800">{value as React.ReactNode}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {/* Token creation + cURL */}
+      {/* Sample request (DB-driven) */}
+      {(service.samplePath || sampleBody) && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm font-bold text-gray-900 mb-3">{t("サンプルリクエスト","Sample Request")}</h2>
+          <div className="grid sm:grid-cols-3 gap-2 text-xs mb-3 sm:mb-4">
+            <div className="bg-gray-50 px-3 py-2 rounded">
+              <div className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">method</div>
+              <div className="font-mono font-semibold">{sampleMethod}</div>
+            </div>
+            <div className="bg-gray-50 px-3 py-2 rounded sm:col-span-2">
+              <div className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">path</div>
+              <div className="font-mono font-semibold break-all">{samplePath}</div>
+            </div>
+          </div>
+          {sampleBody !== null && (
+            <>
+              <div className="text-[9px] text-gray-400 uppercase tracking-wider mb-1">{t("リクエストボディ (JSON)","request body (JSON)")}</div>
+              <pre className="bg-gray-900 text-emerald-300 rounded-lg p-3 text-xs font-mono overflow-x-auto">{JSON.stringify(sampleBody, null, 2)}</pre>
+            </>
+          )}
+          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-3 sm:mt-4 mb-1">{t("cURL で叩く","cURL")}</div>
+          <pre className="bg-gray-900 text-emerald-300 rounded-lg p-3 sm:p-4 text-xs font-mono overflow-x-auto">{sampleCurl}</pre>
+        </div>
+      )}
+
+      {/* Token creation + cURL playground */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
+        <div className="px-5 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
           <h2 className="text-sm font-bold text-gray-900">{t("トークン作成例","Token Creation Example")}</h2>
           <p className="text-xs text-gray-400 mt-0.5">{t("左のフォームを入力するとcURLが動的に更新されます","Fill in the form to dynamically update the cURL snippet")}</p>
         </div>
-        <div className="grid grid-cols-2 divide-x divide-gray-100">
+        <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x divide-gray-100">
           {/* Form */}
-          <div className="p-6 flex flex-col gap-4">
+          <div className="p-5 sm:p-6 flex flex-col gap-4 border-b md:border-b-0 border-gray-100">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("トークンタイプ","Token Type")}</label>
-              <div className="flex gap-2">
-                {service.tokenTypes.map((t) => (
-                  <button key={t} onClick={() => setTokenType(t)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${tokenType === t ? "bg-navy text-white border-navy" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}>
-                    {t}
+              <div className="flex gap-2 flex-wrap">
+                {service.tokenTypes.map((tt) => (
+                  <button key={tt} onClick={() => setTokenType(tt)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${tokenType === tt ? "bg-navy text-white border-navy" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}>
+                    {tt}
                   </button>
                 ))}
               </div>
@@ -2618,7 +2726,7 @@ function ServiceDetail({ service, onBack }: { service: Service; onBack: () => vo
             </div>
           </div>
           {/* cURL */}
-          <div className="p-6">
+          <div className="p-5 sm:p-6">
             <CurlSnippet service={service} tokenType={tokenType} apiKey={apiKey} buyerTag={buyerTag} expiry={expiry} />
           </div>
         </div>
@@ -2630,35 +2738,68 @@ function ServiceDetail({ service, onBack }: { service: Service; onBack: () => vo
 function ServiceCard({ service: s, onSelect }: { service: Service; onSelect: () => void }) {
   const t = useT();
   const [copied, setCopied] = useState(false);
-  function copyUrl(e: React.MouseEvent) {
+  function copyId(e: React.MouseEvent) {
     e.stopPropagation();
-    navigator.clipboard.writeText(s.apiSpecUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+    navigator.clipboard.writeText(s.id).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   }
+  const category    = s.category    ?? "その他";
+  const iconEmoji   = s.iconEmoji   ?? CATEGORY_FALLBACK_EMOJI[category] ?? "📦";
+  const categoryCls = CATEGORY_COLORS[category] ?? CATEGORY_COLORS["その他"];
+  const useCases    = s.useCases ?? [];
+
   return (
     <div onClick={onSelect}
-      className="bg-white border border-gray-200 rounded-2xl p-5 cursor-pointer hover:border-gray-400 hover:shadow-sm transition-all flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-2">
+      className="bg-white border border-gray-200 rounded-2xl p-5 cursor-pointer hover:border-gray-400 hover:shadow-md transition-all flex flex-col gap-3 group">
+      {/* Header: icon + name + category + price */}
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 sm:w-11 sm:h-11 flex-shrink-0 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl sm:text-2xl select-none">
+          {iconEmoji}
+        </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${s.type === "MCP" ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>{s.type}</span>
-            <span className="text-xs text-gray-400 truncate">{s.provider}</span>
+            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${categoryCls}`}>{category}</span>
           </div>
-          <p className="text-sm font-bold text-gray-900 truncate">{s.name}</p>
+          <p className="text-sm font-bold text-gray-900 truncate group-hover:text-gray-700 transition-colors">{s.name}</p>
+          <p className="text-[11px] text-gray-400 truncate">{s.provider}</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-xs text-gray-400">{t("1回","Per call")}</p>
-          <p className="text-sm font-bold font-mono text-gray-900">${s.price.toFixed(4)}</p>
+          <p className="text-[10px] text-gray-400 mb-0.5">{t("1回","Per call")}</p>
+          <p className="text-sm font-bold font-mono text-gray-900 whitespace-nowrap">${s.price.toFixed(4)}</p>
         </div>
       </div>
-      <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{s.description}</p>
-      <div className="flex flex-wrap gap-1">
-        {s.tags.slice(0, 4).map((t) => <span key={t} className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-[10px] rounded">{t}</span>)}
-      </div>
-      <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
-        <span className="text-[10px] text-gray-400 font-mono truncate flex-1">{s.apiSpecUrl}</span>
-        <button onClick={copyUrl}
-          className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-gray-800 transition-colors flex-shrink-0 px-2 py-1 rounded border border-gray-200 hover:border-gray-400">
-          {copied ? t("✓ コピー済","✓ Copied") : <><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> {t("コピー","Copy")}</>}
+
+      {/* Tagline */}
+      {s.description ? (
+        <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{s.description}</p>
+      ) : (
+        <p className="text-xs text-gray-300 italic">{t("説明文未設定","No description yet")}</p>
+      )}
+
+      {/* Use cases preview (top 2) */}
+      {useCases.length > 0 && (
+        <ul className="text-[11px] text-gray-500 space-y-1">
+          {useCases.slice(0, 2).map((uc, i) => (
+            <li key={i} className="flex items-start gap-1.5">
+              <span className="text-gray-300 mt-0.5">•</span>
+              <span className="line-clamp-1">{uc}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Footer: tags + Service ID copy */}
+      <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-50">
+        <div className="flex flex-wrap gap-1 min-w-0">
+          {s.tags.slice(0, 3).map((tg) => (
+            <span key={tg} className="px-1.5 py-0.5 bg-gray-50 text-gray-500 text-[10px] rounded-full whitespace-nowrap">{tg}</span>
+          ))}
+          {s.tags.length > 3 && <span className="text-[10px] text-gray-300 px-0.5 py-0.5">+{s.tags.length - 3}</span>}
+        </div>
+        <button onClick={copyId}
+          className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-800 transition-colors flex-shrink-0 px-2 py-1 rounded border border-gray-200 hover:border-gray-400 whitespace-nowrap"
+          title={s.id}>
+          {copied ? t("✓ コピー済","✓ Copied") : <><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> {t("ID コピー","Copy ID")}</>}
         </button>
       </div>
     </div>
@@ -2672,11 +2813,19 @@ function apiServiceToService(s: ApiService): Service {
     provider:       s.providerName,
     type:           s.type,
     price:          parseFloat(s.pricePerCallUsdc) || 0,
-    description:    "",
-    tags:           [],
-    apiSpecUrl:     "",
+    description:    s.description ?? "",
+    tags:           s.tags ?? [],
+    apiSpecUrl:     s.documentationUrl ?? "",
     tokenTypes:     ["kyapay"],
     minTokenAmount: parseFloat(s.pricePerCallUsdc) || 0,
+    longDescription:  s.longDescription ?? undefined,
+    category:         s.category ?? undefined,
+    iconEmoji:        s.iconEmoji ?? undefined,
+    useCases:         s.useCases ?? [],
+    samplePath:       s.samplePath ?? undefined,
+    sampleMethod:     s.sampleMethod ?? undefined,
+    sampleBody:       s.sampleBody ?? undefined,
+    documentationUrl: s.documentationUrl ?? undefined,
   };
 }
 
