@@ -28,12 +28,41 @@ interface UsageResponse {
   clients: ClientBucket[];
 }
 
+interface McpFamilyBucket {
+  family:        string;
+  version:       string;
+  totalRequests: number;
+  uniqueDays:    number;
+  paths: Array<{
+    path:   string;
+    method: string;
+    count:  number;
+    status2xx: number;
+    status4xx: number;
+    status5xx: number;
+  }>;
+  firstSeen: string;
+  lastSeen:  string;
+}
+
+interface McpAccessResponse {
+  windowDays:  number;
+  generatedAt: string;
+  totals: {
+    totalRequests:  number;
+    uniqueFamilies: number;
+    uniqueVersions: number;
+  };
+  families: McpFamilyBucket[];
+}
+
 export default function TelemetryPage() {
   const router = useRouter();
-  const [data,    setData]    = useState<UsageResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string>("");
-  const [days,    setDays]    = useState(30);
+  const [data,     setData]     = useState<UsageResponse | null>(null);
+  const [mcpData,  setMcpData]  = useState<McpAccessResponse | null>(null);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState<string>("");
+  const [days,     setDays]     = useState(30);
 
   const load = useCallback(async (d: number) => {
     setLoading(true); setError("");
@@ -43,17 +72,26 @@ export default function TelemetryPage() {
       return;
     }
     try {
-      const res = await fetch(`${API_URL}/api/telemetry/client-usage?days=${d}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 401) {
+      const headers = { Authorization: `Bearer ${token}` };
+      const [usageRes, mcpRes] = await Promise.all([
+        fetch(`${API_URL}/api/telemetry/client-usage?days=${d}`, { headers }),
+        fetch(`${API_URL}/api/telemetry/mcp-access?days=${Math.min(d, 90)}`, { headers }),
+      ]);
+      if (usageRes.status === 401 || mcpRes.status === 401) {
         localStorage.removeItem("admin_token");
         router.push("/admin/login");
         return;
       }
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "failed");
-      setData(json);
+      const usageJson = await usageRes.json();
+      if (!usageRes.ok) throw new Error(usageJson.error ?? "failed (usage)");
+      setData(usageJson);
+
+      if (mcpRes.ok) {
+        setMcpData(await mcpRes.json());
+      } else {
+        // Don't fail the whole page if mcp endpoint not yet deployed
+        setMcpData(null);
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "取得失敗");
     } finally {
@@ -204,7 +242,85 @@ export default function TelemetryPage() {
               </table>
             </div>
 
-            <p className="text-xs text-gray-400 mt-4">
+            {/* ─── MCP / SDK access (McpAccessLog ベース) ─────── */}
+            <div className="mt-12">
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 className="text-sm font-semibold text-gray-700">SDK / MCP 経由のリクエスト</h2>
+                <span className="text-[10px] text-gray-400">McpAccessLog · token 発行に依存しない直接トラフィック</span>
+              </div>
+
+              {!mcpData && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl px-4 py-3 text-xs">
+                  mcp-access endpoint がまだ未デプロイです。API 再デプロイ後にデータが入ります。
+                </div>
+              )}
+
+              {mcpData && (
+                <>
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    <Kpi label="MCP Requests" value={mcpData.totals.totalRequests} sub={`SDK family のみ (過去${mcpData.windowDays}日)`} />
+                    <Kpi label="Unique Families" value={mcpData.totals.uniqueFamilies} sub="lemon-cake-mcp 等の種類" />
+                    <Kpi label="Unique Versions" value={mcpData.totals.uniqueVersions} sub="family × version の組み合わせ" />
+                  </div>
+
+                  {mcpData.families.length === 0 ? (
+                    <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center text-gray-400 text-sm">
+                      まだ SDK / MCP からのリクエストが記録されていません。
+                      <br />
+                      <span className="text-xs">
+                        誰かが <code className="bg-gray-100 px-1 rounded">npx -y lemon-cake-mcp</code> で起動して setup / list_services を叩けばここに表示されます。
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {mcpData.families.map(f => (
+                        <div key={`${f.family}@${f.version}`} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-mono font-semibold text-gray-900">{f.family}</span>
+                              <span className="font-mono text-xs text-gray-500">v{f.version}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs">
+                              <span className="text-gray-500"><span className="font-bold tabular-nums text-gray-800">{f.totalRequests.toLocaleString()}</span> requests</span>
+                              <span className="text-gray-400">·</span>
+                              <span className="text-gray-500"><span className="tabular-nums">{f.uniqueDays}</span> days active</span>
+                              <span className="text-gray-400">·</span>
+                              <span className="text-gray-400">last: {new Date(f.lastSeen).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}</span>
+                            </div>
+                          </div>
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 text-gray-500 text-[10px]">
+                              <tr>
+                                <th className="text-left px-4 py-2 font-medium">Path</th>
+                                <th className="text-right px-4 py-2 font-medium w-16">Method</th>
+                                <th className="text-right px-4 py-2 font-medium w-16">Total</th>
+                                <th className="text-right px-4 py-2 font-medium w-12">2xx</th>
+                                <th className="text-right px-4 py-2 font-medium w-12">4xx</th>
+                                <th className="text-right px-4 py-2 font-medium w-12">5xx</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {f.paths.map(p => (
+                                <tr key={`${p.method} ${p.path}`}>
+                                  <td className="px-4 py-1.5 font-mono text-xs text-gray-700 break-all">{p.path}</td>
+                                  <td className="px-4 py-1.5 text-right font-mono text-[11px] text-gray-500">{p.method}</td>
+                                  <td className="px-4 py-1.5 text-right tabular-nums font-semibold">{p.count}</td>
+                                  <td className="px-4 py-1.5 text-right tabular-nums text-emerald-600">{p.status2xx || ""}</td>
+                                  <td className="px-4 py-1.5 text-right tabular-nums text-amber-600">{p.status4xx || ""}</td>
+                                  <td className="px-4 py-1.5 text-right tabular-nums text-red-600">{p.status5xx || ""}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <p className="text-xs text-gray-400 mt-8">
               Generated: {new Date(data.generatedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}
             </p>
           </>

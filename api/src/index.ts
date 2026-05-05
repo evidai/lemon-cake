@@ -41,6 +41,7 @@ import { telemetryRouter }          from "./routes/telemetry.js";
 import { adminRouter }              from "./routes/admin.js";
 import { adminRevenueRouter }       from "./routes/admin-revenue.js";
 import { coinbaseRouter }           from "./routes/coinbase.js";
+import { mcpAccessLog }                from "./middleware/mcpAccessLog.js";
 import { startUsdcTransferWorker, handleFailedJob } from "./workers/usdcTransfer.js";
 import { startProviderPayoutCron, stopProviderPayoutCron } from "./workers/providerPayout.js";
 import { startServiceHealthCron, stopServiceHealthCron } from "./workers/serviceHealth.js";
@@ -53,6 +54,8 @@ const app = new OpenAPIHono();
 // ─── グローバルミドルウェア ──────────────────────────────────
 app.use("*", logger());
 app.use("*", prettyJSON());
+// SDK / MCP family の UA を持つアクセスを McpAccessLog に記録（fire-and-forget）
+app.use("/api/*", mcpAccessLog);
 const isDev = process.env.NODE_ENV !== "production";
 
 app.use(

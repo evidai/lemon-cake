@@ -177,3 +177,154 @@ telemetryRouter.openapi(route, async (c) => {
     clients,
   });
 });
+
+// ─── GET /api/telemetry/mcp-access ──────────────────────────
+// SDK/MCP family の API リクエスト集計（McpAccessLog ベース）
+// 既存の client-usage は Token 発行ベース（dashboard 経由のみ映る）
+// だが、こちらは「実際に lemon-cake-mcp / プラグインから API が
+// 叩かれた回数」を family × version × path × status で集計する。
+
+const McpFamilyBucketSchema = z.object({
+  family:        z.string(),
+  version:       z.string(),
+  totalRequests: z.number().int(),
+  uniqueDays:    z.number().int().describe("リクエストのあった日数"),
+  paths: z.array(z.object({
+    path:   z.string(),
+    method: z.string(),
+    count:  z.number().int(),
+    status2xx: z.number().int(),
+    status4xx: z.number().int(),
+    status5xx: z.number().int(),
+  })),
+  firstSeen: z.string(),
+  lastSeen:  z.string(),
+});
+
+const McpAccessResponseSchema = z.object({
+  windowDays:  z.number(),
+  generatedAt: z.string(),
+  totals: z.object({
+    totalRequests: z.number().int(),
+    uniqueFamilies: z.number().int(),
+    uniqueVersions: z.number().int(),
+  }),
+  families: z.array(McpFamilyBucketSchema),
+});
+
+const mcpAccessRoute = createRoute({
+  method: "get",
+  path:   "/mcp-access",
+  tags:   ["Telemetry"],
+  summary: "MCP / SDK family のアクセス集計",
+  description:
+    "McpAccessLog テーブルを集計して、family × version 単位でリクエスト数・" +
+    "成功/失敗内訳・主要 path を返す。管理者JWT が必要。",
+  request: {
+    query: z.object({
+      days: z.coerce.number().int().min(1).max(90).default(30),
+    }),
+  },
+  responses: {
+    200: { description: "OK",           content: { "application/json": { schema: McpAccessResponseSchema } } },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorSchema } } },
+  },
+});
+
+telemetryRouter.openapi(mcpAccessRoute, async (c) => {
+  const auth = c.req.header("Authorization");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401) as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (!(await verifyAdminToken(auth.slice(7)))) return c.json({ error: "Invalid token" }, 401) as any;
+
+  const { days } = c.req.valid("query");
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const logs = await prisma.mcpAccessLog.findMany({
+    where: { createdAt: { gte: since } },
+    select: {
+      family:    true,
+      version:   true,
+      path:      true,
+      method:    true,
+      status:    true,
+      createdAt: true,
+    },
+  });
+
+  type FamilyKey = string; // `${family}@${version}`
+  type PathKey   = string; // `${method} ${path}`
+  type FamilyAgg = {
+    family: string;
+    version: string;
+    totalRequests: number;
+    days: Set<string>;
+    paths: Map<PathKey, { path: string; method: string; count: number; s2: number; s4: number; s5: number }>;
+    firstSeen: Date;
+    lastSeen:  Date;
+  };
+
+  const byFamily = new Map<FamilyKey, FamilyAgg>();
+  for (const l of logs) {
+    const key: FamilyKey = `${l.family}@${l.version}`;
+    let f = byFamily.get(key);
+    if (!f) {
+      f = {
+        family:        l.family,
+        version:       l.version,
+        totalRequests: 0,
+        days:          new Set<string>(),
+        paths:         new Map(),
+        firstSeen:     l.createdAt,
+        lastSeen:      l.createdAt,
+      };
+      byFamily.set(key, f);
+    }
+    f.totalRequests += 1;
+    f.days.add(l.createdAt.toISOString().slice(0, 10));
+    if (l.createdAt < f.firstSeen) f.firstSeen = l.createdAt;
+    if (l.createdAt > f.lastSeen)  f.lastSeen  = l.createdAt;
+
+    // Normalize dynamic path segments (proxy/<serviceId>/<rest>) into a single bucket
+    const normalizedPath = l.path.replace(/^\/api\/proxy\/[^/]+/, "/api/proxy/:serviceId");
+    const pkey: PathKey = `${l.method} ${normalizedPath}`;
+    let p = f.paths.get(pkey);
+    if (!p) {
+      p = { path: normalizedPath, method: l.method, count: 0, s2: 0, s4: 0, s5: 0 };
+      f.paths.set(pkey, p);
+    }
+    p.count += 1;
+    if (l.status >= 200 && l.status < 300) p.s2 += 1;
+    else if (l.status >= 400 && l.status < 500) p.s4 += 1;
+    else if (l.status >= 500) p.s5 += 1;
+  }
+
+  const families = Array.from(byFamily.values())
+    .sort((a, b) => b.totalRequests - a.totalRequests)
+    .map(f => ({
+      family:        f.family,
+      version:       f.version,
+      totalRequests: f.totalRequests,
+      uniqueDays:    f.days.size,
+      paths: Array.from(f.paths.values())
+        .sort((a, b) => b.count - a.count)
+        .map(p => ({ path: p.path, method: p.method, count: p.count, status2xx: p.s2, status4xx: p.s4, status5xx: p.s5 })),
+      firstSeen: f.firstSeen.toISOString(),
+      lastSeen:  f.lastSeen.toISOString(),
+    }));
+
+  const uniqueFamilies = new Set(families.map(f => f.family));
+  const uniqueVersions = new Set(families.map(f => `${f.family}@${f.version}`));
+
+  return c.json({
+    windowDays:  days,
+    generatedAt: new Date().toISOString(),
+    totals: {
+      totalRequests:  logs.length,
+      uniqueFamilies: uniqueFamilies.size,
+      uniqueVersions: uniqueVersions.size,
+    },
+    families,
+  });
+});

@@ -162,6 +162,8 @@ model Service {
   // 1コールあたりの価格 (USDC)
   pricePerCallUsdc Decimal @db.Decimal(38, 18)
 
+  // ─── Marketplace meta — END ──────────────────────────────
+
   // プロキシ転送先 (省略可: 外部APIをラップする場合に指定)
   endpoint   String? // 転送先URL (例: https://api.freee.co.jp/api/1/companies)
   authHeader String? // Authorizationヘッダー値 (例: Bearer sk_live_xxx) 暗号化推奨
@@ -675,4 +677,33 @@ model HotWalletRefill {
 
   @@index([status, createdAt])
   @@map("hot_wallet_refills")
+}
+
+// ─────────────────────────────────────────────────────────────
+// McpAccessLog: SDK / プラグイン / MCP サーバ経由のアクセスログ
+//
+// 既存 telemetry が「Pay Token 発行時の UA」しか見ない（= dashboard
+// UI 経由の自身のテストしか映らない）問題を補完するため、認証不要
+// or 認証要を問わず lemon-cake-mcp 等の SDK family が叩いた API
+// リクエストを別軸で記録する。
+//
+// 書き込みは middleware で fire-and-forget。retention は 30 日
+// （日次 cron で古いレコードを削除）想定。
+// ─────────────────────────────────────────────────────────────
+model McpAccessLog {
+  id String @id @default(cuid())
+
+  path      String // 例: "/api/services", "/api/proxy/cmnxgmxn1.../search"
+  method    String // GET / POST / PUT / PATCH / DELETE
+  family    String // 例: "lemon-cake-mcp", "eliza-plugin-lemoncake", "create-lemon-agent"
+  version   String // 例: "0.4.2"
+  status    Int // HTTP status code
+  userAgent String? @db.Text // raw UA（デバッグ用）
+
+  createdAt DateTime @default(now())
+
+  @@index([family, version, createdAt])
+  @@index([path, createdAt])
+  @@index([createdAt])
+  @@map("mcp_access_logs")
 }
