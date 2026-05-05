@@ -13,57 +13,48 @@ interface ApiService {
   pricePerCallUsdc: string;
   reviewStatus:     "PENDING" | "APPROVED" | "REJECTED";
   verified:         boolean;
-}
-
-// サービス名から推定するカテゴリと説明 (実 DB に description フィールドが無いため UI 側で補完)
-function inferMeta(name: string): { category: string; tags: string[]; description: string } {
-  const n = name.toLowerCase();
-  if (n.includes("serper") || n.includes("search") || n.includes("tavily") || n.includes("exa"))
-    return { category: "検索", tags: ["Web検索", "リアルタイム"], description: "Google 検索結果を構造化 JSON で取得 (organic / news / images)" };
-  if (n.includes("hunter"))
-    return { category: "営業/B2B", tags: ["メール発掘", "コンタクト"], description: "ドメインから企業の連絡先メールアドレスを発掘 (役職・信頼度付き)" };
-  if (n.includes("jina") || n.includes("firecrawl"))
-    return { category: "Web取得", tags: ["スクレイピング", "LLM-ready"], description: "任意の URL を LLM が読みやすい Markdown / clean text に変換" };
-  if (n.includes("ipinfo"))
-    return { category: "データ", tags: ["IP", "geolocation"], description: "IP アドレスの地理情報・ISP・リスクスコア取得" };
-  if (n.includes("exchange") || n.includes("為替"))
-    return { category: "金融", tags: ["為替", "USD/JPY"], description: "リアルタイム為替レート (170+ 通貨)" };
-  if (n.includes("slack"))
-    return { category: "通知", tags: ["Slack", "HITL"], description: "エージェントが Slack に承認依頼を投稿、人間判断を待つ" };
-  if (n.includes("gbiz") || n.includes("法人"))
-    return { category: "日本特化", tags: ["法人情報", "政府"], description: "経済産業省 gBizINFO の企業データベース照会 (法人番号→詳細)" };
-  if (n.includes("インボイス") || n.includes("invoice"))
-    return { category: "日本特化", tags: ["税務", "適格請求書"], description: "国税庁の適格請求書発行事業者番号を照合" };
-  if (n.includes("e-gov") || n.includes("法令"))
-    return { category: "日本特化", tags: ["法令", "政府"], description: "e-Gov 法令データから日本の法律・政令を全文検索" };
-  if (n.includes("vat") || n.includes("abstract"))
-    return { category: "金融", tags: ["VAT", "EU"], description: "EU VAT 番号の有効性検証 (VIES)" };
-  if (n.includes("trustdock") || n.includes("ekyc"))
-    return { category: "本人確認", tags: ["KYC", "ID"], description: "オンライン本人確認 (eKYC) の自動化" };
-  if (n.includes("cloudsign"))
-    return { category: "ドキュメント", tags: ["電子契約", "署名"], description: "クラウドサイン: 電子契約の作成・送信" };
-  if (n.includes("raksul"))
-    return { category: "ドキュメント", tags: ["印刷", "発注"], description: "ラクスル印刷の発注 API" };
-  if (n.includes("coze") || n.includes("test"))
-    return { category: "テスト", tags: ["echo", "デバッグ"], description: "リクエストをそのまま 200 で返すテスト用エンドポイント" };
-  return { category: "その他", tags: [], description: "" };
+  // ─── Marketplace meta（DB） ─────────────────────────────────
+  description?:      string | null;
+  longDescription?:  string | null;
+  category?:         string | null;
+  tags?:             string[];
+  iconEmoji?:        string | null;
+  useCases?:         string[];
+  samplePath?:       string | null;
+  sampleMethod?:     string | null;
+  documentationUrl?: string | null;
 }
 
 const CATEGORY_ORDER = ["検索", "Web取得", "営業/B2B", "金融", "日本特化", "通知", "本人確認", "ドキュメント", "データ", "テスト", "その他"];
 
 const categoryColors: Record<string, string> = {
-  "検索":         "bg-blue-50 text-blue-700",
-  "Web取得":      "bg-purple-50 text-purple-700",
-  "営業/B2B":     "bg-pink-50 text-pink-700",
-  "金融":         "bg-green-50 text-green-700",
-  "日本特化":     "bg-rose-50 text-rose-700",
-  "通知":         "bg-amber-50 text-amber-700",
-  "本人確認":     "bg-cyan-50 text-cyan-700",
-  "ドキュメント": "bg-indigo-50 text-indigo-700",
-  "データ":       "bg-teal-50 text-teal-700",
-  "テスト":       "bg-gray-100 text-gray-600",
-  "その他":       "bg-gray-100 text-gray-600",
+  "検索":         "bg-blue-50 text-blue-700 border-blue-100",
+  "Web取得":      "bg-purple-50 text-purple-700 border-purple-100",
+  "営業/B2B":     "bg-pink-50 text-pink-700 border-pink-100",
+  "金融":         "bg-green-50 text-green-700 border-green-100",
+  "日本特化":     "bg-rose-50 text-rose-700 border-rose-100",
+  "通知":         "bg-amber-50 text-amber-700 border-amber-100",
+  "本人確認":     "bg-cyan-50 text-cyan-700 border-cyan-100",
+  "ドキュメント": "bg-indigo-50 text-indigo-700 border-indigo-100",
+  "データ":       "bg-teal-50 text-teal-700 border-teal-100",
+  "テスト":       "bg-gray-100 text-gray-600 border-gray-200",
+  "その他":       "bg-gray-100 text-gray-600 border-gray-200",
 };
+
+const categoryFallbackEmoji: Record<string, string> = {
+  "検索": "🔍", "Web取得": "🕸️", "営業/B2B": "✉️", "金融": "💱",
+  "日本特化": "🇯🇵", "通知": "💬", "本人確認": "🪪", "ドキュメント": "📝",
+  "データ": "🌐", "テスト": "🧪", "その他": "📦",
+};
+
+// 落ちにくい viewmodel に整形（DB の meta が無いサービスでも壊れない）
+function viewmodel(s: ApiService) {
+  const category    = s.category    ?? "その他";
+  const iconEmoji   = s.iconEmoji   ?? categoryFallbackEmoji[category] ?? "📦";
+  const description = s.description ?? "";
+  const tags        = s.tags        ?? [];
+  return { ...s, category, iconEmoji, description, tags };
+}
 
 export default function ServicesPage() {
   const [services, setServices] = useState<ApiService[]>([]);
@@ -81,7 +72,7 @@ export default function ServicesPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const enriched = useMemo(() => services.map(s => ({ ...s, ...inferMeta(s.name) })), [services]);
+  const enriched = useMemo(() => services.map(viewmodel), [services]);
   const categories = useMemo(() => {
     const set = new Set(enriched.map(s => s.category));
     return CATEGORY_ORDER.filter(c => set.has(c));
@@ -90,7 +81,10 @@ export default function ServicesPage() {
   const filtered = useMemo(() => {
     return enriched.filter(s => {
       if (filter !== "ALL" && s.category !== filter) return false;
-      if (search && !`${s.name} ${s.providerName} ${s.tags.join(" ")} ${s.description}`.toLowerCase().includes(search.toLowerCase())) return false;
+      if (search) {
+        const hay = `${s.name} ${s.providerName} ${s.tags.join(" ")} ${s.description} ${s.longDescription ?? ""}`.toLowerCase();
+        if (!hay.includes(search.toLowerCase())) return false;
+      }
       return true;
     });
   }, [enriched, filter, search]);
@@ -108,21 +102,21 @@ export default function ServicesPage() {
     <main className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-6 py-12">
-          <Link href="/" className="text-sm text-gray-400 hover:text-gray-600 mb-6 inline-block">← LemonCake</Link>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <Link href="/" className="text-sm text-gray-400 hover:text-gray-600 mb-4 sm:mb-6 inline-block">← LemonCake</Link>
           <div className="flex items-end justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-3">利用可能なサービス</h1>
-              <p className="text-gray-500 max-w-2xl">
-                AI エージェントが <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono">ALL</code> スコープの Pay Token で自律課金できる、稼働中のサービス一覧です。
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">利用可能なサービス</h1>
+              <p className="text-sm sm:text-base text-gray-500 max-w-2xl">
+                AI エージェントが <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono">ALL</code> スコープの Pay Token で自律課金できる、稼働中のサービス一覧です。各カードをタップで詳細・サンプルコード。
               </p>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-bold text-gray-900 tabular-nums">{services.length}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{services.length}</div>
               <div className="text-xs text-gray-400 mt-1">稼働中サービス</div>
             </div>
           </div>
-          <div className="mt-6 flex gap-3 flex-wrap">
+          <div className="mt-4 sm:mt-6 flex gap-3 flex-wrap">
             <Link href="/dashboard" className="px-4 py-2 bg-yellow-300 text-gray-900 text-sm font-semibold rounded-xl hover:bg-yellow-400 transition-colors">
               Pay Token を発行する →
             </Link>
@@ -133,17 +127,17 @@ export default function ServicesPage() {
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-3 flex-wrap">
+      {/* Filter bar — sticky on scroll */}
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 flex-wrap">
           <input
             type="text"
-            placeholder="サービス名・タグで検索…"
+            placeholder="サービス名・タグ・用途で検索…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="flex-1 min-w-[200px] px-4 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+            className="flex-1 min-w-[180px] px-4 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
           />
-          <div className="flex gap-1 overflow-x-auto">
+          <div className="flex gap-1 overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
             <button
               onClick={() => setFilter("ALL")}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${filter === "ALL" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
@@ -164,7 +158,7 @@ export default function ServicesPage() {
       </div>
 
       {/* Service grid */}
-      <div className="max-w-5xl mx-auto px-6 py-12 space-y-12">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10 sm:space-y-12">
         {loading && (
           <div className="text-center text-gray-400 py-12">読み込み中…</div>
         )}
@@ -173,27 +167,61 @@ export default function ServicesPage() {
         )}
         {grouped.map(({ cat, services }) => (
           <section key={cat}>
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">{cat}</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex items-baseline justify-between mb-3 sm:mb-4">
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{cat}</h2>
+              <span className="text-[11px] text-gray-400">{services.length} 件</span>
+            </div>
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
               {services.map((svc) => (
-                <Link key={svc.id} href={`/services/${svc.id}`} className="bg-white rounded-2xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-md transition-all block">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <p className="font-semibold text-gray-900">{svc.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{svc.providerName}</p>
+                <Link
+                  key={svc.id}
+                  href={`/services/${svc.id}`}
+                  className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-6 hover:border-gray-400 hover:shadow-md transition-all block group"
+                >
+                  {/* Header: icon + name + category badge */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 flex-shrink-0 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl sm:text-2xl select-none">
+                      {svc.iconEmoji}
                     </div>
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${categoryColors[svc.category] ?? "bg-gray-100 text-gray-600"}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 leading-tight group-hover:text-gray-700 transition-colors">{svc.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">{svc.providerName}</p>
+                    </div>
+                    <span className={`text-[10px] sm:text-xs font-medium px-2 sm:px-2.5 py-1 rounded-full whitespace-nowrap border ${categoryColors[svc.category] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>
                       {svc.category}
                     </span>
                   </div>
-                  {svc.description && <p className="text-sm text-gray-600 mb-4 leading-relaxed">{svc.description}</p>}
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-1.5 flex-wrap">
-                      {svc.tags.map((t) => (
-                        <span key={t} className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{t}</span>
+
+                  {/* Description */}
+                  {svc.description ? (
+                    <p className="text-sm text-gray-600 mb-3 sm:mb-4 leading-relaxed line-clamp-2">{svc.description}</p>
+                  ) : (
+                    <p className="text-sm text-gray-300 italic mb-3 sm:mb-4">説明文未設定</p>
+                  )}
+
+                  {/* Use cases — first 2 if present */}
+                  {svc.useCases && svc.useCases.length > 0 && (
+                    <ul className="text-[11px] text-gray-500 mb-3 sm:mb-4 space-y-1">
+                      {svc.useCases.slice(0, 2).map((uc, i) => (
+                        <li key={i} className="flex items-start gap-1.5">
+                          <span className="text-gray-300 mt-0.5">•</span>
+                          <span className="line-clamp-1">{uc}</span>
+                        </li>
                       ))}
+                    </ul>
+                  )}
+
+                  {/* Footer: tags + price */}
+                  <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-50">
+                    <div className="flex gap-1 flex-wrap min-w-0">
+                      {svc.tags.slice(0, 3).map((t) => (
+                        <span key={t} className="text-[10px] bg-gray-50 text-gray-500 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap">{t}</span>
+                      ))}
+                      {svc.tags.length > 3 && (
+                        <span className="text-[10px] text-gray-300 px-1 py-0.5">+{svc.tags.length - 3}</span>
+                      )}
                     </div>
-                    <span className="text-sm font-mono font-semibold text-gray-900">
+                    <span className="text-sm font-mono font-semibold text-gray-900 whitespace-nowrap">
                       ${parseFloat(svc.pricePerCallUsdc).toFixed(4)}<span className="text-gray-400 font-normal text-xs">/call</span>
                     </span>
                   </div>
@@ -204,8 +232,8 @@ export default function ServicesPage() {
         ))}
 
         {/* CTA */}
-        <div className="bg-gray-900 rounded-2xl p-8 text-center">
-          <p className="text-white font-semibold text-lg mb-2">自分のサービスを登録したい？</p>
+        <div className="bg-gray-900 rounded-2xl p-6 sm:p-8 text-center">
+          <p className="text-white font-semibold text-base sm:text-lg mb-2">自分のサービスを登録したい？</p>
           <p className="text-gray-400 text-sm mb-6">Seller として登録すると、あなたの API を AI エージェントに販売できます。</p>
           <Link href="/register" className="px-6 py-3 bg-yellow-300 text-gray-900 text-sm font-semibold rounded-xl hover:bg-yellow-400 transition-colors inline-block">
             Seller 登録する

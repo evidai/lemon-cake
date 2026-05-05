@@ -30,6 +30,17 @@ const ServiceSchema = z.object({
   endpoint:         z.string().nullable(),
   reviewStatus:     z.enum(["PENDING", "APPROVED", "REJECTED"]),
   verified:         z.boolean(),
+  // ─── Marketplace meta ─────────────────────────────────────
+  description:      z.string().nullable(),
+  longDescription:  z.string().nullable(),
+  category:         z.string().nullable(),
+  tags:             z.array(z.string()),
+  iconEmoji:        z.string().nullable(),
+  useCases:         z.array(z.string()),
+  samplePath:       z.string().nullable(),
+  sampleMethod:     z.string().nullable(),
+  sampleBody:       z.unknown().nullable(),
+  documentationUrl: z.string().nullable(),
   createdAt:        z.string(),
   updatedAt:        z.string(),
 }).openapi("Service");
@@ -44,6 +55,16 @@ function serializeService(s: {
   endpoint: string | null;
   reviewStatus: "PENDING" | "APPROVED" | "REJECTED";
   verified: boolean;
+  description: string | null;
+  longDescription: string | null;
+  category: string | null;
+  tags: string[];
+  iconEmoji: string | null;
+  useCases: string[];
+  samplePath: string | null;
+  sampleMethod: string | null;
+  sampleBody: unknown;
+  documentationUrl: string | null;
   createdAt: Date; updatedAt: Date;
 }) {
   return {
@@ -56,10 +77,34 @@ function serializeService(s: {
     endpoint:         s.endpoint,
     reviewStatus:     s.reviewStatus,
     verified:         s.verified,
+    description:      s.description,
+    longDescription:  s.longDescription,
+    category:         s.category,
+    tags:             s.tags ?? [],
+    iconEmoji:        s.iconEmoji,
+    useCases:         s.useCases ?? [],
+    samplePath:       s.samplePath,
+    sampleMethod:     s.sampleMethod,
+    sampleBody:       s.sampleBody ?? null,
+    documentationUrl: s.documentationUrl,
     createdAt:        s.createdAt.toISOString(),
     updatedAt:        s.updatedAt.toISOString(),
   };
 }
+
+// Shared zod for marketplace-meta fields used by both POST and PATCH.
+const MarketplaceMetaShape = {
+  description:      z.string().max(280).nullable().optional(),
+  longDescription:  z.string().max(20000).nullable().optional(),
+  category:         z.string().max(50).nullable().optional(),
+  tags:             z.array(z.string().max(40)).max(20).optional(),
+  iconEmoji:        z.string().max(8).nullable().optional(),
+  useCases:         z.array(z.string().max(140)).max(8).optional(),
+  samplePath:       z.string().max(500).nullable().optional(),
+  sampleMethod:     z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]).nullable().optional(),
+  sampleBody:       z.any().optional(),
+  documentationUrl: z.string().url().max(500).nullable().optional(),
+};
 
 // ─── GET /api/services ───────────────────────────────────────
 
@@ -109,6 +154,7 @@ const CreateServiceBody = z.object({
     .openapi({ example: "0.001" }),
   endpoint:         z.string().url().optional().openapi({ example: "https://api.freee.co.jp/api/1" }),
   authHeader:       z.string().optional().openapi({ example: "Bearer sk_live_xxx" }),
+  ...MarketplaceMetaShape,
 }).openapi("CreateServiceBody");
 
 servicesRouter.openapi(
@@ -150,10 +196,82 @@ servicesRouter.openapi(
         pricePerCallUsdc: body.pricePerCallUsdc,
         ...(body.endpoint   ? { endpoint:   body.endpoint }   : {}),
         ...(body.authHeader ? { authHeader: body.authHeader } : {}),
+        ...(body.description      !== undefined ? { description:      body.description }      : {}),
+        ...(body.longDescription  !== undefined ? { longDescription:  body.longDescription }  : {}),
+        ...(body.category         !== undefined ? { category:         body.category }         : {}),
+        ...(body.tags             !== undefined ? { tags:             body.tags }             : {}),
+        ...(body.iconEmoji        !== undefined ? { iconEmoji:        body.iconEmoji }        : {}),
+        ...(body.useCases         !== undefined ? { useCases:         body.useCases }         : {}),
+        ...(body.samplePath       !== undefined ? { samplePath:       body.samplePath }       : {}),
+        ...(body.sampleMethod     !== undefined ? { sampleMethod:     body.sampleMethod }     : {}),
+        ...(body.sampleBody       !== undefined ? { sampleBody:       body.sampleBody }       : {}),
+        ...(body.documentationUrl !== undefined ? { documentationUrl: body.documentationUrl } : {}),
       },
       include: { provider: { select: { name: true } } },
     });
     return c.json(serializeService(service), 201);
+  },
+);
+
+// ─── PATCH /api/services/:id ─────────────────────────────────
+// Seller-curated marketplace meta update.
+// Admin-only for now; will be opened to the service's provider once
+// per-provider auth is wired up.
+
+const UpdateServiceBody = z.object(MarketplaceMetaShape).openapi("UpdateServiceBody");
+
+servicesRouter.openapi(
+  createRoute({
+    method: "patch",
+    path:   "/{id}",
+    tags:   ["Services"],
+    summary: "サービス情報更新（マーケット表示用メタ）",
+    request: {
+      params: z.object({ id: z.string() }),
+      body: {
+        content: { "application/json": { schema: UpdateServiceBody } },
+        required: true,
+      },
+    },
+    responses: {
+      200: {
+        content: { "application/json": { schema: ServiceSchema } },
+        description: "更新完了",
+      },
+      404: {
+        content: { "application/json": { schema: ErrorSchema } },
+        description: "Service not found",
+      },
+    },
+  }),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async (c: any) => {
+    const authError = await requireAdmin(c.req.header("Authorization"));
+    if (authError) return c.json({ error: authError }, 401);
+
+    const { id } = c.req.valid("param");
+    const body = c.req.valid("json");
+
+    const exists = await prisma.service.findUnique({ where: { id } });
+    if (!exists) throw new HTTPException(404, { message: "Service not found" });
+
+    const updated = await prisma.service.update({
+      where: { id },
+      data: {
+        ...(body.description      !== undefined ? { description:      body.description }      : {}),
+        ...(body.longDescription  !== undefined ? { longDescription:  body.longDescription }  : {}),
+        ...(body.category         !== undefined ? { category:         body.category }         : {}),
+        ...(body.tags             !== undefined ? { tags:             body.tags }             : {}),
+        ...(body.iconEmoji        !== undefined ? { iconEmoji:        body.iconEmoji }        : {}),
+        ...(body.useCases         !== undefined ? { useCases:         body.useCases }         : {}),
+        ...(body.samplePath       !== undefined ? { samplePath:       body.samplePath }       : {}),
+        ...(body.sampleMethod     !== undefined ? { sampleMethod:     body.sampleMethod }     : {}),
+        ...(body.sampleBody       !== undefined ? { sampleBody:       body.sampleBody }       : {}),
+        ...(body.documentationUrl !== undefined ? { documentationUrl: body.documentationUrl } : {}),
+      },
+      include: { provider: { select: { name: true } } },
+    });
+    return c.json(serializeService(updated));
   },
 );
 

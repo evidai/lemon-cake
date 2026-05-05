@@ -145,6 +145,20 @@ model Service {
   name String
   type ServiceType @default(API)
 
+  // ─── Marketplace listing meta (Phase 3: seller-curated) ──────────
+  // Filled by sellers. UI uses these to render the Glama-style
+  // service detail / list cards. All optional so legacy rows survive.
+  description      String? // 1〜2 行のキャッチコピー (カードに表示)
+  longDescription  String? @db.Text // 詳細ページで表示する markdown 本文
+  category         String? // 主カテゴリ (検索 / 金融 / 日本特化 / etc.)
+  tags             String[] @default([]) // 検索・絞り込み用タグ
+  iconEmoji        String? // 1 文字絵文字 (🔍 など)
+  useCases         String[] @default([]) // エージェント用途の箇条書き
+  samplePath       String? // サンプルリクエストの sub-path (例: /search)
+  sampleMethod     String? // GET / POST / PUT / PATCH / DELETE
+  sampleBody       Json? // サンプルリクエスト body (POST/PUT/PATCH 用)
+  documentationUrl String? // 提供元のドキュメント URL
+
   // 1コールあたりの価格 (USDC)
   pricePerCallUsdc Decimal @db.Decimal(38, 18)
 
