@@ -548,8 +548,8 @@ const PROMPTS = [
     title: "🇯🇵 Validate a Japanese invoice number",
     description: "Use the check_tax tool to verify a 適格請求書発行事業者番号 against the NTA registry.",
     arguments: [
-      { name: "registrationNumber", description: "T + 13 digit number (e.g. T1234567890123)", required: true },
-      { name: "amountJpy", description: "Gross amount in JPY", required: false },
+      { name: "registrationNumber", description: "T + 13 digit number. Leave empty to use a sample (T1234567890123).", required: false },
+      { name: "amountJpy", description: "Gross amount in JPY. Defaults to 110000.", required: false },
     ],
     template: (args: Record<string, string | undefined>) => [
       `Use lemon-cake's \`check_tax\` tool to validate registration number ${args.registrationNumber ?? "T1234567890123"}.`,
