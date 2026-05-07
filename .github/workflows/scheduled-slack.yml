@@ -1,0 +1,59 @@
+name: Scheduled Slack Tasks
+
+on:
+  schedule:
+    # JST = UTC+9. Times here are UTC. Off-:00/:30 minute jitter to avoid fleet sync.
+    - cron: "12 0 * * *"   # 09:12 JST → xhn-engagement
+    - cron: "8 2 * * *"    # 11:08 JST → daily-prospect
+    - cron: "2 5 * * *"    # 14:02 JST → show-hn-launch
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Which task to run on demand"
+        type: choice
+        required: true
+        default: xhn-engagement
+        options:
+          - xhn-engagement
+          - daily-prospect
+          - show-hn-launch
+
+permissions:
+  contents: read
+
+jobs:
+  run-task:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve task
+        id: pick
+        run: |
+          if [ -n "${{ github.event.inputs.task }}" ]; then
+            echo "task=${{ github.event.inputs.task }}" >> "$GITHUB_OUTPUT"
+          else
+            case "${{ github.event.schedule }}" in
+              "12 0 * * *")  echo "task=xhn-engagement" >> "$GITHUB_OUTPUT" ;;
+              "8 2 * * *")   echo "task=daily-prospect" >> "$GITHUB_OUTPUT" ;;
+              "2 5 * * *")   echo "task=show-hn-launch" >> "$GITHUB_OUTPUT" ;;
+              *) echo "task=unknown" >> "$GITHUB_OUTPUT" ;;
+            esac
+          fi
+
+      - name: Run ${{ steps.pick.outputs.task }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        working-directory: scripts/slack-tasks
+        run: |
+          case "${{ steps.pick.outputs.task }}" in
+            xhn-engagement) python xhn_engagement.py ;;
+            daily-prospect) python daily_prospect.py ;;
+            show-hn-launch) python show_hn_launch.py ;;
+            *) echo "unknown task"; exit 1 ;;
+          esac
