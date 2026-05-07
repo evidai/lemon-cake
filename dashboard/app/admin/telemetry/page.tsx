@@ -162,6 +162,49 @@ export default function TelemetryPage() {
           </div>
         </div>
 
+        {/* External user-behavior dashboards */}
+        <div className="mb-8 bg-white border border-gray-200 rounded-xl px-4 py-3">
+          <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-2">外部ユーザー行動ダッシュボード</div>
+          <div className="flex flex-wrap gap-2">
+            <ExternalLink
+              href="https://glama.ai/mcp/servers/evidai/lemon-cake/admin/analytics"
+              label="Glama Analytics"
+              hint="検索インプレッション / クリック / プロフィール閲覧 / ツール呼出"
+              accent="purple"
+            />
+            <ExternalLink
+              href="https://www.npmjs.com/package/pay-per-call-mcp"
+              label="npm: pay-per-call-mcp"
+              hint="新パッケージ DL 数（v0.5.0+）"
+              accent="red"
+            />
+            <ExternalLink
+              href="https://www.npmjs.com/package/lemon-cake-mcp"
+              label="npm: lemon-cake-mcp"
+              hint="旧パッケージ（ラッパー）DL 数"
+              accent="red"
+            />
+            <ExternalLink
+              href="https://glama.ai/mcp/servers/evidai/lemon-cake"
+              label="Glama Listing"
+              hint="公開リスティング（ユーザー視点）"
+              accent="gray"
+            />
+            <ExternalLink
+              href="https://github.com/evidai/lemon-cake/pulse"
+              label="GitHub Pulse"
+              hint="Star / Fork / Issue の推移"
+              accent="gray"
+            />
+            <ExternalLink
+              href="https://npm-stat.com/charts.html?package=pay-per-call-mcp&package=lemon-cake-mcp"
+              label="npm-stat 比較"
+              hint="新旧パッケージ DL 推移を並べて比較"
+              accent="red"
+            />
+          </div>
+        </div>
+
         {loading && <div className="text-gray-400 text-sm">読み込み中…</div>}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">{error}</div>
@@ -337,5 +380,36 @@ function Kpi({ label, value, sub }: { label: string; value: number; sub: string 
       <p className="text-2xl font-bold text-gray-900 mt-2 tabular-nums">{value.toLocaleString()}</p>
       <p className="text-xs text-gray-400 mt-1">{sub}</p>
     </div>
+  );
+}
+
+function ExternalLink({
+  href,
+  label,
+  hint,
+  accent,
+}: {
+  href: string;
+  label: string;
+  hint: string;
+  accent: "purple" | "red" | "gray";
+}) {
+  const dotClass = {
+    purple: "bg-purple-500",
+    red:    "bg-red-500",
+    gray:   "bg-gray-400",
+  }[accent];
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={hint}
+      className="group inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 hover:bg-white hover:border-gray-300 hover:shadow-sm transition"
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />
+      <span>{label}</span>
+      <span className="text-gray-300 group-hover:text-gray-500 transition">↗</span>
+    </a>
   );
 }
