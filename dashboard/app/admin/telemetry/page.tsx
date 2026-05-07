@@ -302,7 +302,7 @@ export default function TelemetryPage() {
                 <>
                   <div className="grid grid-cols-3 gap-4 mb-6">
                     <Kpi label="MCP Requests" value={mcpData.totals.totalRequests} sub={`SDK family のみ (過去${mcpData.windowDays}日)`} />
-                    <Kpi label="Unique Families" value={mcpData.totals.uniqueFamilies} sub="lemon-cake-mcp 等の種類" />
+                    <Kpi label="Unique Families" value={mcpData.totals.uniqueFamilies} sub="pay-per-call-mcp / lemon-cake-mcp 等の種類" />
                     <Kpi label="Unique Versions" value={mcpData.totals.uniqueVersions} sub="family × version の組み合わせ" />
                   </div>
 
@@ -311,7 +311,7 @@ export default function TelemetryPage() {
                       まだ SDK / MCP からのリクエストが記録されていません。
                       <br />
                       <span className="text-xs">
-                        誰かが <code className="bg-gray-100 px-1 rounded">npx -y lemon-cake-mcp</code> で起動して setup / list_services を叩けばここに表示されます。
+                        誰かが <code className="bg-gray-100 px-1 rounded">npx -y pay-per-call-mcp</code>（または旧 <code className="bg-gray-100 px-1 rounded">lemon-cake-mcp</code>）で起動して setup / list_services を叩けばここに表示されます。
                       </span>
                     </div>
                   ) : (

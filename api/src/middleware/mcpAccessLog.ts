@@ -24,7 +24,8 @@ import { prisma } from "../lib/prisma.js";
 
 const SDK_FAMILY_REGEX = /^([a-z][a-z0-9-]+)\/([\d.]+)/i;
 const KNOWN_FAMILIES = new Set([
-  "lemon-cake-mcp",
+  "pay-per-call-mcp",      // canonical MCP package (v0.5.0+)
+  "lemon-cake-mcp",        // legacy alias / wrapper — still in use
   "eliza-plugin-lemoncake",
   "create-lemon-agent",
   "lemoncake-mcp",

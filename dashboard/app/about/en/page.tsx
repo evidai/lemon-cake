@@ -118,13 +118,13 @@ const sellerFeatures = [
 const integrations = [
   {
     icon: <IconTerminal />,
-    badge: "npm · lemon-cake-mcp",
+    badge: "npm · pay-per-call-mcp",
     title: "MCP server",
     subtitle: "Plug into Claude / Cursor",
     body: "Start with npx in a single command. Append to claude_desktop_config.json and Claude Desktop or Cursor immediately gets every LemonCake capability.",
-    code: `npx lemon-cake-mcp`,
+    code: `npx -y pay-per-call-mcp`,
     tools: ["list_services", "call_service", "check_balance", "setup"],
-    href: "https://www.npmjs.com/package/lemon-cake-mcp",
+    href: "https://www.npmjs.com/package/pay-per-call-mcp",
     published: true,
   },
   {
@@ -389,7 +389,7 @@ export default function AboutPageEn() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="rounded-xl bg-black/40 border border-white/8 px-3.5 py-3">
                   <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1.5">Claude / Cursor</p>
-                  <code className="text-[12px] font-mono text-[#fffd43] break-all">npx lemon-cake-mcp</code>
+                  <code className="text-[12px] font-mono text-[#fffd43] break-all">npx -y pay-per-call-mcp</code>
                 </div>
                 <div className="rounded-xl bg-black/40 border border-white/8 px-3.5 py-3">
                   <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1.5">Eliza v2</p>
@@ -592,7 +592,7 @@ export default function AboutPageEn() {
               <ul className="flex flex-col gap-2">
                 {[
                   { label: "Dashboard",    href: "/login" },
-                  { label: "MCP server",   href: "https://www.npmjs.com/package/lemon-cake-mcp" },
+                  { label: "MCP server",   href: "https://www.npmjs.com/package/pay-per-call-mcp" },
                   { label: "Eliza plugin", href: "https://www.npmjs.com/package/eliza-plugin-lemoncake" },
                   { label: "Documentation", href: "https://lemoncake.xyz/docs" },
                 ].map(({ label, href }) => (

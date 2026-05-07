@@ -91,7 +91,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const transport = new StdioClientTransport({
-  command: "npx", args: ["-y", "lemon-cake-mcp"],
+  command: "npx", args: ["-y", "pay-per-call-mcp"],
   env: { ...process.env, LEMON_CAKE_PAY_TOKEN: process.env.LEMON_CAKE_PAY_TOKEN! },
 });
 const mcp = new Client({ name: "my-agent", version: "1.0.0" });
