@@ -1,5 +1,7 @@
 # 🍋 LemonCake — AI Agent Wallet & USDC Pay-per-call MCP Server
 
+> 🎮 **Try instantly — no signup needed.** Click **"Try in Browser"** above → leave **BOTH** env var fields **EMPTY** → click **Start Inspector**. Demo Mode hits real Wikipedia / httpbin / live FX APIs. No account, no card, no API key.
+
 [![npm version](https://img.shields.io/npm/v/lemon-cake-mcp)](https://www.npmjs.com/package/lemon-cake-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/lemon-cake-mcp)](https://www.npmjs.com/package/lemon-cake-mcp)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)

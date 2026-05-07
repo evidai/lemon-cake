@@ -270,9 +270,36 @@ function credentialError(envVar: string, toolName: string) {
 
 // ── サーバー初期化 ────────────────────────────────────────────────────────────
 
+const SERVER_INSTRUCTIONS = DEMO_MODE
+  ? [
+      "🎮 DEMO MODE ACTIVE — no signup, no API key, no card required.",
+      "",
+      "You are connected with no credentials, so this server is in Demo Mode:",
+      "  • list_services      → marketplace listing + 3 free demo services",
+      "  • call_service(demo_search)  → real Wikipedia search",
+      "  • call_service(demo_fx)      → real live FX rates (open.er-api.com)",
+      "  • call_service(demo_echo)    → httpbin.org echo",
+      "  • check_balance      → mock $1.00 balance",
+      "  • check_tax / get_service_stats → real (no auth)",
+      "",
+      "👉 Quick start: try the `explore-demo` prompt above, or call `setup` for the full guide.",
+      "",
+      "To unlock paid services (Serper, Hunter.io, gBizINFO, NTA invoice check, etc.),",
+      "set LEMON_CAKE_PAY_TOKEN. Free signup at https://lemoncake.xyz/register.",
+    ].join("\n")
+  : [
+      "LemonCake MCP — Pay-per-call USDC payments for any HTTP API.",
+      "",
+      "Call `setup` first to verify credentials and list available paid services.",
+      "Use `list_services` to browse the marketplace, then `call_service` to invoke.",
+    ].join("\n");
+
 const server = new Server(
   { name: "lemon-cake-mcp", version: MCP_VERSION },
-  { capabilities: { tools: {}, prompts: {} } },
+  {
+    capabilities: { tools: {}, prompts: {}, logging: {} },
+    instructions: SERVER_INSTRUCTIONS,
+  },
 );
 
 // ── ツール定義 ────────────────────────────────────────────────────────────────
@@ -891,6 +918,25 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("[LemonCake MCP] Ready.");
+
+  // 接続直後に Inspector の Request Log にバナーを出す。
+  // Glama UI の env-var ダイアログを抜けて Inspector まで来た人に
+  // 「空のまま動いてる、Demo Mode だよ」を即座に伝えるのが目的。
+  try {
+    await server.notification({
+      method: "notifications/message",
+      params: {
+        level: "info",
+        logger: "lemon-cake-mcp",
+        data: DEMO_MODE
+          ? "🎮 DEMO MODE — connected without credentials. Try the `explore-demo` prompt or call `setup` for guided onboarding. No signup needed."
+          : `LemonCake MCP v${MCP_VERSION} ready. Run \`setup\` to verify credentials and \`list_services\` to browse paid APIs.`,
+      },
+    });
+  } catch {
+    // Older clients may not accept notifications before initialize completes.
+    // The console.error banners above already cover stdio-only environments.
+  }
 }
 
 main().catch((err) => {
