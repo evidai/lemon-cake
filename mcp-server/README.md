@@ -1,4 +1,4 @@
-# 🍋 lemon-cake-mcp
+# 🍋 LemonCake — AI Agent Wallet & USDC Pay-per-call MCP Server
 
 [![npm version](https://img.shields.io/npm/v/lemon-cake-mcp)](https://www.npmjs.com/package/lemon-cake-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/lemon-cake-mcp)](https://www.npmjs.com/package/lemon-cake-mcp)

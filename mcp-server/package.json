@@ -1,7 +1,7 @@
 {
   "name": "lemon-cake-mcp",
-  "version": "0.4.4",
-  "description": "LemonCake MCP Server — Give your AI agent a wallet. Pay-per-call M2M payment infrastructure.",
+  "version": "0.4.5",
+  "description": "Give your AI agent a wallet. Pay-per-call USDC payments for any HTTP API — agent wallet, M2M finance, Japan tax invoice check.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -14,15 +14,25 @@
   ],
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "ai-agent",
+    "agent-wallet",
     "payment",
+    "pay-per-call",
     "usdc",
+    "stablecoin",
+    "crypto",
+    "wallet",
     "m2m",
+    "api-proxy",
+    "api-gateway",
+    "finance",
+    "japan-tax",
+    "invoice",
+    "autonomous-agent",
     "llm",
-    "langchain",
-    "autogen",
     "claude",
-    "model-context-protocol"
+    "cursor"
   ],
   "repository": {
     "type": "git",
