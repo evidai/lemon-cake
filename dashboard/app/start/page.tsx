@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CopyCommand } from "./CopyCommand";
+import { TerminalDemo } from "./TerminalDemo";
 
 const NPM_COMMAND = "npx -y pay-per-call-mcp";
 const NPM_URL     = "https://www.npmjs.com/package/pay-per-call-mcp";
@@ -57,55 +58,66 @@ export default function StartPage() {
           <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[820px] h-[420px] rounded-full bg-[#fffd43]/5 blur-3xl" />
         </div>
 
-        <div className="relative max-w-6xl mx-auto px-6 pt-20 pb-24 md:pt-28 md:pb-32">
-          <div className="flex flex-col items-start gap-6 max-w-4xl">
-            <span className="inline-flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-[#fffd43]/80 bg-[#fffd43]/5 border border-[#fffd43]/20 rounded-full px-3 py-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#fffd43] animate-pulse" />
-              MCP server · USDC · agent payments
-            </span>
+        <div className="relative max-w-6xl mx-auto px-6 pt-16 pb-20 md:pt-24 md:pb-28">
+          <div className="grid lg:grid-cols-[1.05fr_1fr] gap-10 lg:gap-12 items-center">
+            {/* left: copy */}
+            <div className="flex flex-col items-start gap-6">
+              <span className="inline-flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-[#fffd43]/80 bg-[#fffd43]/5 border border-[#fffd43]/20 rounded-full px-3 py-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#fffd43] animate-pulse" />
+                MCP server · USDC · agent payments
+              </span>
 
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.05]">
-              Pay-per-call USDC <br className="hidden md:inline" />
-              for <span className="text-[#fffd43]">any HTTP API</span>.
-            </h1>
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.05]">
+                Pay-per-call USDC <br className="hidden md:inline" />
+                for <span className="text-[#fffd43]">any HTTP API</span>.
+              </h1>
 
-            <p className="text-lg md:text-xl text-white/60 leading-relaxed max-w-2xl">
-              Give your AI agent a wallet. Your Claude / Cursor / Cline calls
-              Tavily, ElevenLabs, gBizINFO — without you handing over API keys.
-              Per-call billing in USDC, refunds on failure, capped spending.
-            </p>
-
-            <div className="w-full max-w-2xl mt-4 space-y-3">
-              <CopyCommand value={NPM_COMMAND} label="Copy install command" />
-              <p className="text-[12px] text-white/40 leading-relaxed">
-                Paste into any terminal. With <strong className="text-white/60">no environment variables</strong>, it boots in <span className="text-[#fffd43]">Demo Mode</span> — real Wikipedia / FX / httpbin, no signup, no card.
+              <p className="text-base md:text-lg text-white/60 leading-relaxed">
+                Give your AI agent a wallet. Your Claude / Cursor / Cline calls
+                Tavily, ElevenLabs, gBizINFO — without you handing over API keys.
+                Per-call billing in USDC, refunds on failure, capped spending.
               </p>
+
+              <div className="w-full space-y-3">
+                <CopyCommand value={NPM_COMMAND} label="Copy install command" />
+                <p className="text-[12px] text-white/40 leading-relaxed">
+                  Paste into any terminal. With <strong className="text-white/60">no environment variables</strong>, it boots in <span className="text-[#fffd43]">Demo Mode</span> — real Wikipedia / FX / httpbin, no signup, no card.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3 mt-1">
+                <a
+                  href={GLAMA_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#fffd43] text-[#06060a] font-semibold text-sm hover:bg-[#fffd43]/90 transition"
+                >
+                  Try in browser sandbox →
+                </a>
+                <a
+                  href="#how-it-works"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white/80 font-semibold text-sm hover:bg-white/10 transition"
+                >
+                  How it works
+                </a>
+              </div>
+
+              {/* badges row */}
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 text-[11px] text-white/40">
+                <Pill label="MIT licensed" />
+                <Pill label="MCP 1.10+" />
+                <Pill label="Node 20+" />
+                <Pill label="Listed on Glama" accent />
+                <Pill label="Demo Mode (no auth)" accent />
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-3 mt-2">
-              <a
-                href={GLAMA_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#fffd43] text-[#06060a] font-semibold text-sm hover:bg-[#fffd43]/90 transition"
-              >
-                Try in browser sandbox →
-              </a>
-              <a
-                href="#how-it-works"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white/80 font-semibold text-sm hover:bg-white/10 transition"
-              >
-                How it works
-              </a>
-            </div>
-
-            {/* badges row */}
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-6 text-[11px] text-white/40">
-              <Pill label="MIT licensed" />
-              <Pill label="MCP 1.10+" />
-              <Pill label="Node 20+" />
-              <Pill label="Listed on Glama" accent />
-              <Pill label="Demo Mode (no auth)" accent />
+            {/* right: live terminal demo */}
+            <div className="lg:sticky lg:top-20">
+              <TerminalDemo />
+              <p className="text-[11px] text-white/30 mt-3 text-center font-mono">
+                ↑ live capture · this is what `npx -y pay-per-call-mcp` actually outputs
+              </p>
             </div>
           </div>
         </div>

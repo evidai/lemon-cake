@@ -47,6 +47,12 @@ html, body {
 }
 .animate-slide-down { animation: slide-down 0.12s ease-out; }
 
+/* ── /start terminal cursor blink ───────────────────────── */
+@keyframes ppc-cursor {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
 /* ── Recharts (light) ───────────────────────────────────── */
 .recharts-cartesian-axis-tick-value {
   fill: #9ca3af !important;
