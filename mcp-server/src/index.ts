@@ -39,7 +39,7 @@ const BUYER_JWT = process.env.LEMON_CAKE_BUYER_JWT ?? "";
 import { createRequire } from "node:module";
 const requireFromHere = createRequire(import.meta.url);
 const MCP_VERSION: string = (requireFromHere("../package.json") as { version: string }).version;
-const USER_AGENT  = `lemon-cake-mcp/${MCP_VERSION} (node/${process.versions.node}; ${process.platform} ${process.arch})`;
+const USER_AGENT  = `pay-per-call-mcp/${MCP_VERSION} (node/${process.versions.node}; ${process.platform} ${process.arch})`;
 
 // ── デモモード（認証情報なしで Glama Inspector / 新規ユーザーが試せるように） ──
 const DEMO_MODE = !PAY_TOKEN && !BUYER_JWT;
@@ -295,7 +295,7 @@ const SERVER_INSTRUCTIONS = DEMO_MODE
     ].join("\n");
 
 const server = new Server(
-  { name: "lemon-cake-mcp", version: MCP_VERSION },
+  { name: "pay-per-call-mcp", version: MCP_VERSION },
   {
     capabilities: { tools: {}, prompts: {}, logging: {} },
     instructions: SERVER_INSTRUCTIONS,
@@ -552,7 +552,7 @@ const PROMPTS = [
     title: "🎮 Try the demo (no signup)",
     description: "Walk through demo_search → demo_fx → demo_echo with no auth required.",
     template: [
-      "Use the lemon-cake MCP server in demo mode (no auth needed) to:",
+      "Use the LemonCake MCP server (pay-per-call-mcp) in demo mode (no auth needed) to:",
       "1. Run `setup` to confirm we're in demo mode.",
       "2. Run `list_services` and tell me which entries are demos.",
       "3. Call `call_service` with serviceId='demo_search' and body={\"q\":\"Model Context Protocol\"} — show me the Wikipedia results.",
@@ -565,7 +565,7 @@ const PROMPTS = [
     title: "🛍 Discover marketplace services",
     description: "List approved services and pick one that matches a use case.",
     template: [
-      "Using lemon-cake's `list_services`, list every approved service with its category and price.",
+      "Using this server's `list_services` tool, list every approved service with its category and price.",
       "Then recommend the top 3 for an AI agent that needs to: (a) find recent news, (b) verify a Japanese invoice number, (c) translate text.",
       "For each recommendation, show the exact `call_service` arguments to invoke it.",
     ].join("\n"),
@@ -579,7 +579,7 @@ const PROMPTS = [
       { name: "amountJpy", description: "Gross amount in JPY. Defaults to 110000.", required: false },
     ],
     template: (args: Record<string, string | undefined>) => [
-      `Use lemon-cake's \`check_tax\` tool to validate registration number ${args.registrationNumber ?? "T1234567890123"}.`,
+      `Use the \`check_tax\` tool to validate registration number ${args.registrationNumber ?? "T1234567890123"}.`,
       args.amountJpy ? `The transaction amount is ${args.amountJpy} JPY (tax-inclusive).` : "Use a sample amount of 110000 JPY.",
       "Report: (1) is the number valid? (2) registered name and address. (3) does source-withholding (源泉徴収) apply, and how much?",
     ].join("\n"),
@@ -596,7 +596,7 @@ const PROMPTS = [
       const sid = args.serviceId ?? "demo_search";
       const q = args.query ?? "AI agent payments 2026";
       return [
-        `Demonstrate the lemon-cake spending pattern with serviceId=\`${sid}\`:`,
+        `Demonstrate the LemonCake spending pattern with serviceId=\`${sid}\`:`,
         "1. Call `check_balance` and report current USDC balance + KYA tier.",
         `2. Call \`call_service\` with serviceId='${sid}', method='POST', path='/search', body={\"q\":\"${q}\"}.`,
         "3. Call `check_balance` again and report the delta. If we're in demo mode, note that no real charge happened.",
@@ -609,7 +609,7 @@ const PROMPTS = [
     title: "🔄 Compare demo vs real upstream",
     description: "Hit the same logical query against demo_search (Wikipedia) and a real marketplace search service to see the difference.",
     template: [
-      "Compare lemon-cake's demo vs real search:",
+      "Compare LemonCake's demo vs real search:",
       "1. Call `call_service` with serviceId='demo_search', body={\"q\":\"Model Context Protocol\"}. Note the Wikipedia results.",
       "2. From `list_services`, find a real Serper / search service (category='検索') and call it with the same query.",
       "3. Tabulate: result count, top result title, latency feel (you'll see chargeId only for the real one).",
@@ -720,9 +720,9 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         steps.push("");
         steps.push(JSON.stringify({
           mcpServers: {
-            "lemon-cake": {
+            "pay-per-call": {
               command: "npx",
-              args:    ["-y", "lemon-cake-mcp"],
+              args:    ["-y", "pay-per-call-mcp"],
               env: {
                 LEMON_CAKE_PAY_TOKEN:  hasPayToken ? "(設定済み)" : "<ダッシュボードで発行したPay Token JWT>",
                 LEMON_CAKE_BUYER_JWT:  hasBuyerJwt ? "(設定済み)" : "<ダッシュボードのSettingsからコピーしたJWT>",
@@ -730,6 +730,8 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
             },
           },
         }, null, 2));
+        steps.push("");
+        steps.push("※ 旧パッケージ名 `lemon-cake-mcp` も同じく動作します（ラッパーとして維持中）。");
 
         return json({
           version:       MCP_VERSION,
@@ -927,7 +929,7 @@ async function main() {
       method: "notifications/message",
       params: {
         level: "info",
-        logger: "lemon-cake-mcp",
+        logger: "pay-per-call-mcp",
         data: DEMO_MODE
           ? "🎮 DEMO MODE — connected without credentials. Try the `explore-demo` prompt or call `setup` for guided onboarding. No signup needed."
           : `LemonCake MCP v${MCP_VERSION} ready. Run \`setup\` to verify credentials and \`list_services\` to browse paid APIs.`,

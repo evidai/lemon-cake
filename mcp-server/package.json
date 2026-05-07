@@ -1,11 +1,11 @@
 {
-  "name": "lemon-cake-mcp",
-  "version": "0.4.6",
-  "description": "Give your AI agent a wallet. Pay-per-call USDC payments for any HTTP API — agent wallet, M2M finance, Japan tax invoice check.",
+  "name": "pay-per-call-mcp",
+  "version": "0.5.0",
+  "description": "Pay-per-call USDC payments for any HTTP API. Give your AI agent a wallet — M2M finance, agent payments, Japan tax invoice check. (formerly lemon-cake-mcp)",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "lemon-cake-mcp": "./dist/index.js"
+    "pay-per-call-mcp": "./dist/index.js"
   },
   "files": [
     "dist",
