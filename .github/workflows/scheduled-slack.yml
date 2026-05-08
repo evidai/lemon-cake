@@ -49,6 +49,7 @@ jobs:
       - name: Run ${{ steps.pick.outputs.task }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         working-directory: scripts/slack-tasks
         run: |
           case "${{ steps.pick.outputs.task }}" in

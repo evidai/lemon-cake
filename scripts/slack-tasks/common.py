@@ -65,6 +65,62 @@ def keyword_matches(text: str, keywords: list[str]) -> list[str]:
     return [k for k in keywords if k.lower() in low]
 
 
+def claude_messages(messages: list[dict], model: str = "claude-haiku-4-5", max_tokens: int = 4096, system: str | None = None) -> str:
+    """Call Anthropic Messages API and return the assistant's text reply.
+
+    Returns empty string + warning if ANTHROPIC_API_KEY is missing — caller should
+    treat that as "translation unavailable" and fall back gracefully.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        print("warning: ANTHROPIC_API_KEY not set — skipping Claude translation", file=sys.stderr)
+        return ""
+
+    payload: dict[str, Any] = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "messages": messages,
+    }
+    if system:
+        payload["system"] = system
+
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        # Messages API returns content as a list of blocks; extract text blocks.
+        text_parts = [b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"]
+        return "".join(text_parts)
+    except urllib.error.HTTPError as e:
+        msg = e.read().decode("utf-8", errors="replace")[:500]
+        print(f"claude_messages: HTTP {e.code} — {msg}", file=sys.stderr)
+        return ""
+    except Exception as e:  # noqa: BLE001
+        print(f"claude_messages: {e}", file=sys.stderr)
+        return ""
+
+
+def strip_code_fence(text: str) -> str:
+    """Remove ```json ... ``` or ``` ... ``` wrappers if the model returned them."""
+    t = text.strip()
+    if t.startswith("```"):
+        # Drop first line (```json or just ```)
+        lines = t.split("\n", 1)
+        t = lines[1] if len(lines) > 1 else ""
+        if t.endswith("```"):
+            t = t[: -3]
+    return t.strip()
+
+
 def comment_angle_hint(matches: list[str], category: str) -> str:
     """Static templated hint based on matched keywords.
 
