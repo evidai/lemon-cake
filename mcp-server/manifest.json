@@ -1,0 +1,137 @@
+{
+  "manifest_version": "0.3",
+  "name": "lemon-cake",
+  "display_name": "LemonCake — Give your AI agent a wallet",
+  "version": "0.5.0",
+  "description": "Pay-per-call USDC payments for any HTTP API. Lets AI agents bill themselves through scoped Pay Tokens with hard spending caps, with a marketplace of pre-integrated services (Serper, Hunter.io, Firecrawl, gBizINFO, 国税庁 invoice check, etc.) and Japanese tax compliance baked in.",
+  "long_description": "LemonCake is an MCP server that gives any AI agent a wallet. Instead of asking users for 15 different API keys, the agent presents one Pay Token (a JWT with a hard USDC cap, expiry, and service scope) and LemonCake handles per-call billing across the whole marketplace.\n\nWhat works out of the box:\n- list_services / call_service for the marketplace (Serper, Hunter.io, Firecrawl, Jina Reader, IPinfo, OpenExchangeRates, Slack, gBizINFO, 国税庁 invoice check, e-Gov 法令, AbstractAPI VAT, AfterShip, Coze test echo, and more — 16+ live services)\n- check_balance for USDC remaining\n- check_tax for Japanese qualified-invoice / source-withholding compliance\n- get_service_stats for aggregate marketplace numbers\n- setup for an interactive on-boarding walkthrough (no auth required)\n\nDemo mode: if no Pay Token / Buyer JWT is set, the server boots in DEMO MODE so reviewers and curious users can call demo_search / demo_echo / demo_fx without signing up. This lets you exercise the whole tool surface (including call_service) before handing over money.\n\nSafety model: the agent is given a Pay Token JWT with limitUsdc / scope / expiresAt baked in. The agent physically cannot exceed the cap, regardless of prompt-injection or runaway loops. Token revocation is instant.\n\nLearn more: https://lemoncake.xyz | https://github.com/evidai/lemon-cake",
+  "author": {
+    "name": "Evid AI",
+    "email": "contact@aievid.com",
+    "url": "https://lemoncake.xyz"
+  },
+  "homepage": "https://lemoncake.xyz",
+  "documentation": "https://lemoncake.xyz/docs/quickstart",
+  "support": "https://github.com/evidai/lemon-cake/issues",
+  "icon": "icon.png",
+  "screenshots": [
+    "screenshots/marketplace.png",
+    "screenshots/setup.png"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "ai-agent",
+    "payment",
+    "pay-per-call",
+    "usdc",
+    "stablecoin",
+    "wallet",
+    "m2m",
+    "agent-finance",
+    "japan-tax",
+    "invoice",
+    "claude",
+    "cursor",
+    "autonomous-agent"
+  ],
+  "privacy_policies": [
+    "https://lemoncake.xyz/privacy"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {
+        "LEMON_CAKE_PAY_TOKEN": "${user_config.pay_token}",
+        "LEMON_CAKE_BUYER_JWT": "${user_config.buyer_jwt}",
+        "LEMON_CAKE_API_URL":   "${user_config.api_url}"
+      }
+    }
+  },
+  "user_config": {
+    "pay_token": {
+      "type": "string",
+      "title": "Pay Token (JWT)",
+      "description": "Pay Token from your LemonCake dashboard (https://lemoncake.xyz/dashboard). Required for `call_service`. Leave empty to run in DEMO MODE (no real USDC, mock services only). The token has a hard USDC cap, expiry, and service scope baked in — your agent physically cannot exceed these.",
+      "sensitive": true,
+      "required": false
+    },
+    "buyer_jwt": {
+      "type": "string",
+      "title": "Buyer JWT",
+      "description": "Buyer JWT from your LemonCake dashboard. Required for `check_balance`. Leave empty to use DEMO MODE which returns a mock $1.00 balance.",
+      "sensitive": true,
+      "required": false
+    },
+    "api_url": {
+      "type": "string",
+      "title": "API base URL",
+      "description": "LemonCake API base URL. Leave empty to use the production endpoint (https://api.lemoncake.xyz).",
+      "default": "https://api.lemoncake.xyz",
+      "required": false
+    }
+  },
+  "tools": [
+    {
+      "name": "setup",
+      "description": "Interactive on-boarding: shows what credentials you have, what's missing, and how to get them. No auth required."
+    },
+    {
+      "name": "list_services",
+      "description": "List approved API services available in the marketplace (Serper, Hunter.io, gBizINFO, etc.). No auth required. Returns id, name, provider, pricePerCall, and per-service usage hint (path/method/body) so the agent can construct the correct call_service request without trial-and-error."
+    },
+    {
+      "name": "call_service",
+      "description": "Invoke an upstream API service through the pay-per-call proxy. Charges USDC against the Pay Token. Returns upstream response verbatim plus chargeId and amountUsdc. 4xx responses include a structured `hint` field with actionable guidance (e.g. 401=auth issue, 402=balance exhausted, 422=service uneconomical). Requires LEMON_CAKE_PAY_TOKEN."
+    },
+    {
+      "name": "check_balance",
+      "description": "Returns current USDC balance, KYC tier, and account info. Requires LEMON_CAKE_BUYER_JWT."
+    },
+    {
+      "name": "check_tax",
+      "description": "Japanese tax compliance check: qualified-invoice (適格請求書) registration validation against 国税庁, plus source-withholding (源泉徴収) determination. Returns the registration name, validity, and whether withholding applies for the given amount. No auth required."
+    },
+    {
+      "name": "get_service_stats",
+      "description": "Aggregate marketplace usage statistics (call count, top services, unique buyers). No auth required."
+    }
+  ],
+  "tools_generated": false,
+  "prompts": [
+    {
+      "name": "explore-demo",
+      "description": "Walk through demo_search → demo_fx → demo_echo to see the call_service plumbing without spending real USDC."
+    },
+    {
+      "name": "discover-marketplace",
+      "description": "Discover all marketplace services and pick one based on price + use case."
+    },
+    {
+      "name": "japan-tax-check",
+      "description": "Validate a Japanese invoice number (T + 13 digits) and determine source-withholding for a given amount."
+    },
+    {
+      "name": "spend-with-budget",
+      "description": "Demonstrate hard-cap spending: call a service with a strict USDC budget that the agent cannot exceed."
+    },
+    {
+      "name": "real-vs-demo",
+      "description": "Compare a demo service response against a real upstream response to validate plumbing before going live."
+    },
+    {
+      "name": "japan-finance-bundle",
+      "description": "Run a Japan-flavored research bundle: corporate lookup (gBizINFO) → invoice number validation (国税庁) → tax compliance summary."
+    }
+  ],
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "linux", "win32"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  }
+}

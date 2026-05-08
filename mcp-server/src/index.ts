@@ -295,7 +295,7 @@ const SERVER_INSTRUCTIONS = DEMO_MODE
     ].join("\n");
 
 const server = new Server(
-  { name: "pay-per-call-mcp", version: MCP_VERSION },
+  { name: "lemon-cake-mcp", version: MCP_VERSION },
   {
     capabilities: { tools: {}, prompts: {}, logging: {} },
     instructions: SERVER_INSTRUCTIONS,
