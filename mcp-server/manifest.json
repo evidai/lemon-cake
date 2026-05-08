@@ -104,27 +104,33 @@
   "prompts": [
     {
       "name": "explore-demo",
-      "description": "Walk through demo_search → demo_fx → demo_echo to see the call_service plumbing without spending real USDC."
+      "description": "Walk through demo_search → demo_fx → demo_echo to see the call_service plumbing without spending real USDC.",
+      "text": "Use the LemonCake `setup` tool first to confirm we're in DEMO MODE, then call `call_service` with serviceId `demo_search` (q: \"AI agent payments\"), then `demo_fx` (no body), then `demo_echo` (any JSON). Report back the X-Charge-Id headers (which will be DEMO mock IDs) and explain why nothing was actually billed."
     },
     {
       "name": "discover-marketplace",
-      "description": "Discover all marketplace services and pick one based on price + use case."
+      "description": "Discover all marketplace services and pick one based on price + use case.",
+      "text": "Use `list_services` to enumerate every paid API in the LemonCake marketplace. For each, note the price per call and the `usage` hint. Then recommend the single best service for: (1) B2B email lookup, (2) live web search, (3) reading a webpage as Markdown. Cite the exact serviceId and pricePerCall for each recommendation."
     },
     {
       "name": "japan-tax-check",
-      "description": "Validate a Japanese invoice number (T + 13 digits) and determine source-withholding for a given amount."
+      "description": "Validate a Japanese invoice number (T + 13 digits) and determine source-withholding for a given amount.",
+      "text": "Use `check_tax` to validate the Japanese qualified-invoice registration number `T1234567890123` for a service-fee transaction of 110,000 JPY. Report (a) whether the number is currently valid, (b) the registered name, (c) whether source-withholding (源泉徴収) applies and the amount. Explain the result in plain Japanese."
     },
     {
       "name": "spend-with-budget",
-      "description": "Demonstrate hard-cap spending: call a service with a strict USDC budget that the agent cannot exceed."
+      "description": "Demonstrate hard-cap spending: call a service with a strict USDC budget that the agent cannot exceed.",
+      "text": "Explain how a LemonCake Pay Token enforces a hard USDC spending cap that the agent physically cannot exceed (limitUsdc claim baked into the JWT). Then simulate it: call `demo_search` 3 times in a row through `call_service`, and after each call, call `check_balance` and report the remaining mock balance. Stop if the simulated remaining balance hits zero."
     },
     {
       "name": "real-vs-demo",
-      "description": "Compare a demo service response against a real upstream response to validate plumbing before going live."
+      "description": "Compare a demo service response against a real upstream response to validate plumbing before going live.",
+      "text": "Call `demo_search` (mock) and a real marketplace search service (use `list_services` to find one — likely Serper) with the same query \"Anthropic MCP\". Show the response shape side by side. Note which fields are present in the real response but missing in the demo, so the agent author knows what to expect when migrating from demo to live."
     },
     {
       "name": "japan-finance-bundle",
-      "description": "Run a Japan-flavored research bundle: corporate lookup (gBizINFO) → invoice number validation (国税庁) → tax compliance summary."
+      "description": "Run a Japan-flavored research bundle: corporate lookup (gBizINFO) → invoice number validation (国税庁) → tax compliance summary.",
+      "text": "For Japanese corporate research: (1) use `list_services` to find gBizINFO and call it with corporate number 3010001088782 to get the company profile, (2) extract the invoice registration number from the profile if available, (3) call `check_tax` with that number, (4) summarize: company name, address, capital, invoice status, withholding requirement. Report in Japanese."
     }
   ],
   "compatibility": {
